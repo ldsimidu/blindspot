@@ -1,0 +1,1066 @@
+{
+  "veiculo_alvo": {
+    "marca": "Ford",
+    "modelo": "Ranger",
+    "versao": "Raptor",
+    "ano_modelo": 2025,
+    "mercado": "Brasil"
+  },
+  "metadados_coleta": {
+    "fonte_primaria": "mock-response-local",
+    "data_referencia": "2026-04-13",
+    "status_preenchimento": "parcial",
+    "observacoes_gerais": [
+      "Resposta simulada para desenvolvimento local"
+    ],
+    "observacoes_padrao": {
+      "NF1": "nao_localizado_com_evidencia_confiavel_nas_fontes_oficiais_consultadas_para_o_mercado_e_ano_modelo",
+      "NA1": "item_nao_se_aplica_a_configuracao_do_veiculo",
+      "CF1": "divergencia_entre_fontes_relevantes_sem_desempate_oficial_conclusivo"
+    }
+  },
+  "fontes_utilizadas": [
+    {
+      "id": "F1",
+      "url": "https://example.com/fonte-primaria",
+      "titulo": "Fonte primaria mock",
+      "tipo": "site_oficial_montadora"
+    }
+  ],
+  "ficha_tecnica": {
+    "identificacao": {
+      "marca": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "modelo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "versao": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "ano_modelo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "mercado": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "categoria": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "tipo_carroceria": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "cabine_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      }
+    },
+    "motorizacao": {
+      "motor_nome": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "cilindrada_l": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "configuracao_motor": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "aspiracao": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "potencia_cv": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "potencia_rpm": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "torque_nm": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "torque_rpm": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "motor_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "motor_combustivel": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "motor_eletrificacao_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "motor_eletrico_presente": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "autonomia_eletrica_km": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "consumo_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "consumo_valor": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      }
+    },
+    "transmissao_e_tracao": {
+      "transmissao_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "transmissao_descricao": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "numero_marchas": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "tipo_acionamento_cambio": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "tracao": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "diferencial_dianteiro_blocante": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "diferencial_traseiro_blocante": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      }
+    },
+    "cores_externas": {
+      "cores_externas": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      }
+    },
+    "exterior": {
+      "ajuste_eletrico_altura_farois": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "estribo_plataforma": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "farois_neblina_led": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "farois_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "grade_radiador_ativa": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "grade_descricao": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "iluminacao_360": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "lanternas_traseiras_led": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "drl": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "moldura_paralamas_cor": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "parabarros_dianteiros": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "parabarros_traseiros": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "parachoque_cor": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "pneus_medida": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "pneus_modelo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "protetor_offroad_dianteiro": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "protecoes_inferiores_offroad": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "retrovisores_ajuste_eletrico": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "retrovisores_indicador_direcao": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "retrovisores_rebatimento_eletrico": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "retrovisores_aquecimento": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "retrovisores_luz_cortesia": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "rodas_material": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "rodas_aro_pol": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "visual_descricao": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "pneus_tipo_uso": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "pneus_tecnologias": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "estepe_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "farol_funcionalidades": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "teto_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "portas_recursos": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "acabamentos_externos": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "bagageiro_teto_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "estribo_lateral_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "adesivos_externos": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "aerofolio_spoiler": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "alargadores_paralamas": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      }
+    },
+    "interior_e_conforto": {
+      "interruptores_auxiliares_qtd": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "banco_motorista_ajuste": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "banco_passageiro_ajuste": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "aquecimento_bancos": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "revestimento_bancos": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "chave_presenca": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "partida_sem_chave": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "descansa_braco_traseiro": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "paddle_shifters": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "painel_instrumentos_descricao": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "painel_instrumentos_tamanho_pol": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "retrovisor_eletrocromico": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "sensor_chuva": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "tomada_interna_120v": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "vidros_eletricos_sistema_global": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "vidros_eletricos_antiesmagamento": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "volante_ajuste": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "volante_revestimento": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "tomadas_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "tomadas_qtd": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "tomadas_localizacao": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "tomadas_descricao": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "painel_instrumentos_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "hud_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "ar_condicionado_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "ar_condicionado_recursos": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "bancos_dianteiros_recursos": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "bancos_traseiros_configuracao": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "fileiras_bancos_qtd": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "volante_recursos": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "vidros_recursos": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      }
+    },
+    "sistema_multimidia_e_conectividade": {
+      "sistema_multimidia_nome": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "applink": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "assistencia_emergencia": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "sistema_som_marca": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "sistema_som_qtd_alto_falantes": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "bluetooth": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "comando_voz_ptbr": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "comandos_audio_volante": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "android_auto_sem_fio": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "apple_carplay_sem_fio": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "entradas_usb": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "navegador_gps": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "navegador_offroad": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "tela_central_touch": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "tela_central_descricao": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "tela_multimidia_tamanho_pol": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "espelhamento_smartphone_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "assistente_digital_integrado": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "loja_aplicativos_multimidia": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "atualizacoes_ota": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "radio_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "wifi_hotspot": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "recursos_conectividade_multimidia": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      }
+    },
+    "seguranca": {
+      "airbags_presente": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "airbags_qtd": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "airbags_tipos": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "alarme_perimetrico": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "alerta_colisao": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "alerta_trafego_cruzado_re": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "assistente_frenagem_autonoma": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "assistente_frenagem_autonoma_re": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "assistente_manobra_evasiva": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "assistente_partida_rampa": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "assistente_permanencia_faixa": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "assistente_centralizacao_faixa": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "camera_360": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "cintos_traseiros_3_pontos": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "controle_eletronico_estabilidade": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "farol_alto_automatico": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "frenagem_pos_colisao": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "limitador_velocidade": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "acc_stop_go": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "piloto_automatico_offroad": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "sensor_estacionamento_dianteiro": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "sensor_estacionamento_traseiro": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "monitoramento_ponto_cego": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "camera_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "estacionamento_automatico_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "controle_estabilidade_recursos": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "alarme_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      }
+    },
+    "tecnologia_dinamica": {
+      "modos_amortecedor": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "modos_direcao": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "modos_escapamento": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "modos_conducao": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "cambio_eletronico": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "direcao_eletrica_ajustavel": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "tpms": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "start_stop": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "sistema_monitoramento_pneus_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "pro_power_disponivel": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "pro_power_potencia_w": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "engate_reboque_capacidade_kg": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      }
+    },
+    "conectividade_via_aplicativo": {
+      "alerta_alarme_celular": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "alertas_funcionamento_veiculo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "partida_remota_agendada": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "partida_remota_ar_condicionado": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "localizacao_veiculo_celular": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "status_remoto_combustivel": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "status_remoto_odometro": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "travamento_remoto": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "destravamento_remoto": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "app_conectividade_recursos": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "app_conectividade_ev": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "app_conectividade_seguranca": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      }
+    },
+    "performance_offroad": {
+      "freio_disco_4_rodas": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "freio_mao_eletronico": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "suspensao_descricao": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "motor_performance_descricao": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "suspensao_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "suspensao_recursos": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "protecao_inferior_itens": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "offroad_recursos": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "ganchos_reboque_qtd": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      }
+    },
+    "dimensoes_e_capacidade": {
+      "peso_ordem_marcha_kg": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "capacidade_imersao_mm": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "capacidade_carga_kg": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "tanque_combustivel_l": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "altura_mm": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "largura_com_espelhos_mm": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "comprimento_mm": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "distancia_entre_eixos_mm": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      }
+    },
+    "garantia_servicos_e_comercial": {
+      "preco_publico": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "garantia_anos": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "garantia_limite_km": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "revisao_preco_fixo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "agendamento_online_servico": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "servico_sem_sair_de_casa": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "garantia_bateria_anos": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "garantia_bateria_limite_km": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      },
+      "garantia_componentes_tipo": {
+        "valor": null,
+        "status": "nao_encontrado",
+        "obs_ref": "NF1"
+      }
+    },
+    "adicionais": {
+      "adicionais_externos": [],
+      "adicionais_internos": [],
+      "adicionais_seguranca": [],
+      "adicionais_tecnologia": [],
+      "adicionais_conectividade": []
+    }
+  },
+  "resumo_completude": {
+    "total_variaveis": 215,
+    "preenchidas": 0,
+    "nao_encontradas": 215,
+    "conflitantes": 0
+  }
+}

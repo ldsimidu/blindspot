@@ -1,0 +1,1 @@
+quero fazer com que o projeto do blindspot comece a utilizar banco de dados postgres com o drizzle ORM com o NeonDB. Arquitete e crie tabelas, priorize também a cybersegurança, criptografia de dados se possível. Idealmente arquitetar tabelas de acordo com cada feature

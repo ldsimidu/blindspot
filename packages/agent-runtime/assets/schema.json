@@ -1,0 +1,1403 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.com/schemas/ficha-tecnica-automotiva.v2.json",
+  "title": "FichaTecnicaAutomotivaV2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "veiculo_alvo",
+    "metadados_coleta",
+    "fontes_utilizadas",
+    "ficha_tecnica",
+    "resumo_completude"
+  ],
+  "properties": {
+    "veiculo_alvo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "marca",
+        "modelo",
+        "versao",
+        "ano_modelo",
+        "mercado"
+      ],
+      "properties": {
+        "marca": {
+          "type": "string",
+          "minLength": 1
+        },
+        "modelo": {
+          "type": "string",
+          "minLength": 1
+        },
+        "versao": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ano_modelo": {
+          "type": "integer",
+          "minimum": 1900,
+          "maximum": 2100
+        },
+        "mercado": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "metadados_coleta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fonte_primaria",
+        "data_referencia",
+        "status_preenchimento",
+        "observacoes_gerais",
+        "observacoes_padrao"
+      ],
+      "properties": {
+        "fonte_primaria": {
+          "type": "string",
+          "minLength": 1
+        },
+        "data_referencia": {
+          "type": "string",
+          "format": "date"
+        },
+        "status_preenchimento": {
+          "type": "string",
+          "enum": [
+            "completo",
+            "parcial",
+            "pendente"
+          ]
+        },
+        "observacoes_gerais": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "observacoes_padrao": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "NF1",
+            "NA1",
+            "CF1"
+          ],
+          "properties": {
+            "NF1": {
+              "type": "string",
+              "const": "nao_localizado_com_evidencia_confiavel_nas_fontes_oficiais_consultadas_para_o_mercado_e_ano_modelo"
+            },
+            "NA1": {
+              "type": "string",
+              "const": "item_nao_se_aplica_a_configuracao_do_veiculo"
+            },
+            "CF1": {
+              "type": "string",
+              "const": "divergencia_entre_fontes_relevantes_sem_desempate_oficial_conclusivo"
+            }
+          }
+        }
+      }
+    },
+    "fontes_utilizadas": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/fonte"
+      }
+    },
+    "ficha_tecnica": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "identificacao",
+        "motorizacao",
+        "transmissao_e_tracao",
+        "cores_externas",
+        "exterior",
+        "interior_e_conforto",
+        "sistema_multimidia_e_conectividade",
+        "seguranca",
+        "tecnologia_dinamica",
+        "conectividade_via_aplicativo",
+        "performance_offroad",
+        "dimensoes_e_capacidade",
+        "garantia_servicos_e_comercial",
+        "adicionais"
+      ],
+      "properties": {
+        "identificacao": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "marca",
+            "modelo",
+            "versao",
+            "ano_modelo",
+            "mercado",
+            "categoria",
+            "tipo_carroceria",
+            "cabine_tipo"
+          ],
+          "properties": {
+            "marca": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "modelo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "versao": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "ano_modelo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "mercado": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "categoria": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "tipo_carroceria": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "cabine_tipo": {
+              "$ref": "#/$defs/campo_status"
+            }
+          }
+        },
+        "motorizacao": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "motor_nome",
+            "cilindrada_l",
+            "configuracao_motor",
+            "aspiracao",
+            "potencia_cv",
+            "potencia_rpm",
+            "torque_nm",
+            "torque_rpm",
+            "motor_tipo",
+            "motor_combustivel",
+            "motor_eletrificacao_tipo",
+            "motor_eletrico_presente",
+            "autonomia_eletrica_km",
+            "consumo_tipo",
+            "consumo_valor"
+          ],
+          "properties": {
+            "motor_nome": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "cilindrada_l": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "configuracao_motor": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "aspiracao": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "potencia_cv": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "potencia_rpm": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "torque_nm": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "torque_rpm": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "motor_tipo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "motor_combustivel": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "motor_eletrificacao_tipo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "motor_eletrico_presente": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "autonomia_eletrica_km": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "consumo_tipo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "consumo_valor": {
+              "$ref": "#/$defs/campo_status"
+            }
+          }
+        },
+        "transmissao_e_tracao": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "transmissao_tipo",
+            "transmissao_descricao",
+            "numero_marchas",
+            "tipo_acionamento_cambio",
+            "tracao",
+            "diferencial_dianteiro_blocante",
+            "diferencial_traseiro_blocante"
+          ],
+          "properties": {
+            "transmissao_tipo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "transmissao_descricao": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "numero_marchas": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "tipo_acionamento_cambio": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "tracao": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "diferencial_dianteiro_blocante": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "diferencial_traseiro_blocante": {
+              "$ref": "#/$defs/campo_status"
+            }
+          }
+        },
+        "cores_externas": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cores_externas"
+          ],
+          "properties": {
+            "cores_externas": {
+              "$ref": "#/$defs/campo_status"
+            }
+          }
+        },
+        "exterior": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ajuste_eletrico_altura_farois",
+            "estribo_plataforma",
+            "farois_neblina_led",
+            "farois_tipo",
+            "grade_radiador_ativa",
+            "grade_descricao",
+            "iluminacao_360",
+            "lanternas_traseiras_led",
+            "drl",
+            "moldura_paralamas_cor",
+            "parabarros_dianteiros",
+            "parabarros_traseiros",
+            "parachoque_cor",
+            "pneus_medida",
+            "pneus_modelo",
+            "protetor_offroad_dianteiro",
+            "protecoes_inferiores_offroad",
+            "retrovisores_ajuste_eletrico",
+            "retrovisores_indicador_direcao",
+            "retrovisores_rebatimento_eletrico",
+            "retrovisores_aquecimento",
+            "retrovisores_luz_cortesia",
+            "rodas_material",
+            "rodas_aro_pol",
+            "visual_descricao",
+            "pneus_tipo_uso",
+            "pneus_tecnologias",
+            "estepe_tipo",
+            "farol_funcionalidades",
+            "teto_tipo",
+            "portas_recursos",
+            "acabamentos_externos",
+            "bagageiro_teto_tipo",
+            "estribo_lateral_tipo",
+            "adesivos_externos",
+            "aerofolio_spoiler",
+            "alargadores_paralamas"
+          ],
+          "properties": {
+            "ajuste_eletrico_altura_farois": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "estribo_plataforma": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "farois_neblina_led": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "farois_tipo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "grade_radiador_ativa": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "grade_descricao": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "iluminacao_360": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "lanternas_traseiras_led": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "drl": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "moldura_paralamas_cor": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "parabarros_dianteiros": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "parabarros_traseiros": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "parachoque_cor": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "pneus_medida": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "pneus_modelo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "protetor_offroad_dianteiro": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "protecoes_inferiores_offroad": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "retrovisores_ajuste_eletrico": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "retrovisores_indicador_direcao": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "retrovisores_rebatimento_eletrico": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "retrovisores_aquecimento": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "retrovisores_luz_cortesia": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "rodas_material": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "rodas_aro_pol": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "visual_descricao": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "pneus_tipo_uso": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "pneus_tecnologias": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "estepe_tipo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "farol_funcionalidades": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "teto_tipo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "portas_recursos": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "acabamentos_externos": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "bagageiro_teto_tipo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "estribo_lateral_tipo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "adesivos_externos": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "aerofolio_spoiler": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "alargadores_paralamas": {
+              "$ref": "#/$defs/campo_status"
+            }
+          }
+        },
+        "interior_e_conforto": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "interruptores_auxiliares_qtd",
+            "banco_motorista_ajuste",
+            "banco_passageiro_ajuste",
+            "aquecimento_bancos",
+            "revestimento_bancos",
+            "chave_presenca",
+            "partida_sem_chave",
+            "descansa_braco_traseiro",
+            "paddle_shifters",
+            "painel_instrumentos_descricao",
+            "painel_instrumentos_tamanho_pol",
+            "retrovisor_eletrocromico",
+            "sensor_chuva",
+            "tomada_interna_120v",
+            "vidros_eletricos_sistema_global",
+            "vidros_eletricos_antiesmagamento",
+            "volante_ajuste",
+            "volante_revestimento",
+            "tomadas_tipo",
+            "tomadas_qtd",
+            "tomadas_localizacao",
+            "tomadas_descricao",
+            "painel_instrumentos_tipo",
+            "hud_tipo",
+            "ar_condicionado_tipo",
+            "ar_condicionado_recursos",
+            "bancos_dianteiros_recursos",
+            "bancos_traseiros_configuracao",
+            "fileiras_bancos_qtd",
+            "volante_recursos",
+            "vidros_recursos"
+          ],
+          "properties": {
+            "interruptores_auxiliares_qtd": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "banco_motorista_ajuste": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "banco_passageiro_ajuste": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "aquecimento_bancos": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "revestimento_bancos": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "chave_presenca": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "partida_sem_chave": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "descansa_braco_traseiro": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "paddle_shifters": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "painel_instrumentos_descricao": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "painel_instrumentos_tamanho_pol": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "retrovisor_eletrocromico": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "sensor_chuva": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "tomada_interna_120v": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "vidros_eletricos_sistema_global": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "vidros_eletricos_antiesmagamento": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "volante_ajuste": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "volante_revestimento": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "tomadas_tipo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "tomadas_qtd": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "tomadas_localizacao": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "tomadas_descricao": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "painel_instrumentos_tipo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "hud_tipo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "ar_condicionado_tipo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "ar_condicionado_recursos": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "bancos_dianteiros_recursos": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "bancos_traseiros_configuracao": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "fileiras_bancos_qtd": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "volante_recursos": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "vidros_recursos": {
+              "$ref": "#/$defs/campo_status"
+            }
+          }
+        },
+        "sistema_multimidia_e_conectividade": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "sistema_multimidia_nome",
+            "applink",
+            "assistencia_emergencia",
+            "sistema_som_marca",
+            "sistema_som_qtd_alto_falantes",
+            "bluetooth",
+            "comando_voz_ptbr",
+            "comandos_audio_volante",
+            "android_auto_sem_fio",
+            "apple_carplay_sem_fio",
+            "entradas_usb",
+            "navegador_gps",
+            "navegador_offroad",
+            "tela_central_touch",
+            "tela_central_descricao",
+            "tela_multimidia_tamanho_pol",
+            "espelhamento_smartphone_tipo",
+            "assistente_digital_integrado",
+            "loja_aplicativos_multimidia",
+            "atualizacoes_ota",
+            "radio_tipo",
+            "wifi_hotspot",
+            "recursos_conectividade_multimidia"
+          ],
+          "properties": {
+            "sistema_multimidia_nome": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "applink": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "assistencia_emergencia": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "sistema_som_marca": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "sistema_som_qtd_alto_falantes": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "bluetooth": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "comando_voz_ptbr": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "comandos_audio_volante": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "android_auto_sem_fio": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "apple_carplay_sem_fio": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "entradas_usb": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "navegador_gps": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "navegador_offroad": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "tela_central_touch": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "tela_central_descricao": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "tela_multimidia_tamanho_pol": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "espelhamento_smartphone_tipo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "assistente_digital_integrado": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "loja_aplicativos_multimidia": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "atualizacoes_ota": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "radio_tipo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "wifi_hotspot": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "recursos_conectividade_multimidia": {
+              "$ref": "#/$defs/campo_status"
+            }
+          }
+        },
+        "seguranca": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "airbags_presente",
+            "airbags_qtd",
+            "airbags_tipos",
+            "alarme_perimetrico",
+            "alerta_colisao",
+            "alerta_trafego_cruzado_re",
+            "assistente_frenagem_autonoma",
+            "assistente_frenagem_autonoma_re",
+            "assistente_manobra_evasiva",
+            "assistente_partida_rampa",
+            "assistente_permanencia_faixa",
+            "assistente_centralizacao_faixa",
+            "camera_360",
+            "cintos_traseiros_3_pontos",
+            "controle_eletronico_estabilidade",
+            "farol_alto_automatico",
+            "frenagem_pos_colisao",
+            "limitador_velocidade",
+            "acc_stop_go",
+            "piloto_automatico_offroad",
+            "sensor_estacionamento_dianteiro",
+            "sensor_estacionamento_traseiro",
+            "monitoramento_ponto_cego",
+            "camera_tipo",
+            "estacionamento_automatico_tipo",
+            "controle_estabilidade_recursos",
+            "alarme_tipo"
+          ],
+          "properties": {
+            "airbags_presente": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "airbags_qtd": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "airbags_tipos": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "alarme_perimetrico": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "alerta_colisao": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "alerta_trafego_cruzado_re": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "assistente_frenagem_autonoma": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "assistente_frenagem_autonoma_re": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "assistente_manobra_evasiva": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "assistente_partida_rampa": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "assistente_permanencia_faixa": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "assistente_centralizacao_faixa": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "camera_360": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "cintos_traseiros_3_pontos": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "controle_eletronico_estabilidade": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "farol_alto_automatico": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "frenagem_pos_colisao": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "limitador_velocidade": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "acc_stop_go": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "piloto_automatico_offroad": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "sensor_estacionamento_dianteiro": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "sensor_estacionamento_traseiro": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "monitoramento_ponto_cego": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "camera_tipo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "estacionamento_automatico_tipo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "controle_estabilidade_recursos": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "alarme_tipo": {
+              "$ref": "#/$defs/campo_status"
+            }
+          }
+        },
+        "tecnologia_dinamica": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "modos_amortecedor",
+            "modos_direcao",
+            "modos_escapamento",
+            "modos_conducao",
+            "cambio_eletronico",
+            "direcao_eletrica_ajustavel",
+            "tpms",
+            "start_stop",
+            "sistema_monitoramento_pneus_tipo",
+            "pro_power_disponivel",
+            "pro_power_potencia_w",
+            "engate_reboque_capacidade_kg"
+          ],
+          "properties": {
+            "modos_amortecedor": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "modos_direcao": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "modos_escapamento": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "modos_conducao": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "cambio_eletronico": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "direcao_eletrica_ajustavel": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "tpms": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "start_stop": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "sistema_monitoramento_pneus_tipo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "pro_power_disponivel": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "pro_power_potencia_w": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "engate_reboque_capacidade_kg": {
+              "$ref": "#/$defs/campo_status"
+            }
+          }
+        },
+        "conectividade_via_aplicativo": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "alerta_alarme_celular",
+            "alertas_funcionamento_veiculo",
+            "partida_remota_agendada",
+            "partida_remota_ar_condicionado",
+            "localizacao_veiculo_celular",
+            "status_remoto_combustivel",
+            "status_remoto_odometro",
+            "travamento_remoto",
+            "destravamento_remoto",
+            "app_conectividade_recursos",
+            "app_conectividade_ev",
+            "app_conectividade_seguranca"
+          ],
+          "properties": {
+            "alerta_alarme_celular": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "alertas_funcionamento_veiculo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "partida_remota_agendada": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "partida_remota_ar_condicionado": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "localizacao_veiculo_celular": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "status_remoto_combustivel": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "status_remoto_odometro": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "travamento_remoto": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "destravamento_remoto": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "app_conectividade_recursos": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "app_conectividade_ev": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "app_conectividade_seguranca": {
+              "$ref": "#/$defs/campo_status"
+            }
+          }
+        },
+        "performance_offroad": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "freio_disco_4_rodas",
+            "freio_mao_eletronico",
+            "suspensao_descricao",
+            "motor_performance_descricao",
+            "suspensao_tipo",
+            "suspensao_recursos",
+            "protecao_inferior_itens",
+            "offroad_recursos",
+            "ganchos_reboque_qtd"
+          ],
+          "properties": {
+            "freio_disco_4_rodas": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "freio_mao_eletronico": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "suspensao_descricao": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "motor_performance_descricao": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "suspensao_tipo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "suspensao_recursos": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "protecao_inferior_itens": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "offroad_recursos": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "ganchos_reboque_qtd": {
+              "$ref": "#/$defs/campo_status"
+            }
+          }
+        },
+        "dimensoes_e_capacidade": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "peso_ordem_marcha_kg",
+            "capacidade_imersao_mm",
+            "capacidade_carga_kg",
+            "tanque_combustivel_l",
+            "altura_mm",
+            "largura_com_espelhos_mm",
+            "comprimento_mm",
+            "distancia_entre_eixos_mm"
+          ],
+          "properties": {
+            "peso_ordem_marcha_kg": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "capacidade_imersao_mm": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "capacidade_carga_kg": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "tanque_combustivel_l": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "altura_mm": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "largura_com_espelhos_mm": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "comprimento_mm": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "distancia_entre_eixos_mm": {
+              "$ref": "#/$defs/campo_status"
+            }
+          }
+        },
+        "garantia_servicos_e_comercial": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "preco_publico",
+            "garantia_anos",
+            "garantia_limite_km",
+            "revisao_preco_fixo",
+            "agendamento_online_servico",
+            "servico_sem_sair_de_casa",
+            "garantia_bateria_anos",
+            "garantia_bateria_limite_km",
+            "garantia_componentes_tipo"
+          ],
+          "properties": {
+            "preco_publico": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "garantia_anos": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "garantia_limite_km": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "revisao_preco_fixo": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "agendamento_online_servico": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "servico_sem_sair_de_casa": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "garantia_bateria_anos": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "garantia_bateria_limite_km": {
+              "$ref": "#/$defs/campo_status"
+            },
+            "garantia_componentes_tipo": {
+              "$ref": "#/$defs/campo_status"
+            }
+          }
+        },
+        "adicionais": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "adicionais_externos",
+            "adicionais_internos",
+            "adicionais_seguranca",
+            "adicionais_tecnologia",
+            "adicionais_conectividade"
+          ],
+          "properties": {
+            "adicionais_externos": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/item_adicional"
+              }
+            },
+            "adicionais_internos": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/item_adicional"
+              }
+            },
+            "adicionais_seguranca": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/item_adicional"
+              }
+            },
+            "adicionais_tecnologia": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/item_adicional"
+              }
+            },
+            "adicionais_conectividade": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/item_adicional"
+              }
+            }
+          }
+        }
+      }
+    },
+    "resumo_completude": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "total_variaveis",
+        "preenchidas",
+        "nao_encontradas",
+        "nao_aplicaveis",
+        "conflitantes"
+      ],
+      "properties": {
+        "total_variaveis": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "preenchidas": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nao_encontradas": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "nao_aplicaveis": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "conflitantes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  },
+  "$defs": {
+    "fonte_id": {
+      "type": "string",
+      "pattern": "^F[0-9]+$"
+    },
+    "fonte_ref": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/fonte_id"
+      }
+    },
+    "obs_ref": {
+      "type": "string",
+      "enum": [
+        "NF1",
+        "NA1",
+        "CF1"
+      ]
+    },
+    "fonte": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "url",
+        "titulo",
+        "tipo"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/fonte_id"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        },
+        "titulo": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tipo": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "valor_base": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "campo_confirmado": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "valor",
+        "status",
+        "fonte_ref"
+      ],
+      "properties": {
+        "valor": {
+          "$ref": "#/$defs/valor_base"
+        },
+        "status": {
+          "const": "confirmado"
+        },
+        "fonte_ref": {
+          "$ref": "#/$defs/fonte_ref"
+        }
+      }
+    },
+    "campo_parcial": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "valor",
+        "status",
+        "fonte_ref"
+      ],
+      "properties": {
+        "valor": {
+          "$ref": "#/$defs/valor_base"
+        },
+        "status": {
+          "const": "parcial"
+        },
+        "fonte_ref": {
+          "$ref": "#/$defs/fonte_ref"
+        },
+        "obs_ref": {
+          "$ref": "#/$defs/obs_ref"
+        },
+        "observacoes": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "obs_ref"
+          ]
+        },
+        {
+          "required": [
+            "observacoes"
+          ]
+        }
+      ]
+    },
+    "campo_conflitante": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "valor",
+        "status",
+        "fonte_ref"
+      ],
+      "properties": {
+        "valor": {
+          "type": "null"
+        },
+        "status": {
+          "const": "conflitante"
+        },
+        "fonte_ref": {
+          "$ref": "#/$defs/fonte_ref"
+        },
+        "obs_ref": {
+          "$ref": "#/$defs/obs_ref"
+        },
+        "observacoes": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "obs_ref"
+          ]
+        },
+        {
+          "required": [
+            "observacoes"
+          ]
+        }
+      ]
+    },
+    "campo_nao_encontrado": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "valor",
+        "status",
+        "obs_ref"
+      ],
+      "properties": {
+        "valor": {
+          "type": "null"
+        },
+        "status": {
+          "const": "nao_encontrado"
+        },
+        "obs_ref": {
+          "const": "NF1"
+        }
+      }
+    },
+    "campo_nao_aplicavel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "valor",
+        "status"
+      ],
+      "properties": {
+        "valor": {
+          "type": "null"
+        },
+        "status": {
+          "const": "nao_aplicavel"
+        }
+      }
+    },
+    "campo_inferido_minimamente": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "valor",
+        "status",
+        "fonte_ref"
+      ],
+      "properties": {
+        "valor": {
+          "$ref": "#/$defs/valor_base"
+        },
+        "status": {
+          "const": "inferido_minimamente"
+        },
+        "fonte_ref": {
+          "$ref": "#/$defs/fonte_ref"
+        },
+        "obs_ref": {
+          "$ref": "#/$defs/obs_ref"
+        },
+        "observacoes": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "obs_ref"
+          ]
+        },
+        {
+          "required": [
+            "observacoes"
+          ]
+        }
+      ]
+    },
+    "campo_status": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/campo_confirmado"
+        },
+        {
+          "$ref": "#/$defs/campo_parcial"
+        },
+        {
+          "$ref": "#/$defs/campo_conflitante"
+        },
+        {
+          "$ref": "#/$defs/campo_nao_encontrado"
+        },
+        {
+          "$ref": "#/$defs/campo_nao_aplicavel"
+        },
+        {
+          "$ref": "#/$defs/campo_inferido_minimamente"
+        }
+      ]
+    },
+    "item_adicional": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nome",
+        "detalhe"
+      ],
+      "properties": {
+        "nome": {
+          "type": "string",
+          "minLength": 1
+        },
+        "detalhe": {
+          "$ref": "#/$defs/campo_status"
+        }
+      }
+    }
+  }
+}
