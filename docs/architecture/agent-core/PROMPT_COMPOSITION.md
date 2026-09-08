@@ -1,10 +1,10 @@
 # Composição do prompt final (lógica adicional)
 
-Origem no código: `server/prompt-builder.ts`.
+Origem no código: `services/api/prompt-builder.ts` e `services/api/runtime-assets.ts`.
 
 ## Arquivos lidos em tempo de execução
 
-O servidor Express lê de `prompt-assets/` na raiz do repo. O espelho para repasse e diff está em **`../source/base-agent-prompt.txt`** e **`../source/schema.json`**.
+O runtime lê `base-agent-prompt.txt` e `schema.json` exclusivamente de `packages/agent-runtime/assets/`. Esse diretório é a fonte canônica; esta documentação não é fallback de runtime.
 
 ## Seções do prompt enviado ao modelo
 

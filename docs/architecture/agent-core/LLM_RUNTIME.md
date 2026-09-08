@@ -1,11 +1,11 @@
 # Execução do LLM (lógica adicional)
 
-Origem: `server/llm.ts`.
+Origem: `services/api/llm.ts`.
 
 ## Variável `LLM_PROVIDER`
 
 - **`simulated`** (padrão se ausente): não chama API externa.
-  - Lê `mock-response.json` de `prompt-assets/`; espelho em `../source/mock-response.json`.
+  - Lê `mock-response.json` de `packages/agent-runtime/assets/` pelo resolvedor `services/api/runtime-assets.ts`.
   - Faz parse JSON, clona o objeto, injeta dados do `VehicleInput` em `veiculo_alvo` e em campos de identificação em `ficha_tecnica` (marca, modelo, versão, ano_modelo, mercado) ajustando `valor`, `status`, `fonte_ref`, etc.
 
 - **`claude`**: chama `https://api.anthropic.com/v1/messages`.
@@ -40,4 +40,4 @@ Texto único (inglês), resumindo: agente automotivo; seguir `BASE_AGENT_PROMPT`
 
 ## Logs
 
-Execuções Claude podem ser persistidas em `logs/` (hash SHA-256 do prompt, preview, turns, resultado, erro). Falha ao logar apenas gera `console.warn`.
+Execuções Claude podem ser persistidas em `var/logs/` (hash SHA-256 do prompt, preview, turns, resultado, erro). Falha ao logar apenas gera `console.warn`.

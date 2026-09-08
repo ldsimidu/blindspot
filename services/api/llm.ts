@@ -1,10 +1,7 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { logLLMExecution } from "./logger";
 import { HttpError, type VehicleInput } from "./types";
-
-const PROMPT_ASSETS_DIR = path.resolve(process.cwd(), "prompt-assets");
+import { readRuntimeMockResponse } from "./runtime-assets";
 const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
 const OPENROUTER_CHAT_COMPLETIONS_URL =
   "https://openrouter.ai/api/v1/chat/completions";
@@ -140,9 +137,7 @@ export async function callLLMSimulated(
   _finalPrompt: string,
   vehicle: VehicleInput,
 ): Promise<unknown> {
-  const mockFilePath = path.join(PROMPT_ASSETS_DIR, "mock-response.json");
-  const rawMockResponse = await readFile(mockFilePath, "utf-8");
-  const parsedResponse = JSON.parse(rawMockResponse) as Record<string, unknown>;
+  const parsedResponse = await readRuntimeMockResponse();
 
   // Clone to avoid mutating the in-memory parsed object across requests.
   const responseClone = JSON.parse(JSON.stringify(parsedResponse)) as Record<

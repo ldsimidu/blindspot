@@ -1,6 +1,6 @@
 # Contrato de entrada (payload do veículo)
 
-Este documento espelha a validação feita em `server/index.ts` (`parseVehicleInput`).
+Este documento espelha a validação feita em `services/api/index.ts` (`parseVehicleInput`).
 
 ## Campos obrigatórios
 

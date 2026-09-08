@@ -1,6 +1,6 @@
 # Validação da resposta e tipos (lógica adicional)
 
-Origem: `server/validator.ts`, `server/types.ts`.
+Origem: `services/api/validator.ts`, `services/api/types.ts`.
 
 ## Tipos de entrada (TypeScript)
 
@@ -33,13 +33,13 @@ interface FonteUtilizada {
 }
 ```
 
-A estrutura detalhada de `ficha_tecnica` e demais campos está em `../source/schema.json`.
+A estrutura detalhada de `ficha_tecnica` e demais campos está em `packages/agent-runtime/assets/schema.json`.
 
 ## Passo 1: JSON Schema (AJV)
 
 - Biblioteca: **Ajv 2020** (`ajv/dist/2020`) com **`ajv-formats`**.
 - Opções: `allErrors: true`, `strict: false`.
-- O schema compilado é o mesmo objeto carregado de `prompt-assets/schema.json` (espelho em `../source/schema.json`).
+- O schema compilado é o mesmo objeto canônico carregado de `packages/agent-runtime/assets/schema.json`.
 - Se inválido: erro `422` com mensagem do tipo "Resposta do LLM invalida para o schema." e lista `ajvErrors` formatada (`instancePath` + mensagem).
 
 ## Passo 2: Consistência `fonte_ref` × `fontes_utilizadas`

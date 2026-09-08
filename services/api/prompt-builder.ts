@@ -1,8 +1,5 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import type { VehicleInput, VehiclePayload } from "./types";
-
-const PROMPT_ASSETS_DIR = path.resolve(process.cwd(), "packages", "agent-runtime", "assets");
+import { readRuntimeAsset, readRuntimeSchema } from "./runtime-assets";
 
 interface PromptCompositionInput {
   baseAgentPrompt: string;
@@ -11,14 +8,11 @@ interface PromptCompositionInput {
 }
 
 export async function readBaseAgentPrompt(): Promise<string> {
-  const filePath = path.join(PROMPT_ASSETS_DIR, "base-agent-prompt.txt");
-  return readFile(filePath, "utf-8");
+  return readRuntimeAsset("base-agent-prompt.txt");
 }
 
 export async function readOutputSchema(): Promise<Record<string, unknown>> {
-  const filePath = path.join(PROMPT_ASSETS_DIR, "schema.json");
-  const rawSchema = await readFile(filePath, "utf-8");
-  return JSON.parse(rawSchema) as Record<string, unknown>;
+  return readRuntimeSchema();
 }
 
 export function buildVehiclePayload(vehicle: VehicleInput): VehiclePayload {
