@@ -20,22 +20,30 @@ interface PersistTechnicalSheetInput {
 export async function persistTechnicalSheet(input: PersistTechnicalSheetInput): Promise<void> {
   const db = getDatabase();
   if (!db) return;
+  await db.transaction(async (tx) => persistTechnicalSheetInTransaction(tx, input));
+}
+
+export async function persistTechnicalSheetsAtomically(inputs: PersistTechnicalSheetInput[]): Promise<void> {
+  const db = getDatabase();
+  if (!db) throw new HttpError(503, "Persistencia PostgreSQL indisponivel.");
+  await db.transaction(async (tx) => {
+    for (const input of inputs) await persistTechnicalSheetInTransaction(tx, input);
+  });
+}
+
+export async function persistTechnicalSheetInTransaction(tx: any, input: PersistTechnicalSheetInput): Promise<void> {
   const now = new Date();
   const schemaHash = sha256(input.outputSchema);
-
-  await db.transaction(async (tx) => {
-    const [vehicle] = await tx.insert(vehicleConfigurations).values({ brand: input.vehicle.marca, model: input.vehicle.modelo, trim: input.vehicle.versao, modelYear: input.vehicle.ano_modelo, market: input.vehicle.mercado, catalogSlug: createCatalogSlug(input.vehicle), updatedAt: now }).onConflictDoUpdate({ target: [vehicleConfigurations.brand, vehicleConfigurations.model, vehicleConfigurations.trim, vehicleConfigurations.modelYear, vehicleConfigurations.market], set: { catalogSlug: createCatalogSlug(input.vehicle), updatedAt: now } }).returning();
-    await tx.insert(vehicleConfigurationAliases).values(createDeterministicAliases(input.vehicle).map((alias) => ({ vehicleConfigurationId: vehicle.id, aliasNormalized: alias.normalized, aliasDisplay: alias.display, kind: alias.kind }))).onConflictDoNothing();
-    const [schemaContract] = await tx.insert(schemaContracts).values({ sha256: schemaHash, runtimeAssetPath: RUNTIME_SCHEMA_PATH }).onConflictDoUpdate({ target: schemaContracts.sha256, set: { runtimeAssetPath: RUNTIME_SCHEMA_PATH } }).returning();
-    const [lastVersion] = await tx.select({ versionNumber: technicalSheetVersions.versionNumber }).from(technicalSheetVersions).where(eq(technicalSheetVersions.vehicleConfigurationId, vehicle.id)).orderBy(desc(technicalSheetVersions.versionNumber)).limit(1);
-    const [run] = await tx.insert(collectionRuns).values({ requestId: input.requestId, vehicleConfigurationId: vehicle.id, provider: input.provider, modelName: resolveModel(input.provider), status: "succeeded", schemaContractId: schemaContract.id, promptSha256: sha256(input.finalPrompt), startedAt: now, finishedAt: now }).returning();
-    const [sheet] = await tx.insert(technicalSheetVersions).values({ collectionRunId: run.id, vehicleConfigurationId: vehicle.id, schemaContractId: schemaContract.id, versionNumber: (lastVersion?.versionNumber ?? 0) + 1, payload: input.response, completenessSummary: input.response.resumo_completude, payloadSha256: sha256(input.response) }).returning();
-
-    for (const source of input.response.fontes_utilizadas) {
-      const [storedSource] = await tx.insert(sources).values({ canonicalUrl: source.url, title: source.titulo, sourceType: source.tipo }).onConflictDoUpdate({ target: sources.canonicalUrl, set: { title: source.titulo, sourceType: source.tipo } }).returning();
-      await tx.insert(technicalSheetSources).values({ technicalSheetVersionId: sheet.id, sourceId: storedSource.id, sourceRef: source.id });
-    }
-  });
+  const [vehicle] = await tx.insert(vehicleConfigurations).values({ brand: input.vehicle.marca, model: input.vehicle.modelo, trim: input.vehicle.versao, modelYear: input.vehicle.ano_modelo, market: input.vehicle.mercado, catalogSlug: createCatalogSlug(input.vehicle), updatedAt: now }).onConflictDoUpdate({ target: [vehicleConfigurations.brand, vehicleConfigurations.model, vehicleConfigurations.trim, vehicleConfigurations.modelYear, vehicleConfigurations.market], set: { catalogSlug: createCatalogSlug(input.vehicle), updatedAt: now } }).returning();
+  await tx.insert(vehicleConfigurationAliases).values(createDeterministicAliases(input.vehicle).map((alias) => ({ vehicleConfigurationId: vehicle.id, aliasNormalized: alias.normalized, aliasDisplay: alias.display, kind: alias.kind }))).onConflictDoNothing();
+  const [schemaContract] = await tx.insert(schemaContracts).values({ sha256: schemaHash, runtimeAssetPath: RUNTIME_SCHEMA_PATH }).onConflictDoUpdate({ target: schemaContracts.sha256, set: { runtimeAssetPath: RUNTIME_SCHEMA_PATH } }).returning();
+  const [lastVersion] = await tx.select({ versionNumber: technicalSheetVersions.versionNumber }).from(technicalSheetVersions).where(eq(technicalSheetVersions.vehicleConfigurationId, vehicle.id)).orderBy(desc(technicalSheetVersions.versionNumber)).limit(1);
+  const [run] = await tx.insert(collectionRuns).values({ requestId: input.requestId, vehicleConfigurationId: vehicle.id, provider: input.provider, modelName: resolveModel(input.provider), status: "succeeded", schemaContractId: schemaContract.id, promptSha256: sha256(input.finalPrompt), startedAt: now, finishedAt: now }).returning();
+  const [sheet] = await tx.insert(technicalSheetVersions).values({ collectionRunId: run.id, vehicleConfigurationId: vehicle.id, schemaContractId: schemaContract.id, versionNumber: (lastVersion?.versionNumber ?? 0) + 1, payload: input.response, completenessSummary: input.response.resumo_completude, payloadSha256: sha256(input.response) }).returning();
+  for (const source of input.response.fontes_utilizadas) {
+    const [storedSource] = await tx.insert(sources).values({ canonicalUrl: source.url, title: source.titulo, sourceType: source.tipo }).onConflictDoUpdate({ target: sources.canonicalUrl, set: { title: source.titulo, sourceType: source.tipo } }).returning();
+    await tx.insert(technicalSheetSources).values({ technicalSheetVersionId: sheet.id, sourceId: storedSource.id, sourceRef: source.id });
+  }
 }
 
 export async function readLatestTechnicalSheet(): Promise<unknown | null> {

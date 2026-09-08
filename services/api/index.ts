@@ -12,6 +12,7 @@ import {
 import { callLLM } from "./llm";
 import { getPersistenceMode } from "./db/client";
 import { persistTechnicalSheet, readCatalogEntryExact, readLatestTechnicalSheet, readTechnicalSheetHistory, searchCatalog } from "./db/repository";
+import { confirmImportRun, createImportDryRun, hashImportPayload, readImportRun, type PreparedImportItem } from "./imports";
 import { buildVehiclePayload, composeFinalPrompt, readBaseAgentPrompt, readOutputSchema } from "./prompt-builder";
 import { readFieldPolicy, readNormalizationPolicy, readQualityPolicy, readSourcePolicy } from "./runtime-assets";
 import { FichaTecnicaHistoryItem, HttpError, VehicleInput } from "./types";
@@ -71,6 +72,21 @@ app.get("/api/catalogo/fichas/:id", async (req: Request, res: Response, next: Ne
   } catch (error) {
     next(error);
   }
+});
+
+app.post("/api/importacoes/dry-run", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const input = await prepareImportInput(req.body);
+    res.status(200).json(await createImportDryRun(input.idempotencyKey, hashImportPayload(req.body.items), input.items, input.outputSchema));
+  } catch (error) { next(error); }
+});
+
+app.get("/api/importacoes/:id", async (req: Request, res: Response, next: NextFunction) => {
+  try { res.status(200).json(await readImportRun(parseCatalogId(req.params.id))); } catch (error) { next(error); }
+});
+
+app.post("/api/importacoes/:id/confirmar", async (req: Request, res: Response, next: NextFunction) => {
+  try { res.status(200).json(await confirmImportRun(parseCatalogId(req.params.id), await readOutputSchema())); } catch (error) { next(error); }
 });
 
 app.post("/api/ficha-tecnica", async (req: Request, res: Response, next: NextFunction) => {
@@ -284,6 +300,21 @@ function parseCatalogId(value: string): string {
     throw new HttpError(400, "Identificador de catalogo invalido.");
   }
   return value;
+}
+
+async function prepareImportInput(body: unknown): Promise<{ idempotencyKey: string; items: PreparedImportItem[]; outputSchema: Record<string, unknown> }> {
+  if (!isObject(body) || typeof body.idempotency_key !== "string" || !/^[A-Za-z0-9._:-]{16,128}$/.test(body.idempotency_key)) throw new HttpError(400, "Chave de idempotencia invalida.");
+  if (!Array.isArray(body.items) || body.items.length < 1 || body.items.length > 10) throw new HttpError(400, "Lote deve conter entre 1 e 10 itens.");
+  const [outputSchema, sourcePolicy, normalizationPolicy, fieldPolicy, qualityPolicy] = await Promise.all([readOutputSchema(), readSourcePolicy(), readNormalizationPolicy(), readFieldPolicy(), readQualityPolicy()]);
+  const items = body.items.map((item, index) => {
+    if (!isObject(item)) throw new HttpError(422, "Item de importacao invalido.", { index, code: "item_not_object" });
+    const vehicle = parseVehicleInput(item.vehicle);
+    const provider: PreparedImportItem["provider"] | null = item.provider === "openrouter" || item.provider === "claude" ? item.provider : item.provider === undefined || item.provider === "simulated" ? "simulated" : null;
+    if (!provider) throw new HttpError(422, "Provider de importacao invalido.", { index, code: "provider_invalid" });
+    const response = validateResponse(item.response, outputSchema, { vehicle, provider, sourcePolicy, normalizationPolicy, fieldPolicy, qualityPolicy });
+    return { vehicle, provider, response, payloadSha256: hashImportPayload(response) };
+  });
+  return { idempotencyKey: body.idempotency_key, items, outputSchema };
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {

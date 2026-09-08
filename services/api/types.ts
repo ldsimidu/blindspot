@@ -59,6 +59,11 @@ export type CatalogEntryResult =
   | { state: "not_registered" }
   | { state: "incompatible" };
 
+export type ImportItemState = "valid" | "duplicate" | "collision" | "invalid";
+export interface ImportDryRunItem { vehicle: VehicleInput; response: unknown; provider: "simulated" | "openrouter" | "claude"; }
+export interface ImportItemResult { index: number; state: ImportItemState; code: string | null; }
+export interface ImportRunResult { id: string; state: "dry_run" | "confirmed"; total: number; valid: number; duplicate: number; collision: number; invalid: number; items: ImportItemResult[]; }
+
 export class HttpError extends Error {
   statusCode: number;
   details?: unknown;

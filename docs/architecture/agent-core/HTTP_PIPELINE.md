@@ -8,8 +8,13 @@ Origem: `services/api/index.ts`.
 - `POST /api/ficha-tecnica` — corpo JSON conforme `VEHICLE_INPUT_SPEC.md` (nesta pasta `docs/`).
 - `GET /api/catalogo/fichas?q=&page=&page_size=` — descoberta paginada no PostgreSQL; devolve candidatas ou `not_registered`, sem selecionar veículo aproximado.
 - `GET /api/catalogo/fichas/:id?marca=&modelo=&versao=&ano_modelo=&mercado=` — abre a ficha atual somente quando o UUID e a identidade canônica completa coincidem; devolve `incompatible` se divergem.
+- `POST /api/importacoes/dry-run` — recebe JSON limitado (1 a 10 itens) e `idempotency_key`; valida cada ficha pelos assets canônicos e grava somente staging/classificação (`valid`, `duplicate` ou `collision`), nunca ficha, fonte ou alias.
+- `GET /api/importacoes/:id` — lê o resumo sanitizado de um dry-run ou confirmação.
+- `POST /api/importacoes/:id/confirmar` — confirma uma execução limpa em uma única transação PostgreSQL; rejeita execução com colisão ou item inválido e não executa merge automático.
 
 As rotas de catálogo exigem `PERSISTENCE_MODE=postgres`; elas não usam snapshots de arquivo como fallback. `loading` é estado da interface; `found`, `not_registered` e `incompatible` são estados explícitos de resposta.
+
+As rotas de importação também exigem PostgreSQL. Antes de P1-011/P1-013, são operação técnica local: não recebem ator informado pelo cliente nem prometem auditoria/isolamento corporativo.
 
 ## Sequência do handler principal
 

@@ -1,4 +1,4 @@
-# ❌ Bloqueada — E02-05b Importação em lote e duplicatas
+# 🚧 Em execução — E02-05b Importação em lote e duplicatas
 
 > Prioridade: P1
 >
@@ -6,7 +6,7 @@
 >
 > Origem ou referência: `docs/product/backlog.md` E02-05; fluxo de lote/dry-run
 >
-> Arquitetura: `BLOCKED — depende da P1-005/Neon transacional`
+> Arquitetura: `APPROVED — Lucas autorizou a retomada após o desbloqueio do Neon em 08/09/2026`
 >
 > Triagem automática: `Material — escrita em lote e risco de corrupção de dados.`
 >
@@ -61,3 +61,26 @@ Implementar importação por lote com dry-run, idempotência, progresso e encami
 
 - Estado: `❌ Bloqueada`; Arquitetura: `BLOCKED — depende da P1-005/Neon transacional`; Segurança: `Aplicável — revisão proporcional registrada acima`.
 - Implementação: não iniciada. Nenhuma rota, tabela, job, parser, arquivo externo ou escrita local foi criada.
+
+## Retomada e Architecture Gate — 2026-09-08
+
+### Decisão de escopo
+
+- A dependência P1-005 está comprovadamente resolvida: migration e transação PostgreSQL foram validadas no Neon.
+- O lote inicial será exclusivamente JSON, com no máximo 10 itens e 1 MB total já imposto pelo Express. Cada item contém os cinco campos de identidade, a resposta completa da ficha e o provider declarado (`simulated`, `openrouter` ou `claude`). Não haverá CSV, upload multipart, fontes externas, fila assíncrona, agendamento ou merge.
+- `POST /api/importacoes/dry-run` persiste apenas a execução e suas linhas de staging. Ele valida a mesma identidade, schema, política de fontes, normalização, campos e qualidade usados pela geração; não cria veículo, versão, fonte nem alias.
+- O cliente informa uma chave de idempotência de 16 a 128 caracteres. A mesma chave com o mesmo conteúdo devolve o mesmo dry-run; com conteúdo diferente retorna conflito sanitizado. A confirmação é idempotente pelo estado da execução.
+- Cada linha recebe `valid`, `duplicate`, `collision` ou `invalid`. O confirmador só aceita execuções sem `invalid` e sem `collision`; `duplicate` não cria nova versão. As linhas `valid` são persistidas numa única transação.
+
+### Segurança e confiabilidade
+
+- A fronteira permanece entrada JSON não confiável -> validação limitada -> staging PostgreSQL -> confirmação transacional -> catálogo. Erros retornam somente código/índice/estado; nunca URL de banco, stack, payload bruto ou segredo.
+- Não existe ator autenticado antes de P1-011/P1-013. Portanto o endpoint é estritamente de ambiente técnico local, sem alegação de auditoria corporativa; não aceita `actor` enviado pelo cliente.
+- A migration é aditiva e reversível por remoção das estruturas de importação enquanto não houver dados operacionais aceitos. Nenhum merge é executado ou planejado neste corte.
+
+### Double-check
+
+- A validação chama os mesmos assets canônicos em `packages/agent-runtime/assets/`; a importação não cria caminho alternativo para schema, fonte, identidade ou qualidade.
+- Staging é a única escrita do dry-run; confirmação com qualquer item inválido/colidente aborta antes de gravar ficha.
+- A unicidade de `idempotency_key`, a classificação contra a versão mais recente e a transação única cobrem replay, duplicata e gravação parcial.
+- Lucas autorizou seguir diretamente nesta retomada. Architecture Gate: `APPROVED`.
