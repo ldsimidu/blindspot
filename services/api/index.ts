@@ -13,7 +13,8 @@ import { callLLM } from "./llm";
 import { getPersistenceMode } from "./db/client";
 import { persistTechnicalSheet, readCatalogEntryExact, readLatestTechnicalSheet, readTechnicalSheetHistory, searchCatalog } from "./db/repository";
 import { confirmImportRun, createImportDryRun, hashImportPayload, readImportRun, type PreparedImportItem } from "./imports";
-import { login, logout, readCurrentSession, sessionCookieName, sessionCookieOptions } from "./authentication";
+import { login, logout, readAuthenticationContext, readCurrentSession, sessionCookieName, sessionCookieOptions, type AuthContext, type OrganizationRole } from "./authentication";
+import { recordAudit, type AuditAction } from "./audit";
 import { activateInitialAdmin, decideOrganizationRequest, issueInitialAdminInvitation, listPendingOrganizationRequests, registerOrganization, revokeInitialAdminInvitation, submitOrganizationRequest } from "./organizations";
 import { buildVehiclePayload, composeFinalPrompt, readBaseAgentPrompt, readOutputSchema } from "./prompt-builder";
 import { readFieldPolicy, readNormalizationPolicy, readQualityPolicy, readSourcePolicy } from "./runtime-assets";
@@ -128,7 +129,7 @@ app.post("/api/convites/:token/ativar", async (req: Request, res: Response, next
   } catch (error) { next(error); }
 });
 
-app.get("/api/catalogo/fichas", async (req: Request, res: Response, next: NextFunction) => {
+app.get("/api/catalogo/fichas", requireAuthenticated, async (req: Request, res: Response, next: NextFunction) => {
   try {
     res.status(200).json(await searchCatalog(parseCatalogSearchInput(req.query)));
   } catch (error) {
@@ -136,7 +137,7 @@ app.get("/api/catalogo/fichas", async (req: Request, res: Response, next: NextFu
   }
 });
 
-app.get("/api/catalogo/fichas/:id", async (req: Request, res: Response, next: NextFunction) => {
+app.get("/api/catalogo/fichas/:id", requireAuthenticated, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = await readCatalogEntryExact(parseCatalogId(req.params.id), parseVehicleInput(req.query));
     if (result.state !== "found") {
@@ -150,22 +151,26 @@ app.get("/api/catalogo/fichas/:id", async (req: Request, res: Response, next: Ne
   }
 });
 
-app.post("/api/importacoes/dry-run", async (req: Request, res: Response, next: NextFunction) => {
+app.post("/api/importacoes/dry-run", requireRole("import.denied", "import_run", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const input = await prepareImportInput(req.body);
-    res.status(200).json(await createImportDryRun(input.idempotencyKey, hashImportPayload(req.body.items), input.items, input.outputSchema));
+    const actor = authorizationContext(req); const result = await createImportDryRun(input.idempotencyKey, hashImportPayload(req.body.items), input.items, input.outputSchema, actor, requestIdOf(res));
+    res.status(200).json(result);
   } catch (error) { next(error); }
 });
 
-app.get("/api/importacoes/:id", async (req: Request, res: Response, next: NextFunction) => {
-  try { res.status(200).json(await readImportRun(parseCatalogId(req.params.id))); } catch (error) { next(error); }
+app.get("/api/importacoes/:id", requireRole("import.denied", "import_run", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => {
+  try { res.status(200).json(await readImportRun(parseCatalogId(req.params.id), authorizationContext(req))); } catch (error) { next(error); }
 });
 
-app.post("/api/importacoes/:id/confirmar", async (req: Request, res: Response, next: NextFunction) => {
-  try { res.status(200).json(await confirmImportRun(parseCatalogId(req.params.id), await readOutputSchema())); } catch (error) { next(error); }
+app.post("/api/importacoes/:id/confirmar", requireRole("import.denied", "import_run", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const actor = authorizationContext(req); const result = await confirmImportRun(parseCatalogId(req.params.id), await readOutputSchema(), actor, requestIdOf(res));
+    res.status(200).json(result);
+  } catch (error) { next(error); }
 });
 
-app.post("/api/ficha-tecnica", async (req: Request, res: Response, next: NextFunction) => {
+app.post("/api/ficha-tecnica", requireRole("technical_sheet.denied", "technical_sheet", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const vehicleInput = parseVehicleInput(req.body);
 
@@ -201,7 +206,7 @@ app.post("/api/ficha-tecnica", async (req: Request, res: Response, next: NextFun
       qualityPolicy
     });
     if (getPersistenceMode() === "postgres") {
-      await persistTechnicalSheet({ requestId, provider: snapshotProvider, vehicle: vehicleInput, response: validatedResponse, outputSchema, finalPrompt });
+      await persistTechnicalSheet({ requestId, provider: snapshotProvider, vehicle: vehicleInput, response: validatedResponse, outputSchema, finalPrompt, actor: authorizationContext(req), auditAction: "technical_sheet.generated" });
     } else {
       void saveLLMResponseSnapshot(requestId, snapshotProvider, vehicleInput, validatedResponse);
     }
@@ -212,7 +217,7 @@ app.post("/api/ficha-tecnica", async (req: Request, res: Response, next: NextFun
   }
 });
 
-app.get("/api/ficha-tecnica/latest", async (_req: Request, res: Response, next: NextFunction) => {
+app.get("/api/ficha-tecnica/latest", requireAuthenticated, async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const outputSchema = await readOutputSchema();
     const latestSnapshot = getPersistenceMode() === "postgres" ? await readLatestTechnicalSheet() : await readLatestLLMResponseSnapshot();
@@ -231,7 +236,7 @@ app.get("/api/ficha-tecnica/latest", async (_req: Request, res: Response, next: 
   }
 });
 
-app.get("/api/ficha-tecnica/history", async (req: Request, res: Response, next: NextFunction) => {
+app.get("/api/ficha-tecnica/history", requireAuthenticated, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const requestedLimit =
       typeof req.query.limit === "string" ? Number.parseInt(req.query.limit, 10) : Number.NaN;
@@ -276,7 +281,6 @@ app.get("/api/ficha-tecnica/history", async (req: Request, res: Response, next: 
 app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   const requestIdHeader = res.getHeader("x-request-id");
   const requestId = typeof requestIdHeader === "string" ? requestIdHeader : "unknown";
-  void logServerError(requestId, error);
 
   if (error instanceof HttpError) {
     res.status(error.statusCode).json({
@@ -286,6 +290,7 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     return;
   }
 
+  void logServerError(requestId, error);
   res.status(500).json({
     message: "Erro interno no servidor.",
     details: null
@@ -303,6 +308,40 @@ app.listen(port, () => {
         : "mock-response";
   console.log(`[startup] LLM_PROVIDER=${provider} | MODEL=${effectiveModel}`);
 });
+
+type AuthorizedRequest = Request & { authContext?: AuthContext };
+
+async function requireAuthenticated(req: Request, _res: Response, next: NextFunction): Promise<void> {
+  try {
+    (req as AuthorizedRequest).authContext = await readAuthenticationContext(readCookie(req, sessionCookieName()));
+    next();
+  } catch (error) { next(error); }
+}
+
+function requireRole(auditAction: AuditAction, resourceType: "technical_sheet" | "import_run", ...allowedRoles: OrganizationRole[]) {
+  return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+    try {
+      (req as AuthorizedRequest).authContext = await readAuthenticationContext(readCookie(req, sessionCookieName()));
+      const context = authorizationContext(req);
+      if (!allowedRoles.includes(context.role)) {
+        await recordAudit({ actor: context, action: auditAction, resourceType, outcome: "denied", requestId: requestIdOf(_res) });
+        throw new HttpError(403, "Acao nao autorizada.");
+      }
+      next();
+    } catch (error) { next(error); }
+  };
+}
+
+function authorizationContext(req: Request): AuthContext {
+  const context = (req as AuthorizedRequest).authContext;
+  if (!context) throw new HttpError(401, "Sessao indisponivel.");
+  return context;
+}
+
+function requestIdOf(res: Response): string {
+  const requestId = res.getHeader("x-request-id");
+  return typeof requestId === "string" ? requestId : "unknown";
+}
 
 function parseVehicleInput(body: unknown): VehicleInput {
   if (!isObject(body)) {

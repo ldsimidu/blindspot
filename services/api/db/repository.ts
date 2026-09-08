@@ -2,9 +2,11 @@ import { createHash } from "node:crypto";
 import { and, asc, count, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { createCatalogSlug, createDeterministicAliases, normalizeCatalogText } from "../catalog";
 import { getDatabase } from "./client";
-import { collectionRuns, schemaContracts, sources, technicalSheetSources, technicalSheetVersions, vehicleConfigurationAliases, vehicleConfigurations } from "./schema";
+import { auditEvents, collectionRuns, schemaContracts, sources, technicalSheetSources, technicalSheetVersions, vehicleConfigurationAliases, vehicleConfigurations } from "./schema";
 import { HttpError, type CatalogCandidate, type CatalogEntryResult, type CatalogSearchResult, type FichaTecnicaHistoryItem, type FichaTecnicaResponse, type VehicleInput } from "../types";
 import type { LLMProvider } from "../logger";
+import type { AuthContext } from "../authentication";
+import type { AuditAction } from "../audit";
 
 const RUNTIME_SCHEMA_PATH = "packages/agent-runtime/assets/schema.json";
 
@@ -15,6 +17,8 @@ interface PersistTechnicalSheetInput {
   response: FichaTecnicaResponse;
   outputSchema: unknown;
   finalPrompt: string;
+  actor?: AuthContext;
+  auditAction?: AuditAction;
 }
 
 export async function persistTechnicalSheet(input: PersistTechnicalSheetInput): Promise<void> {
@@ -38,8 +42,11 @@ export async function persistTechnicalSheetInTransaction(tx: any, input: Persist
   await tx.insert(vehicleConfigurationAliases).values(createDeterministicAliases(input.vehicle).map((alias) => ({ vehicleConfigurationId: vehicle.id, aliasNormalized: alias.normalized, aliasDisplay: alias.display, kind: alias.kind }))).onConflictDoNothing();
   const [schemaContract] = await tx.insert(schemaContracts).values({ sha256: schemaHash, runtimeAssetPath: RUNTIME_SCHEMA_PATH }).onConflictDoUpdate({ target: schemaContracts.sha256, set: { runtimeAssetPath: RUNTIME_SCHEMA_PATH } }).returning();
   const [lastVersion] = await tx.select({ versionNumber: technicalSheetVersions.versionNumber }).from(technicalSheetVersions).where(eq(technicalSheetVersions.vehicleConfigurationId, vehicle.id)).orderBy(desc(technicalSheetVersions.versionNumber)).limit(1);
-  const [run] = await tx.insert(collectionRuns).values({ requestId: input.requestId, vehicleConfigurationId: vehicle.id, provider: input.provider, modelName: resolveModel(input.provider), status: "succeeded", schemaContractId: schemaContract.id, promptSha256: sha256(input.finalPrompt), startedAt: now, finishedAt: now }).returning();
+  const [run] = await tx.insert(collectionRuns).values({ requestId: input.requestId, vehicleConfigurationId: vehicle.id, organizationId: input.actor?.organizationId, accountId: input.actor?.accountId, memberId: input.actor?.memberId, provider: input.provider, modelName: resolveModel(input.provider), status: "succeeded", schemaContractId: schemaContract.id, promptSha256: sha256(input.finalPrompt), startedAt: now, finishedAt: now }).returning();
   const [sheet] = await tx.insert(technicalSheetVersions).values({ collectionRunId: run.id, vehicleConfigurationId: vehicle.id, schemaContractId: schemaContract.id, versionNumber: (lastVersion?.versionNumber ?? 0) + 1, payload: input.response, completenessSummary: input.response.resumo_completude, payloadSha256: sha256(input.response) }).returning();
+  if (input.actor && input.auditAction) {
+    await tx.insert(auditEvents).values({ organizationId: input.actor.organizationId, accountId: input.actor.accountId, memberId: input.actor.memberId, action: input.auditAction, resourceType: "technical_sheet", resourceId: sheet.id, outcome: "allowed", requestId: input.requestId });
+  }
   for (const source of input.response.fontes_utilizadas) {
     const [storedSource] = await tx.insert(sources).values({ canonicalUrl: source.url, title: source.titulo, sourceType: source.tipo }).onConflictDoUpdate({ target: sources.canonicalUrl, set: { title: source.titulo, sourceType: source.tipo } }).returning();
     await tx.insert(technicalSheetSources).values({ technicalSheetVersionId: sheet.id, sourceId: storedSource.id, sourceRef: source.id });

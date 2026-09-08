@@ -125,6 +125,10 @@ function App() {
   }, [activeView, isOnboardingOpen]);
 
   useEffect(() => {
+    if (authState !== "signed_in") {
+      setLoadingLatest(false);
+      return;
+    }
     let cancelled = false;
 
     async function loadInitialData() {
@@ -153,7 +157,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authState]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

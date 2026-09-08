@@ -1,18 +1,19 @@
 import { createHash } from "node:crypto";
 import { and, desc, eq } from "drizzle-orm";
 import { getDatabase } from "./db/client";
-import { importRunItems, importRuns, technicalSheetVersions, vehicleConfigurations } from "./db/schema";
+import { auditEvents, importRunItems, importRuns, technicalSheetVersions, vehicleConfigurations } from "./db/schema";
 import { persistTechnicalSheetInTransaction } from "./db/repository";
+import type { AuthContext } from "./authentication";
 import { HttpError, type FichaTecnicaResponse, type ImportDryRunItem, type ImportItemResult, type ImportItemState, type ImportRunResult } from "./types";
 
 export interface PreparedImportItem extends ImportDryRunItem { response: FichaTecnicaResponse; payloadSha256: string; }
 
-export async function createImportDryRun(idempotencyKey: string, payloadSha256: string, items: PreparedImportItem[], outputSchema: Record<string, unknown>): Promise<ImportRunResult> {
+export async function createImportDryRun(idempotencyKey: string, payloadSha256: string, items: PreparedImportItem[], outputSchema: Record<string, unknown>, actor: AuthContext, requestId: string): Promise<ImportRunResult> {
   const db = requireDatabase();
-  const [existing] = await db.select().from(importRuns).where(eq(importRuns.idempotencyKey, idempotencyKey)).limit(1);
+  const [existing] = await db.select().from(importRuns).where(and(eq(importRuns.idempotencyKey, idempotencyKey), eq(importRuns.organizationId, actor.organizationId))).limit(1);
   if (existing) {
     if (existing.payloadSha256 !== payloadSha256) throw new HttpError(409, "Chave de idempotencia ja usada para outro lote.");
-    return readImportRun(existing.id);
+    return readImportRun(existing.id, actor);
   }
 
   const seen = new Map<string, string>();
@@ -43,32 +44,36 @@ export async function createImportDryRun(idempotencyKey: string, payloadSha256: 
   }
 
   const counts = countStates(classified.map((item) => item.state));
-  const [run] = await db.insert(importRuns).values({ idempotencyKey, payloadSha256, status: "dry_run", totalItems: items.length, ...counts }).returning();
-  await db.insert(importRunItems).values(classified.map((item, index) => ({ importRunId: run.id, itemIndex: index, vehicle: item.vehicle, response: item.response, provider: item.provider, payloadSha256: item.payloadSha256, state: item.state, diagnosticCode: item.code })));
-  return toResult(run, classified.map((item, index) => ({ index, state: item.state, code: item.code })));
+  return db.transaction(async (tx) => {
+    const [run] = await tx.insert(importRuns).values({ idempotencyKey, organizationId: actor.organizationId, accountId: actor.accountId, memberId: actor.memberId, payloadSha256, status: "dry_run", totalItems: items.length, ...counts }).returning();
+    await tx.insert(importRunItems).values(classified.map((item, index) => ({ importRunId: run.id, itemIndex: index, vehicle: item.vehicle, response: item.response, provider: item.provider, payloadSha256: item.payloadSha256, state: item.state, diagnosticCode: item.code })));
+    await tx.insert(auditEvents).values({ organizationId: actor.organizationId, accountId: actor.accountId, memberId: actor.memberId, action: "import.dry_run_created", resourceType: "import_run", resourceId: run.id, outcome: "allowed", requestId });
+    return toResult(run, classified.map((item, index) => ({ index, state: item.state, code: item.code })));
+  });
 }
 
-export async function confirmImportRun(id: string, outputSchema: Record<string, unknown>): Promise<ImportRunResult> {
+export async function confirmImportRun(id: string, outputSchema: Record<string, unknown>, actor: AuthContext, requestId: string): Promise<ImportRunResult> {
   const db = requireDatabase();
   const result = await db.transaction(async (tx) => {
-    const [run] = await tx.select().from(importRuns).where(eq(importRuns.id, id)).limit(1);
+    const [run] = await tx.select().from(importRuns).where(and(eq(importRuns.id, id), eq(importRuns.organizationId, actor.organizationId))).limit(1);
     if (!run) throw new HttpError(404, "Importacao nao encontrada.");
     const rows = await tx.select().from(importRunItems).where(eq(importRunItems.importRunId, id)).orderBy(importRunItems.itemIndex);
     if (run.status === "confirmed") return toResult(run, rows.map(toItemResult));
     if (run.invalidItems > 0 || run.collisionItems > 0) throw new HttpError(409, "Importacao possui itens invalidos ou colisoes e nao pode ser confirmada.");
     for (const row of rows) {
       if (row.state !== "valid") continue;
-      await persistTechnicalSheetInTransaction(tx, { requestId: `import:${id}:${row.itemIndex}`, provider: asProvider(row.provider), vehicle: row.vehicle as any, response: row.response as FichaTecnicaResponse, outputSchema, finalPrompt: `import:${row.payloadSha256}` });
+      await persistTechnicalSheetInTransaction(tx, { requestId: `import:${id}:${row.itemIndex}`, provider: asProvider(row.provider), vehicle: row.vehicle as any, response: row.response as FichaTecnicaResponse, outputSchema, finalPrompt: `import:${row.payloadSha256}`, actor });
     }
     const [confirmed] = await tx.update(importRuns).set({ status: "confirmed", confirmedAt: new Date() }).where(eq(importRuns.id, id)).returning();
+    await tx.insert(auditEvents).values({ organizationId: actor.organizationId, accountId: actor.accountId, memberId: actor.memberId, action: "import.confirmed", resourceType: "import_run", resourceId: confirmed.id, outcome: "allowed", requestId });
     return toResult(confirmed, rows.map(toItemResult));
   });
   return result;
 }
 
-export async function readImportRun(id: string): Promise<ImportRunResult> {
+export async function readImportRun(id: string, actor: AuthContext): Promise<ImportRunResult> {
   const db = requireDatabase();
-  const [run] = await db.select().from(importRuns).where(eq(importRuns.id, id)).limit(1);
+  const [run] = await db.select().from(importRuns).where(and(eq(importRuns.id, id), eq(importRuns.organizationId, actor.organizationId))).limit(1);
   if (!run) throw new HttpError(404, "Importacao nao encontrada.");
   const rows = await db.select().from(importRunItems).where(eq(importRunItems.importRunId, id)).orderBy(importRunItems.itemIndex);
   return toResult(run, rows.map(toItemResult));

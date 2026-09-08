@@ -50,6 +50,13 @@
       "when": 1788892800000,
       "tag": "0006_self_service_organization_registration",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1788896400000,
+      "tag": "0007_rbac_tenant_audit",
+      "breakpoints": true
     }
   ]
 }

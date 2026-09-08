@@ -12,6 +12,8 @@ const loginAttemptLimit = 5;
 const loginAttempts = new Map<string, { count: number; expiresAt: number }>();
 
 export type LoginResult = { state: "authenticated"; token: string; expiresAt: Date } | { state: "pending_review" | "rejected" };
+export type OrganizationRole = "viewer" | "analyst" | "admin";
+export interface AuthContext { accountId: string; memberId: string; organizationId: string; email: string; displayName: string; role: OrganizationRole; }
 
 export async function login(email: string, password: string, ip: string): Promise<LoginResult> {
   const normalizedEmail = email.toLowerCase(); const rateKey = loginRateKey(normalizedEmail, ip);
@@ -39,13 +41,18 @@ export async function logout(token: string | undefined): Promise<void> {
 }
 
 export async function readCurrentSession(token: string | undefined): Promise<{ email: string; displayName: string }> {
+  const context = await readAuthenticationContext(token);
+  return { email: context.email, displayName: context.displayName };
+}
+
+export async function readAuthenticationContext(token: string | undefined): Promise<AuthContext> {
   if (!token || !/^SES-[A-Za-z0-9_-]{40,96}$/.test(token)) throw unauthorized();
   const db = requireDb();
   const rows = await db.select({ session: authSessions, account: accounts, member: organizationMembers, organization: organizations }).from(authSessions).innerJoin(accounts, eq(authSessions.accountId, accounts.id)).innerJoin(organizationMembers, eq(authSessions.memberId, organizationMembers.id)).innerJoin(organizations, eq(authSessions.organizationId, organizations.id)).where(eq(authSessions.tokenHash, sessionHash(token))).limit(1);
   const current = rows[0];
-  if (!current || current.session.revokedAt || current.session.expiresAt.getTime() <= Date.now() || current.account.status !== "active" || current.member.status !== "active" || current.organization.status !== "active") throw unauthorized();
+  if (!current || current.session.revokedAt || current.session.expiresAt.getTime() <= Date.now() || current.account.status !== "active" || current.member.status !== "active" || current.organization.status !== "active" || !isOrganizationRole(current.member.role)) throw unauthorized();
   await db.update(authSessions).set({ lastSeenAt: new Date() }).where(eq(authSessions.id, current.session.id));
-  return { email: current.account.email, displayName: current.member.displayName };
+  return { accountId: current.account.id, memberId: current.member.id, organizationId: current.organization.id, email: current.account.email, displayName: current.member.displayName, role: current.member.role };
 }
 
 export function sessionCookieName(): string { return isProduction() ? "__Host-blindspot_session" : "blindspot_session"; }
@@ -60,3 +67,4 @@ function failedLoginAfterVerification(key: string): never { recordFailedLogin(ke
 function recordFailedLogin(key: string): void { const current = loginAttempts.get(key); const now = Date.now(); loginAttempts.set(key, { count: (current && current.expiresAt > now ? current.count : 0) + 1, expiresAt: now + loginWindowMs }); }
 function isProduction(): boolean { return process.env.NODE_ENV === "production"; }
 function unauthorized(): HttpError { return new HttpError(401, "Sessao indisponivel."); }
+function isOrganizationRole(value: string): value is OrganizationRole { return value === "viewer" || value === "analyst" || value === "admin"; }

@@ -118,11 +118,11 @@ Dependências: `qualidade → persistência → consulta/comparação`; `identid
 
 #### E01-06 — RBAC no servidor e trilha de atividade
 
-- **Problema/pessoa/fluxo:** admin atribui Administrador, Analista ou Visualizador; cada rota verifica papel, tenant e recurso; eventos de ações sensíveis ficam consultáveis por quem pode vê-los.
+- **Problema/pessoa/fluxo:** servidor deriva papel e organização da sessão opaca. Visualizador lê catálogo global; analista/admin geram fichas e operam somente importações da própria organização; eventos estruturados registram ações sensíveis sem payload.
 - **Fora do escopo:** papéis customizados, ABAC complexo, SIEM e retenção final.
-- **Tasks/subtasks:** matriz de permissões; negar por padrão; policy/middleware server-side; taxonomia de eventos para login, consulta, comparativo, exportação e papel; mascaramento.
-- **Aceite, evidência e DoD:** visualizador não administra/exporta; analista não altera organização; recurso alheio é negado; log não contém senha, token, prompt ou LLM bruto; testes de acesso cruzado passam.
-- **Prioridade/dependência/risco/fonte:** Agora; E01-03; escalada/IDOR e privacidade; Ford 1.3.1–1.3.4.
+- **Tasks/subtasks:** matriz `viewer|analyst|admin`; middleware por sessão/papel; `organization_id` para importações; contexto de ator na execução global; eventos allowlisted e sanitizados; gestão de membros segue P1-014.
+- **Aceite, evidência e DoD:** catálogo global exige sessão ativa; visualizador não gera ficha; IDs de importação de outro tenant retornam ausência; log/auditoria não contém senha, token, prompt ou LLM bruto; smoke com duas organizações e papéis passa. **Estado comprovado: P1-013 implementado.**
+- **Prioridade/dependência/risco/fonte:** Concluído no P1-013; E01-03; escalada/IDOR e privacidade; Ford 1.3.1–1.3.4. Aprovação de empresas mantém chave operacional MVP separada; não é papel de cliente.
 
 ## E02 — Motor de coleta, qualidade, catálogo e persistência
 

@@ -29,7 +29,7 @@ flowchart LR
   credencial --> ativacao[Transação: consumir token,\ncriar admin, ativar organização]
   ativacao --> identidade[Login P1-011: e-mail + senha\nconta, membro e organização ativos]
   identidade --> sessao[Sessão opaca HMAC\ncookie HttpOnly; logout revoga]
-  sessao --> acesso{P1-013 validará\ntenant + papel + recurso}
+  sessao --> acesso{P1-013 valida no servidor\nsessão + tenant + papel + recurso}
   acesso -- negado --> bloqueio[Ação bloqueada\nfalha fechada]
   acesso -- autorizado --> consultar[Consultar ficha\nidentidade exata · RF01]
 
@@ -224,7 +224,7 @@ flowchart LR
   auditoria --> logout[Logout revoga sessão]
 ```
 
-**Implementado no P1-009/P1-010/P1-011:** solicitação com protocolo sem enumeração, aprovação para `pending_activation`, emissão/revogação interna do convite, ativação atômica do primeiro `admin`, identidade global mínima, login por senha, sessão opaca e logout persistente. Tokens de convite e de sessão só existem em transporte/cookie e como HMAC no banco; caminhos de convite são mascarados nos logs. O produto ainda não envia e-mail nem oferece gestão de equipe. MFA, SSO, recuperação, RBAC/tenancy e papéis finais continuam em tasks próprias (P1-012/P1-013 e sucessoras), sob Architecture Gate e revisão de segurança.
+**Implementado no P1-009/P1-010/P1-011/P1-013:** solicitação com protocolo sem enumeração, aprovação para `pending_activation`, emissão/revogação interna do convite, ativação atômica do primeiro `admin`, identidade global mínima, login por senha, sessão opaca e logout persistente. P1-013 valida sessão, organização, papel e recurso no servidor: catálogo automotivo é global para toda sessão corporativa ativa; geração e importações exigem `analyst` ou `admin`; execuções de importação ficam privadas por organização; e ações sensíveis deixam evento sanitizado de auditoria. Tokens de convite e de sessão só existem em transporte/cookie e como HMAC no banco; caminhos de convite são mascarados nos logs. O produto ainda não envia e-mail nem oferece gestão de equipe. MFA, SSO, recuperação e a gestão final de membros continuam em tasks próprias (P1-012/P1-014 e sucessoras), sob Architecture Gate e revisão de segurança.
 
 ### Contratos do convite implementados
 

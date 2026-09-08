@@ -11,16 +11,13 @@ Origem: `services/api/index.ts`.
 - `POST /api/organizacoes/cadastro` — cadastro público com empresa, CNPJ, responsável, e-mail, senha, confirmação e versão de privacidade; retorna `202 received` neutro e cria organização/conta/membro pendentes sem sessão.
 - `GET /api/operacoes/organizacoes/solicitacoes?state=received&page=&page_size=` — rota interna temporária, paginada e protegida por `x-operator-approval-key`; devolve somente dados de análise necessários e referência operacional.
 - `POST /api/organizacoes/solicitacoes/:protocol/decisao` — rota interna temporária para aprovar/recusar usando `x-operator-approval-key`; para o cadastro novo, a decisão atualiza solicitação, organização, conta e membro na mesma transação. O convite continua só para registros legados `pending_activation`.
-- `POST /api/ficha-tecnica` — corpo JSON conforme `VEHICLE_INPUT_SPEC.md` (nesta pasta `docs/`).
-- `GET /api/catalogo/fichas?q=&page=&page_size=` — descoberta paginada no PostgreSQL; devolve candidatas ou `not_registered`, sem selecionar veículo aproximado.
-- `GET /api/catalogo/fichas/:id?marca=&modelo=&versao=&ano_modelo=&mercado=` — abre a ficha atual somente quando o UUID e a identidade canônica completa coincidem; devolve `incompatible` se divergem.
-- `POST /api/importacoes/dry-run` — recebe JSON limitado (1 a 10 itens) e `idempotency_key`; valida cada ficha pelos assets canônicos e grava somente staging/classificação (`valid`, `duplicate` ou `collision`), nunca ficha, fonte ou alias.
-- `GET /api/importacoes/:id` — lê o resumo sanitizado de um dry-run ou confirmação.
-- `POST /api/importacoes/:id/confirmar` — confirma uma execução limpa em uma única transação PostgreSQL; rejeita execução com colisão ou item inválido e não executa merge automático.
+- `POST /api/ficha-tecnica` — exige sessão `analyst|admin`; corpo conforme `VEHICLE_INPUT_SPEC.md`, registra ator/organização sanitizados na execução e evento de auditoria.
+- `GET /api/catalogo/fichas?q=&page=&page_size=` e `GET /api/catalogo/fichas/:id?...` — exigem qualquer sessão corporativa ativa; catálogo automotivo é recurso global compartilhado, sem seleção aproximada.
+- `POST /api/importacoes/dry-run`, `GET /api/importacoes/:id` e `POST /api/importacoes/:id/confirmar` — exigem `analyst|admin`, vinculam a execução à organização da sessão e filtram a leitura/confirmação pelo mesmo tenant.
 
 As rotas de catálogo exigem `PERSISTENCE_MODE=postgres`; elas não usam snapshots de arquivo como fallback. `loading` é estado da interface; `found`, `not_registered` e `incompatible` são estados explícitos de resposta.
 
-As rotas de importação também exigem PostgreSQL. Antes de P1-011/P1-013, são operação técnica local: não recebem ator informado pelo cliente nem prometem auditoria/isolamento corporativo.
+As rotas de importação também exigem PostgreSQL. P1-013 vincula ator/organização no servidor; IDs de outra organização não são recursos acessíveis. Eventos de auditoria são estruturados e não contêm senha, cookie, token, prompt, resposta LLM bruta ou corpo da requisição.
 
 ## Sequência do handler principal
 
@@ -37,8 +34,9 @@ As rotas de importação também exigem PostgreSQL. Antes de P1-011/P1-013, são
 - CORS habilitado.
 - `express.json` com limite **1mb**.
 - Cabeçalho `x-request-id` e log de requisição ao finalizar a resposta (`services/api/logger.ts`).
+- Contexto de sessão e papel no servidor: `viewer` lê recursos globais; `analyst` e `admin` também geram fichas e operam importações da própria organização. Negação é padrão.
 
 ## Erros
 
-- `HttpError` — status e JSON `{ message, details? }`.
+- `HttpError` — status e JSON `{ message, details? }`; `401`, `403` e `404` esperados não são registrados como stack trace de erro interno.
 - Erros não mapeados — **500** com mensagem genérica e `details: null`.
