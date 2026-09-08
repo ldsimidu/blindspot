@@ -5,6 +5,8 @@ Origem: `services/api/index.ts`.
 ## Endpoint
 
 - `GET /api/health` — `{ "ok": true }`.
+- `POST /api/organizacoes/solicitacoes` — recebe solicitação corporativa mínima e retorna protocolo neutro; não cria sessão, convite ou acesso.
+- `POST /api/organizacoes/solicitacoes/:protocol/decisao` — rota interna temporária para aprovar/recusar usando `x-operator-approval-key`; aprovação cria apenas organização `pending_activation`.
 - `POST /api/ficha-tecnica` — corpo JSON conforme `VEHICLE_INPUT_SPEC.md` (nesta pasta `docs/`).
 - `GET /api/catalogo/fichas?q=&page=&page_size=` — descoberta paginada no PostgreSQL; devolve candidatas ou `not_registered`, sem selecionar veículo aproximado.
 - `GET /api/catalogo/fichas/:id?marca=&modelo=&versao=&ano_modelo=&mercado=` — abre a ficha atual somente quando o UUID e a identidade canônica completa coincidem; devolve `incompatible` se divergem.

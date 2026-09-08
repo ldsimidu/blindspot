@@ -13,6 +13,7 @@ import { callLLM } from "./llm";
 import { getPersistenceMode } from "./db/client";
 import { persistTechnicalSheet, readCatalogEntryExact, readLatestTechnicalSheet, readTechnicalSheetHistory, searchCatalog } from "./db/repository";
 import { confirmImportRun, createImportDryRun, hashImportPayload, readImportRun, type PreparedImportItem } from "./imports";
+import { decideOrganizationRequest, submitOrganizationRequest } from "./organizations";
 import { buildVehiclePayload, composeFinalPrompt, readBaseAgentPrompt, readOutputSchema } from "./prompt-builder";
 import { readFieldPolicy, readNormalizationPolicy, readQualityPolicy, readSourcePolicy } from "./runtime-assets";
 import { FichaTecnicaHistoryItem, HttpError, VehicleInput } from "./types";
@@ -50,6 +51,20 @@ app.use((req, res, next) => {
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
+});
+
+app.post("/api/organizacoes/solicitacoes", async (req: Request, res: Response, next: NextFunction) => {
+  try { res.status(202).json(await submitOrganizationRequest(parseOrganizationRequest(req.body))); } catch (error) { next(error); }
+});
+
+app.post("/api/organizacoes/solicitacoes/:protocol/decisao", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const key = req.header("x-operator-approval-key");
+    if (!key) throw new HttpError(404, "Solicitacao indisponivel para decisao.");
+    const decision = isObject(req.body) && (req.body.decision === "approved" || req.body.decision === "rejected") ? req.body.decision : null;
+    if (!decision) throw new HttpError(400, "Decisao invalida.");
+    res.status(200).json(await decideOrganizationRequest(parseProtocol(req.params.protocol), decision, key));
+  } catch (error) { next(error); }
 });
 
 app.get("/api/catalogo/fichas", async (req: Request, res: Response, next: NextFunction) => {
@@ -301,6 +316,16 @@ function parseCatalogId(value: string): string {
   }
   return value;
 }
+
+function parseOrganizationRequest(body: unknown) {
+  if (!isObject(body)) throw new HttpError(400, "Solicitacao invalida.");
+  const companyName = requiredBoundedText(body.company_name, 2, 160, "company_name"); const contactName = requiredBoundedText(body.contact_name, 2, 120, "contact_name"); const contactEmail = requiredBoundedText(body.contact_email, 5, 254, "contact_email").toLowerCase(); const privacyNoticeVersion = requiredBoundedText(body.privacy_notice_version, 1, 40, "privacy_notice_version");
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) throw new HttpError(400, "Solicitacao invalida.");
+  const cnpj = typeof body.cnpj === "string" ? body.cnpj.replace(/\D/g, "") : ""; if (!/^\d{14}$/.test(cnpj)) throw new HttpError(400, "Solicitacao invalida.");
+  return { companyName, cnpj, contactName, contactEmail, privacyNoticeVersion };
+}
+function requiredBoundedText(value: unknown, min: number, max: number, _field: string): string { if (typeof value !== "string") throw new HttpError(400, "Solicitacao invalida."); const normalized = value.normalize("NFKC").trim().replace(/\s+/g, " "); if (normalized.length < min || normalized.length > max || /[\u0000-\u001f\u007f]/.test(normalized)) throw new HttpError(400, "Solicitacao invalida."); return normalized; }
+function parseProtocol(value: string): string { if (!/^ORG-[A-Za-z0-9_-]{20,64}$/.test(value)) throw new HttpError(404, "Solicitacao indisponivel para decisao."); return value; }
 
 async function prepareImportInput(body: unknown): Promise<{ idempotencyKey: string; items: PreparedImportItem[]; outputSchema: Record<string, unknown> }> {
   if (!isObject(body) || typeof body.idempotency_key !== "string" || !/^[A-Za-z0-9._:-]{16,128}$/.test(body.idempotency_key)) throw new HttpError(400, "Chave de idempotencia invalida.");
