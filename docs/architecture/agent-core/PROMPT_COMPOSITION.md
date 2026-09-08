@@ -34,13 +34,16 @@ O texto final concatena, nesta ordem:
 
 7. `### FIELD_POLICY_JSON` — política canônica de vocabulário genérico, propulsão, extensões condicionais e cobertura. Ela não substitui o schema e não permite omitir caminhos.
 
-8. `### EXECUTION_RULES` — linhas fixas em inglês que reforçam:
+8. `### QUALITY_POLICY_JSON` — política canônica de conflitos. Ela exige ao menos duas fontes distintas, valor `null` e observação de conflito, sem eleger automaticamente uma fonte vencedora.
+
+9. `### EXECUTION_RULES` — linhas fixas em inglês que reforçam:
    - interpretar `BASE_AGENT_PROMPT` como fonte principal de instrução;
    - pesquisar na web o veículo exato de `VEHICLE_PAYLOAD_JSON`;
    - preencher todas as variáveis listadas em `SCHEMA_VARIABLES_TARGET` quando houver evidência confiável;
    - usar referências de fonte conforme o base prompt;
   - uso de unidade canônica apenas quando a política de normalização a define, sem inferir unidade ambígua;
   - uso de carroceria e propulsão genéricas da política de campos, com status explícito para cada extensão condicional;
+  - preservação de conflito com fontes distintas, valor nulo e observação, sem escolher vencedor automaticamente;
   - saída estritamente conforme `OUTPUT_SCHEMA_JSON`;
    - retornar **apenas JSON válido** (sem texto extra).
 

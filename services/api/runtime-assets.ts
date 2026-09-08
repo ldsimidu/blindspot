@@ -42,8 +42,23 @@ export interface FieldPolicy {
   extensionFamilies: Record<string, string[]>;
 }
 
+export interface QualityPolicy {
+  version: string;
+  conflict: {
+    status: "conflitante";
+    minimumSources: number;
+    requiresNullValue: boolean;
+    requiredObservation: "CF1";
+    automaticWinner: "forbidden";
+  };
+  review: {
+    humanDecision: "deferred_until_authenticated_rbac";
+    allowedFutureDecisions: string[];
+  };
+}
+
 export async function readRuntimeAsset(
-  fileName: "base-agent-prompt.txt" | "schema.json" | "mock-response.json" | "source-policy.json" | "normalization-policy.json" | "field-policy.json"
+  fileName: "base-agent-prompt.txt" | "schema.json" | "mock-response.json" | "source-policy.json" | "normalization-policy.json" | "field-policy.json" | "quality-policy.json"
 ): Promise<string> {
   return readFile(path.join(RUNTIME_ASSETS_DIR, fileName), "utf-8");
 }
@@ -66,4 +81,8 @@ export async function readNormalizationPolicy(): Promise<NormalizationPolicy> {
 
 export async function readFieldPolicy(): Promise<FieldPolicy> {
   return JSON.parse(await readRuntimeAsset("field-policy.json")) as FieldPolicy;
+}
+
+export async function readQualityPolicy(): Promise<QualityPolicy> {
+  return JSON.parse(await readRuntimeAsset("quality-policy.json")) as QualityPolicy;
 }

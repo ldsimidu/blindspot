@@ -7,6 +7,8 @@ import type { NormalizationPolicy } from "./runtime-assets";
 import { normalizeTechnicalMeasurements } from "./normalizer";
 import type { FieldPolicy } from "./runtime-assets";
 import { validateFieldPolicy } from "./field-policy-validator";
+import type { QualityPolicy } from "./runtime-assets";
+import { validateQualityPolicy } from "./quality-policy-validator";
 
 interface ValidationContext {
   vehicle: VehicleInput;
@@ -14,6 +16,7 @@ interface ValidationContext {
   sourcePolicy: SourcePolicy;
   normalizationPolicy?: NormalizationPolicy;
   fieldPolicy?: FieldPolicy;
+  qualityPolicy?: QualityPolicy;
 }
 
 export function validateResponse(
@@ -25,6 +28,7 @@ export function validateResponse(
   normalizeStatusFieldShapes(normalizedResponse);
   if (context?.normalizationPolicy) normalizeTechnicalMeasurements(normalizedResponse, context.normalizationPolicy);
   if (context?.fieldPolicy) validateFieldPolicy(normalizedResponse, context.fieldPolicy);
+  if (context?.qualityPolicy) validateQualityPolicy(normalizedResponse, context.qualityPolicy);
   enrichResumoCompletude(normalizedResponse, outputSchema, context?.fieldPolicy);
   validateWithAjv(normalizedResponse, outputSchema);
   validateFonteRefConsistency(normalizedResponse);

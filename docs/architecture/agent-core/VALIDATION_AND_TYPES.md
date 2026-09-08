@@ -52,21 +52,27 @@ Na geração, `field-policy.json` é validada antes do AJV. `tipo_carroceria` e 
 
 O servidor preenche no `resumo_completude` os indicadores aditivos `total_caminhos`, `caminhos_presentes`, `campos_status_total`, `campos_status_resolvidos`, `colecoes_total` e `colecoes_presentes`. A política v1 exige 204/204 caminhos, 199/199 campos com estado e 5/5 coleções de adicionais. Os indicadores são opcionais no schema para manter fichas históricas compatíveis.
 
-## Passo 3: JSON Schema (AJV)
+## Passo 3: política local de qualidade para conflitos
+
+Antes do AJV, `quality-policy.json` valida cada campo com status `conflitante`. Ele deve ter `valor: null`, no mínimo duas referências de fonte distintas e `obs_ref: "CF1"` ou uma observação não vazia. Essa camada preserva a divergência para revisão: não há escolha automática de valor ou fonte vencedora.
+
+A fila de decisão humana append-only não é criada neste corte: ela depende de autenticação (P1-011) e RBAC (P1-013), para obter o ator da sessão em vez de aceitá-lo do cliente.
+
+## Passo 4: JSON Schema (AJV)
 
 - Biblioteca: **Ajv 2020** (`ajv/dist/2020`) com **`ajv-formats`**.
 - Opções: `allErrors: true`, `strict: false`.
 - O schema compilado é o mesmo objeto canônico carregado de `packages/agent-runtime/assets/schema.json`.
 - Se inválido: erro `422` com mensagem do tipo "Resposta do LLM invalida para o schema." e lista `ajvErrors` formatada (`instancePath` + mensagem).
 
-## Passo 4: identidade e política de fontes
+## Passo 5: identidade e política de fontes
 
 - A rota de geração compara `veiculo_alvo` com os cinco campos solicitados: marca, modelo, versão, ano-modelo e mercado. Não aplica aliases ou aproximações silenciosas.
 - `packages/agent-runtime/assets/source-policy.json` é a política canônica e versionada para tipos e hosts de fonte.
 - URLs devem usar HTTPS. Fontes oficiais exigem host oficial aprovado para marca/mercado; parceiras usam tipo não oficial e host da allowlist; a fonte `mock_local` só é aceita com provider `simulated`.
 - Violação de identidade ou política retorna `422` sanitizado, sem consulta de URL, fallback de provider ou publicação da ficha.
 
-## Passo 5: Consistência `fonte_ref` × `fontes_utilizadas`
+## Passo 6: Consistência `fonte_ref` × `fontes_utilizadas`
 
 Após passar no AJV:
 

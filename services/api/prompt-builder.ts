@@ -1,5 +1,5 @@
 import type { VehicleInput, VehiclePayload } from "./types";
-import { readRuntimeAsset, readRuntimeSchema, type FieldPolicy, type NormalizationPolicy, type SourcePolicy } from "./runtime-assets";
+import { readRuntimeAsset, readRuntimeSchema, type FieldPolicy, type NormalizationPolicy, type QualityPolicy, type SourcePolicy } from "./runtime-assets";
 
 interface PromptCompositionInput {
   baseAgentPrompt: string;
@@ -8,6 +8,7 @@ interface PromptCompositionInput {
   sourcePolicy?: SourcePolicy;
   normalizationPolicy?: NormalizationPolicy;
   fieldPolicy?: FieldPolicy;
+  qualityPolicy?: QualityPolicy;
 }
 
 export async function readBaseAgentPrompt(): Promise<string> {
@@ -57,6 +58,9 @@ export function composeFinalPrompt(input: PromptCompositionInput): string {
     ...(input.fieldPolicy
       ? ["", "### FIELD_POLICY_JSON", JSON.stringify(input.fieldPolicy, null, 2)]
       : []),
+    ...(input.qualityPolicy
+      ? ["", "### QUALITY_POLICY_JSON", JSON.stringify(input.qualityPolicy, null, 2)]
+      : []),
     "",
     "### EXECUTION_RULES",
     "Interpret BASE_AGENT_PROMPT as the main instruction source.",
@@ -65,6 +69,7 @@ export function composeFinalPrompt(input: PromptCompositionInput): string {
     "Use source references for each filled field as instructed by BASE_AGENT_PROMPT.",
     "For allowlisted technical measurements, use canonical units from NORMALIZATION_POLICY_JSON; do not infer ambiguous units.",
     "Use generic body and propulsion values from FIELD_POLICY_JSON; resolve every conditional field with an explicit status.",
+    "When sources conflict, follow QUALITY_POLICY_JSON: preserve distinct sources and do not choose a winner.",
     "Output must strictly match OUTPUT_SCHEMA_JSON.",
     "Return only valid JSON."
   ].join("\n");

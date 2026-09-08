@@ -1147,6 +1147,14 @@
         "$ref": "#/$defs/fonte_id"
       }
     },
+    "fonte_ref_conflito": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/fonte_id"
+      }
+    },
     "obs_ref": {
       "type": "string",
       "enum": [
@@ -1292,7 +1300,7 @@
           "const": "conflitante"
         },
         "fonte_ref": {
-          "$ref": "#/$defs/fonte_ref"
+          "$ref": "#/$defs/fonte_ref_conflito"
         },
         "obs_ref": {
           "$ref": "#/$defs/obs_ref"
