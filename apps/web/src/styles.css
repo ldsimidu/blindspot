@@ -461,6 +461,88 @@ input {
   padding: 8px 10px;
 }
 
+button:focus-visible,
+input:focus-visible,
+a:focus-visible,
+[tabindex="-1"]:focus-visible {
+  outline: 3px solid var(--accent-soft);
+  outline-offset: 3px;
+}
+
+.skip-link,
+.sr-only {
+  position: absolute;
+}
+
+.skip-link {
+  left: 12px;
+  top: -48px;
+  z-index: 20;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: #07130d;
+  font-weight: 800;
+  padding: 10px 12px;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: 12px;
+}
+
+.sr-only {
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+
+.onboarding-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(3 8 6 / 76%);
+}
+
+.onboarding-dialog {
+  width: min(560px, 100%);
+  border: 1px solid var(--accent);
+  border-radius: 16px;
+  background: var(--bg-card);
+  box-shadow: 0 24px 80px rgb(0 0 0 / 45%);
+  padding: 24px;
+}
+
+.onboarding-dialog h2 {
+  margin: 0 0 10px;
+  color: var(--text-primary);
+}
+
+.onboarding-dialog p {
+  line-height: 1.55;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--accent-soft);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.onboarding-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
 .primary-button {
   height: 40px;
   margin-top: auto;

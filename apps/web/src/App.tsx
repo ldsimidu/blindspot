@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { abrirFichaCatalogo, buscarCatalogo, gerarFichaTecnica, obterHistoricoFichas, obterUltimaFichaTecnica } from "./api";
 import type { CatalogEntryResult, CatalogSearchResult, FichaTecnicaHistoryItem, FichaTecnicaResponse, VehicleInput } from "./types";
 import logoBlindspot from "./assets/blindspot-mark.png";
@@ -64,6 +64,9 @@ function App() {
   const [catalogEntry, setCatalogEntry] = useState<CatalogEntryResult | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => window.localStorage.getItem("blindspot_onboarding_completed") !== "true");
+  const onboardingPrimaryActionRef = useRef<HTMLButtonElement>(null);
+  const viewTitleRef = useRef<HTMLHeadingElement>(null);
 
   const isFormValid = useMemo(() => {
     const hasRequiredText =
@@ -94,6 +97,14 @@ function App() {
     document.body.classList.add(themeMode === "light" ? "theme-light" : "theme-dark");
     window.localStorage.setItem("blindspot_theme_mode", themeMode);
   }, [themeMode]);
+
+  useEffect(() => {
+    if (isOnboardingOpen) onboardingPrimaryActionRef.current?.focus();
+  }, [isOnboardingOpen]);
+
+  useEffect(() => {
+    if (!isOnboardingOpen) viewTitleRef.current?.focus();
+  }, [activeView, isOnboardingOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -192,9 +203,21 @@ function App() {
     }
   }
 
+  function finishOnboarding(): void {
+    window.localStorage.setItem("blindspot_onboarding_completed", "true");
+    setIsOnboardingOpen(false);
+  }
+
+  const statusAnnouncement = loading
+    ? "Gerando ficha técnica."
+    : catalogLoading
+      ? "Consultando catálogo."
+      : error ?? catalogError ?? "";
+
   return (
-    <main className={`dashboard-page ${isSidebarCollapsed ? "sidebar-collapsed" : ""}`}>
-      <aside className="sidebar">
+    <div className={`dashboard-page ${isSidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+      <a className="skip-link" href="#main-content">Pular para o conteúdo principal</a>
+      <aside className="sidebar" aria-label="Navegação do BlindSpot">
         <div className="brand-header">
           <img className="brand-logo" src={logoBlindspot} alt="BlindSpot" />
           <span className="brand-wordmark">BLINDSPOT</span>
@@ -220,11 +243,12 @@ function App() {
           </div>
         </div>
 
-        <nav className="sidebar-nav">
+        <nav className="sidebar-nav" aria-label="Seções do produto">
           <button
             type="button"
             className={`sidebar-link ${activeView === "request" ? "active" : ""}`}
             onClick={() => setActiveView("request")}
+            aria-pressed={activeView === "request"}
             title="Requisitar ficha"
           >
             <span className="sidebar-link-icon">
@@ -236,6 +260,7 @@ function App() {
             type="button"
             className={`sidebar-link ${activeView === "catalog" ? "active" : ""}`}
             onClick={() => setActiveView("catalog")}
+            aria-pressed={activeView === "catalog"}
             title="Catalogo"
           >
             <span className="sidebar-link-icon">⌕</span>
@@ -245,6 +270,7 @@ function App() {
             type="button"
             className={`sidebar-link ${activeView === "history" ? "active" : ""}`}
             onClick={() => setActiveView("history")}
+            aria-pressed={activeView === "history"}
             title="Historico"
           >
             <span className="sidebar-link-icon">
@@ -252,14 +278,19 @@ function App() {
             </span>
             <span className="sidebar-link-label">Historico</span>
           </button>
+          <button type="button" className="sidebar-link" onClick={() => setIsOnboardingOpen(true)} title="Ver orientação inicial">
+            <span className="sidebar-link-icon">i</span>
+            <span className="sidebar-link-label">Orientação</span>
+          </button>
         </nav>
       </aside>
 
-      <section className="dashboard-content">
+      <main id="main-content" className="dashboard-content" tabIndex={-1}>
+        <p className="sr-only" role="status" aria-live="polite">{statusAnnouncement}</p>
         {activeView === "request" ? (
           <>
             <section className="panel">
-              <h2>Nova requisicao</h2>
+              <h1 ref={viewTitleRef} tabIndex={-1}>Nova requisicao</h1>
               <p>Informe o veiculo para gerar a ficha tecnica validada por schema.</p>
 
               <form onSubmit={handleSubmit} className="form-grid">
@@ -316,8 +347,8 @@ function App() {
                 </button>
               </form>
 
-              {error ? <div className="error-box">{error}</div> : null}
-              {loadingLatest ? <p className="status-text">Carregando ultima resposta salva...</p> : null}
+              {error ? <div className="error-box" role="alert">{error}</div> : null}
+              {loadingLatest ? <p className="status-text" role="status">Carregando ultima resposta salva...</p> : null}
             </section>
 
             {result ? <FichaDashboard title="Ultima ficha validada" ficha={result} showTraceability={false} /> : null}
@@ -325,7 +356,7 @@ function App() {
         ) : activeView === "catalog" ? (
           <section className="history-layout">
             <section className="panel history-panel">
-              <h2>Catalogo de fichas</h2>
+              <h1 ref={viewTitleRef} tabIndex={-1}>Catalogo de fichas</h1>
               <p>Pesquise candidatas e selecione a configuracao exata. A busca nunca abre um veiculo aproximado.</p>
               <form
                 className="form-grid"
@@ -342,9 +373,9 @@ function App() {
                   {catalogLoading ? "Consultando..." : "Buscar no catalogo"}
                 </button>
               </form>
-              {catalogLoading ? <p className="status-text">Carregando catalogo...</p> : null}
-              {catalogError ? <div className="error-box">{catalogError}</div> : null}
-              {catalogResult?.state === "not_registered" ? <p className="status-text">Nao cadastrado. Solicite uma nova coleta sem usar uma ficha aproximada.</p> : null}
+              {catalogLoading ? <p className="status-text" role="status">Carregando catalogo...</p> : null}
+              {catalogError ? <div className="error-box" role="alert">{catalogError}</div> : null}
+              {catalogResult?.state === "not_registered" ? <p className="status-text" role="status">Nao cadastrado. Solicite uma nova coleta sem usar uma ficha aproximada.</p> : null}
               {catalogResult?.state === "found" ? (
                 <>
                   <p className="status-text">{catalogResult.total} configuracao(oes) encontrada(s).</p>
@@ -374,7 +405,7 @@ function App() {
         ) : (
           <section className="history-layout">
             <section className="panel history-panel">
-              <h2>Historico de respostas</h2>
+              <h1 ref={viewTitleRef} tabIndex={-1}>Historico de respostas</h1>
               <p>Selecione um bloco para abrir a resposta no formato de ficha tecnica.</p>
 
               {history.length === 0 ? (
@@ -428,8 +459,22 @@ function App() {
             </section>
           </section>
         )}
-      </section>
-    </main>
+      </main>
+      {isOnboardingOpen ? (
+        <div className="onboarding-backdrop" role="presentation">
+          <section className="onboarding-dialog" role="dialog" aria-modal="true" aria-labelledby="onboarding-title" aria-describedby="onboarding-description">
+            <p className="eyebrow">Primeiro acesso</p>
+            <h2 id="onboarding-title">Conheça o ambiente de consulta</h2>
+            <p id="onboarding-description">Use Requisição para gerar uma ficha, Histórico para reler respostas salvas e Catálogo para procurar fichas persistidas quando o PostgreSQL estiver disponível.</p>
+            <p className="status-text">Este protótipo ainda não possui login, organização ou permissões. Controles visuais não substituem autorização no servidor.</p>
+            <div className="onboarding-actions">
+              <button ref={onboardingPrimaryActionRef} type="button" className="primary-button" onClick={finishOnboarding}>Começar consulta</button>
+              <button type="button" className="collapse-all-button" onClick={finishOnboarding}>Pular orientação</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
