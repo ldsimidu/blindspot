@@ -11,6 +11,29 @@ const API_ENDPOINT = "/api/ficha-tecnica";
 const API_LATEST_ENDPOINT = "/api/ficha-tecnica/latest";
 const API_HISTORY_ENDPOINT = "/api/ficha-tecnica/history";
 const API_CATALOG_ENDPOINT = "/api/catalogo/fichas";
+const API_LOGIN_ENDPOINT = "/api/auth/login";
+const API_LOGOUT_ENDPOINT = "/api/auth/logout";
+const API_SESSION_ENDPOINT = "/api/auth/session";
+
+export interface AuthSession { state: "authenticated"; email: string; displayName: string; expires_at?: string; }
+
+export async function entrar(email: string, password: string): Promise<AuthSession> {
+  const response = await fetch(API_LOGIN_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ email, password }) });
+  if (!response.ok) throw await apiError(response, "Credenciais invalidas");
+  return (await response.json()) as AuthSession;
+}
+
+export async function obterSessao(): Promise<AuthSession | null> {
+  const response = await fetch(API_SESSION_ENDPOINT, { credentials: "same-origin" });
+  if (response.status === 401) return null;
+  if (!response.ok) throw await apiError(response, "Erro ao verificar sessao");
+  return (await response.json()) as AuthSession;
+}
+
+export async function sair(): Promise<void> {
+  const response = await fetch(API_LOGOUT_ENDPOINT, { method: "POST", credentials: "same-origin" });
+  if (!response.ok && response.status !== 204) throw await apiError(response, "Erro ao encerrar sessao");
+}
 
 export async function gerarFichaTecnica(payload: VehicleInput): Promise<FichaTecnicaResponse> {
   const response = await fetch(API_ENDPOINT, {

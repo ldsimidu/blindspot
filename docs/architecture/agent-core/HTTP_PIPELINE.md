@@ -5,6 +5,9 @@ Origem: `services/api/index.ts`.
 ## Endpoint
 
 - `GET /api/health` — `{ "ok": true }`.
+- `POST /api/auth/login` — e-mail e senha; valida conta, membro e organização ativos, aplica limite local de tentativas e emite somente cookie de sessão opaca. A resposta não contém token.
+- `GET /api/auth/session` — valida cookie, expiração, revogação, conta, membro e organização; retorna somente estado e identidade mínima da sessão.
+- `POST /api/auth/logout` — revoga a sessão indicada pelo cookie e a limpa; é idempotente e não enumera sessão.
 - `POST /api/organizacoes/solicitacoes` — recebe solicitação corporativa mínima e retorna protocolo neutro; não cria sessão, convite ou acesso.
 - `POST /api/organizacoes/solicitacoes/:protocol/decisao` — rota interna temporária para aprovar/recusar usando `x-operator-approval-key`; aprovação cria apenas organização `pending_activation`.
 - `POST /api/ficha-tecnica` — corpo JSON conforme `VEHICLE_INPUT_SPEC.md` (nesta pasta `docs/`).

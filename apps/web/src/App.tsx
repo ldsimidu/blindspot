@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { abrirFichaCatalogo, buscarCatalogo, gerarFichaTecnica, obterHistoricoFichas, obterUltimaFichaTecnica } from "./api";
+import { abrirFichaCatalogo, buscarCatalogo, entrar, gerarFichaTecnica, obterHistoricoFichas, obterSessao, obterUltimaFichaTecnica, sair } from "./api";
 import type { CatalogEntryResult, CatalogSearchResult, FichaTecnicaHistoryItem, FichaTecnicaResponse, VehicleInput } from "./types";
 import logoBlindspot from "./assets/blindspot-mark.png";
 
@@ -45,6 +45,12 @@ const initialFormState: FormState = {
 };
 
 function App() {
+  const [authState, setAuthState] = useState<"checking" | "signed_out" | "signed_in">("checking");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [signedInName, setSignedInName] = useState("");
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     const saved = typeof window !== "undefined" ? window.localStorage.getItem("blindspot_theme_mode") : null;
     return saved === "light" ? "light" : "dark";
@@ -97,6 +103,13 @@ function App() {
     document.body.classList.add(themeMode === "light" ? "theme-light" : "theme-dark");
     window.localStorage.setItem("blindspot_theme_mode", themeMode);
   }, [themeMode]);
+
+  useEffect(() => {
+    void obterSessao().then((session) => {
+      setSignedInName(session?.displayName ?? "");
+      setAuthState(session ? "signed_in" : "signed_out");
+    }).catch(() => setAuthState("signed_out"));
+  }, []);
 
   useEffect(() => {
     if (isOnboardingOpen) onboardingPrimaryActionRef.current?.focus();
@@ -208,11 +221,38 @@ function App() {
     setIsOnboardingOpen(false);
   }
 
+  async function handleLogin(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault(); setLoginLoading(true); setLoginError(null);
+    try { const session = await entrar(loginEmail, loginPassword); setSignedInName(session.displayName); setLoginPassword(""); setAuthState("signed_in"); } catch (error) { setLoginError(error instanceof Error ? error.message : "Credenciais invalidas."); } finally { setLoginLoading(false); }
+  }
+
+  async function handleLogout(): Promise<void> {
+    try { await sair(); } finally { setSignedInName(""); setLoginPassword(""); setAuthState("signed_out"); }
+  }
+
   const statusAnnouncement = loading
     ? "Gerando ficha técnica."
     : catalogLoading
       ? "Consultando catálogo."
       : error ?? catalogError ?? "";
+
+  if (authState !== "signed_in") {
+    return (
+      <main className="dashboard-page login-page">
+        <section className="panel login-panel" aria-busy={authState === "checking"}>
+          <img className="brand-logo" src={logoBlindspot} alt="BlindSpot" />
+          <h1>Acessar BlindSpot</h1>
+          <p>{authState === "checking" ? "Verificando sessão…" : "Entre com seu e-mail corporativo e senha."}</p>
+          {authState === "signed_out" && <form onSubmit={handleLogin} className="form-grid">
+            <label>E-mail corporativo<input type="email" autoComplete="username" value={loginEmail} onChange={(event) => setLoginEmail(event.target.value)} required /></label>
+            <label>Senha<input type="password" autoComplete="current-password" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} required /></label>
+            {loginError && <p role="alert">{loginError}</p>}
+            <button type="submit" disabled={loginLoading}>{loginLoading ? "Entrando…" : "Entrar"}</button>
+          </form>}
+        </section>
+      </main>
+    );
+  }
 
   return (
     <div className={`dashboard-page ${isSidebarCollapsed ? "sidebar-collapsed" : ""}`}>
@@ -222,6 +262,7 @@ function App() {
           <img className="brand-logo" src={logoBlindspot} alt="BlindSpot" />
           <span className="brand-wordmark">BLINDSPOT</span>
           <div className="brand-controls">
+            <button type="button" className="theme-toggle" onClick={() => void handleLogout()} title="Encerrar sessão" aria-label={`Encerrar sessão de ${signedInName || "usuário"}`}>↪</button>
             <button
               type="button"
               className="theme-toggle"

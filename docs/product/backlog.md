@@ -29,7 +29,7 @@ Dependências: `qualidade → persistência → consulta/comparação`; `identid
 2. Operador temporário autorizado aprova/recusa; aprovação cria organização `pending_activation`, sem membro, credencial ou sessão. **P1-009 implementado.**
 3. Para uma solicitação aprovada, o operador emite ou revoga convite do administrador inicial. **P1-010 implementado:** o token tem 32 bytes, é devolvido somente uma vez à rota interna, é armazenado apenas como HMAC, expira em 72 horas e uma reemissão revoga o anterior. Não há envio real de e-mail neste corte.
 4. O destinatário ativa com token, nome e senha de 12–128 caracteres. A mesma transação consome o convite, cria o único administrador inicial, persiste a derivação `scrypt` com salt e pepper, registra evento sanitizado e move a organização para `active`. Token inválido, expirado, revogado ou reutilizado recebe resposta neutra; não há dados da empresa na resposta.
-5. **P1-011 pendente:** login valida a credencial, organização ativa e futura sessão. **P1-013 pendente:** autorização por tenant, papel e recurso substitui a chave temporária de operação. MFA e SSO continuam escopos próprios, não pressupostos pela ativação.
+5. **P1-011 implementado:** login valida conta, membro e organização `active`, cria sessão opaca em cookie `HttpOnly` e permite logout com revogação persistida. Falha é neutra e há limite local de cinco tentativas por 15 minutos. **P1-013 pendente:** autorização por tenant, papel e recurso substitui a chave temporária de operação e protege recursos de negócio. MFA e SSO continuam escopos próprios, não pressupostos pela ativação.
 5. Administrador convida, troca papel ou desativa membro; servidor revoga sessão e conserva auditoria conforme retenção aprovada.
 6. Cada recurso resolve organização e autorização no servidor; UI nunca é a barreira de segurança.
 
@@ -54,7 +54,7 @@ Estados: entrada inválida, recebido, em revisão, aprovado, recusado, convite e
 
 ### Critérios transversais de jornada
 
-- **Acesso:** aprovação não concede credencial; convite é único, HMAC, expirável e revogável; sua ativação é atômica e ainda não abre sessão. Recuperação revoga sessões; MFA obrigatório impede sessão incompleta; SSO só associa claim validada ao tenant correto.
+- **Acesso:** aprovação não concede credencial; convite é único, HMAC, expirável e revogável; sua ativação é atômica e não abre sessão. Login só aceita conta, membro e organização ativos, emite token opaco HMAC por cookie `HttpOnly` e logout o revoga. Recuperação revoga sessões; MFA obrigatório impede sessão incompleta; SSO só associa claim validada ao tenant correto.
 - **Dados:** ausência, conflito e não aplicabilidade não viram confirmação, nem alimentam vencedor automático em comparação.
 - **Autorização:** conta, tenant, papel e recurso são verificados no servidor em todas as ações sensíveis; revogar membro encerra suas sessões sem apagar a trilha aprovada.
 - **Qualidade reportada:** reporte identifica ficha, versão e campo e percorre `recebido → em análise → corrigido | não confirmado`, sem saltos.
@@ -86,11 +86,11 @@ Estados: entrada inválida, recebido, em revisão, aprovado, recusado, convite e
 
 #### E01-03 — Login por senha e sessão segura
 
-- **Problema/pessoa/fluxo:** pessoa ativa entra com e-mail/senha; servidor valida conta, organização e segredo; abre sessão ou falha genericamente; logout a encerra.
-- **Fora do escopo:** SSO, MFA e política final de senha.
-- **Tasks/subtasks:** ADR de identidade, hash/rate limit, domínio corporativo conforme política, cookie/session, expiração e logout por inatividade.
-- **Aceite, evidência e DoD:** erro não enumera conta; conta desativada e tenant suspenso não acessam; logout revoga sessão; testes de força bruta, erro e ausência de segredo em log passam.
-- **Prioridade/dependência/risco/fonte:** Agora antes de dado corporativo; decisão de identidade; credential stuffing; Ford 1.2.1, 1.2.5.
+- **Problema/pessoa/fluxo:** pessoa ativa entra com e-mail/senha; servidor valida conta, membro e organização, verifica `scrypt` e abre sessão ou falha genericamente; logout a encerra.
+- **Fora do escopo:** SSO, MFA, recuperação, seleção de tenant, rate limit distribuído e RBAC de recursos.
+- **Tasks/subtasks:** identidade global `accounts`, associação de membro, token opaco HMAC, cookie/session, expiração absoluta de 12 h, logout idempotente e limite local de cinco tentativas em 15 min por HMAC de e-mail/IP.
+- **Aceite, evidência e DoD:** erro não enumera conta; conta/membro/tenant inativos não acessam; JSON de login não contém token; logout revoga sessão; testes de senha incorreta, sessão, logout e força bruta passam; logs não recebem senha, cookie ou token.
+- **Prioridade/dependência/risco/fonte:** Concluído no P1-011; P1-010; credential stuffing; Ford 1.2.1, 1.2.5. O limite é deliberadamente local até haver infraestrutura distribuída; P1-013 ainda deve proteger recursos e tenancy no servidor.
 
 #### E01-04 — Recuperar acesso e MFA por organização
 

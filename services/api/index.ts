@@ -13,6 +13,7 @@ import { callLLM } from "./llm";
 import { getPersistenceMode } from "./db/client";
 import { persistTechnicalSheet, readCatalogEntryExact, readLatestTechnicalSheet, readTechnicalSheetHistory, searchCatalog } from "./db/repository";
 import { confirmImportRun, createImportDryRun, hashImportPayload, readImportRun, type PreparedImportItem } from "./imports";
+import { login, logout, readCurrentSession, sessionCookieName, sessionCookieOptions } from "./authentication";
 import { activateInitialAdmin, decideOrganizationRequest, issueInitialAdminInvitation, revokeInitialAdminInvitation, submitOrganizationRequest } from "./organizations";
 import { buildVehiclePayload, composeFinalPrompt, readBaseAgentPrompt, readOutputSchema } from "./prompt-builder";
 import { readFieldPolicy, readNormalizationPolicy, readQualityPolicy, readSourcePolicy } from "./runtime-assets";
@@ -51,6 +52,27 @@ app.use((req, res, next) => {
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
+});
+
+app.post("/api/auth/login", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const input = parseLogin(req.body);
+    const session = await login(input.email, input.password, req.ip ?? "unknown");
+    res.cookie(sessionCookieName(), session.token, sessionCookieOptions(session.expiresAt));
+    res.status(200).json({ state: "authenticated", expires_at: session.expiresAt.toISOString() });
+  } catch (error) { next(error); }
+});
+
+app.post("/api/auth/logout", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    await logout(readCookie(req, sessionCookieName()));
+    res.clearCookie(sessionCookieName(), sessionCookieOptions());
+    res.status(204).end();
+  } catch (error) { next(error); }
+});
+
+app.get("/api/auth/session", async (req: Request, res: Response, next: NextFunction) => {
+  try { res.status(200).json({ state: "authenticated", ...(await readCurrentSession(readCookie(req, sessionCookieName()))) }); } catch (error) { next(error); }
 });
 
 app.post("/api/organizacoes/solicitacoes", async (req: Request, res: Response, next: NextFunction) => {
@@ -352,6 +374,8 @@ function parseProtocol(value: string): string { if (!/^ORG-[A-Za-z0-9_-]{20,64}$
 function parseInvitationToken(value: string): string { if (!/^INV-[A-Za-z0-9_-]{40,96}$/.test(value)) throw new HttpError(404, "Convite indisponivel."); return value; }
 function parseInvitationActivation(body: unknown): { displayName: string; password: string } { if (!isObject(body)) throw new HttpError(400, "Ativacao indisponivel."); const displayName = requiredBoundedText(body.display_name, 2, 120, "display_name"); const password = typeof body.password === "string" ? body.password : ""; if (password.length < 12 || password.length > 128 || /[\u0000-\u001f\u007f]/.test(password)) throw new HttpError(400, "Ativacao indisponivel."); return { displayName, password }; }
 function sanitizeRequestPath(value: string): string { return value.replace(/(\/api\/convites\/)[^/?]+(\/ativar(?:\?.*)?$)/, "$1[redacted]$2"); }
+function parseLogin(body: unknown): { email: string; password: string } { if (!isObject(body)) throw new HttpError(400, "Credenciais invalidas."); const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : ""; const password = typeof body.password === "string" ? body.password : ""; if (email.length < 5 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 1 || password.length > 128 || /[\u0000-\u001f\u007f]/.test(password)) throw new HttpError(400, "Credenciais invalidas."); return { email, password }; }
+function readCookie(req: Request, name: string): string | undefined { const raw = req.header("cookie"); if (!raw) return undefined; const prefix = `${name}=`; for (const part of raw.split(";")) { const item = part.trim(); if (item.startsWith(prefix)) return item.slice(prefix.length); } return undefined; }
 
 async function prepareImportInput(body: unknown): Promise<{ idempotencyKey: string; items: PreparedImportItem[]; outputSchema: Record<string, unknown> }> {
   if (!isObject(body) || typeof body.idempotency_key !== "string" || !/^[A-Za-z0-9._:-]{16,128}$/.test(body.idempotency_key)) throw new HttpError(400, "Chave de idempotencia invalida.");

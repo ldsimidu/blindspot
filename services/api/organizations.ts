@@ -1,11 +1,11 @@
-import { createHmac, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { and, eq } from "drizzle-orm";
 import { getDatabase } from "./db/client";
-import { organizationInvitationEvents, organizationInvitations, organizationMembers, organizationRequestEvents, organizationRequests, organizations, passwordCredentials } from "./db/schema";
+import { accounts, organizationInvitationEvents, organizationInvitations, organizationMembers, organizationRequestEvents, organizationRequests, organizations, passwordCredentials } from "./db/schema";
+import { assertPassword, derivePassword, passwordAlgorithm } from "./credentials";
 import { HttpError } from "./types";
 
 const invitationTtlMs = 72 * 60 * 60 * 1000;
-const passwordAlgorithm = "scrypt-v1:N=16384,r=8,p=1,dkLen=64";
 
 export interface OrganizationRequestInput { companyName: string; cnpj: string; contactName: string; contactEmail: string; privacyNoticeVersion: string; }
 
@@ -68,7 +68,11 @@ export async function activateInitialAdmin(token: string, displayName: string, p
     const passwordSalt = randomBytes(16).toString("base64url"); const passwordHash = await derivePassword(password, passwordSalt);
     const [consumed] = await tx.update(organizationInvitations).set({ status: "used", usedAt: new Date() }).where(and(eq(organizationInvitations.id, invitation.id), eq(organizationInvitations.status, "issued"))).returning({ id: organizationInvitations.id });
     if (!consumed) throw unavailableInvitation();
-    const [member] = await tx.insert(organizationMembers).values({ organizationId: organization.id, email: invitation.contactEmail, emailHash: invitation.emailHash, displayName, role: "admin", status: "active" }).returning({ id: organizationMembers.id });
+    const normalizedEmail = invitation.contactEmail.toLowerCase();
+    const [createdAccount] = await tx.insert(accounts).values({ email: normalizedEmail, status: "active" }).onConflictDoNothing().returning({ id: accounts.id });
+    const accountId = createdAccount?.id ?? (await tx.select({ id: accounts.id }).from(accounts).where(eq(accounts.email, normalizedEmail)).limit(1))[0]?.id;
+    if (!accountId) throw new HttpError(503, "Ativacao indisponivel.");
+    const [member] = await tx.insert(organizationMembers).values({ organizationId: organization.id, accountId, email: normalizedEmail, emailHash: invitation.emailHash, displayName, role: "admin", status: "active" }).returning({ id: organizationMembers.id });
     await tx.insert(passwordCredentials).values({ memberId: member.id, passwordHash, passwordSalt, algorithm: passwordAlgorithm });
     const [activated] = await tx.update(organizations).set({ status: "active" }).where(and(eq(organizations.id, organization.id), eq(organizations.status, "pending_activation"))).returning({ id: organizations.id });
     if (!activated) throw unavailableInvitation();
@@ -82,6 +86,4 @@ function secretHash(scope: string, value: string): string { return keyedHash("OR
 function invitationHash(token: string): string { return keyedHash("INVITATION_TOKEN_HASH_KEY", "invitation", token, "Convite indisponivel."); }
 function keyedHash(environmentKey: string, scope: string, value: string, message: string): string { const key = process.env[environmentKey]; if (!key || key.length < 32) throw new HttpError(503, message); return createHmac("sha256", key).update(`${scope}:${value}`).digest("hex"); }
 function assertOperatorKey(value: string) { const expected = process.env.OPERATOR_APPROVAL_KEY; if (!expected || expected.length < 32) throw new HttpError(503, "Revisao indisponivel."); const actualBuffer = Buffer.from(value); const expectedBuffer = Buffer.from(expected); if (actualBuffer.length !== expectedBuffer.length || !timingSafeEqual(actualBuffer, expectedBuffer)) throw new HttpError(404, "Solicitacao indisponivel para decisao."); }
-function assertPassword(password: string) { if (password.length < 12 || password.length > 128) throw new HttpError(400, "Ativacao indisponivel."); }
-async function derivePassword(password: string, salt: string): Promise<string> { const pepper = process.env.PASSWORD_PEPPER; if (!pepper || pepper.length < 32) throw new HttpError(503, "Ativacao indisponivel."); const output = await new Promise<Buffer>((resolve, reject) => scrypt(`${password}\u0000${pepper}`, salt, 64, { N: 16_384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 }, (error, derivedKey) => error ? reject(error) : resolve(derivedKey))); return output.toString("base64url"); }
 function unavailableInvitation(): HttpError { return new HttpError(404, "Convite indisponivel."); }

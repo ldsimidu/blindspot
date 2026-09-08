@@ -27,8 +27,9 @@ flowchart LR
   ativar -- não --> recuperar[Resposta neutra; operador\npode reemitir sem expor empresa]
   ativar -- sim --> credencial[Nome + senha 12–128\nscrypt + salt + pepper]
   credencial --> ativacao[Transação: consumir token,\ncriar admin, ativar organização]
-  ativacao --> identidade[Sem sessão neste corte\nP1-011 fará login; P1-013 RBAC]
-  identidade --> acesso{Servidor valida\nsessão + tenant + papel + recurso\nE01-03/E01-06}
+  ativacao --> identidade[Login P1-011: e-mail + senha\nconta, membro e organização ativos]
+  identidade --> sessao[Sessão opaca HMAC\ncookie HttpOnly; logout revoga]
+  sessao --> acesso{P1-013 validará\ntenant + papel + recurso}
   acesso -- negado --> bloqueio[Ação bloqueada\nfalha fechada]
   acesso -- autorizado --> consultar[Consultar ficha\nidentidade exata · RF01]
 
@@ -141,14 +142,16 @@ flowchart LR
   ativar -- não --> novoConvite[Resposta neutra; reemissão\nrevoga anterior sem expor empresa]
   ativar -- sim --> senha[Definir nome e senha 12–128\nscrypt + salt + pepper]
   senha --> transacao[Transação: token used,\nadmin active, organização active]
-  transacao --> semLogin[Ativação não cria sessão\nP1-011 implementará login]
+  transacao --> semLogin[Ativação não cria sessão\nlogin P1-011 é etapa separada]
   semLogin --> entradaLogin{Login por senha\nou SSO aprovado?}
-  entradaLogin -- senha --> credencial{Credencial, conta e\norganização ativas?}
+  entradaLogin -- senha --> credencial{Credencial, conta, membro e\norganização ativos?}
   entradaLogin -- SSO --> idp{Callback, issuer, audience\ne claims válidos?}
-  credencial -- não --> recuperar[Recuperar acesso\ntoken único, rate limit]
+  credencial -- não --> limiteLogin[Resposta neutra\n5 tentativas/15 min locais]
+  limiteLogin --> recuperar[Recuperação futura\nP1-012]
   recuperar --> revogar[Trocar credencial e\nrevogar sessões anteriores]
   idp -- não/indisponível --> erroSSO[Falha fechada\nsem criar tenant]
-  credencial -- sim --> mfa{MFA exigido\npela organização?}
+  credencial -- sim --> sessaoLogin[Sessão opaca, 12h,\ncookie HttpOnly]
+  sessaoLogin --> mfa{MFA exigido\npela organização?}
   idp -- sim --> mfa
   mfa -- sim --> desafio[Matrícula/desafio/recuperação MFA]
   desafio -- incompleto --> semSessao[Sem sessão]
@@ -162,7 +165,7 @@ flowchart LR
   auditoria --> logout[Logout revoga sessão]
 ```
 
-**Implementado no P1-009/P1-010:** solicitação com protocolo sem enumeração, aprovação para `pending_activation`, emissão/revogação interna do convite e ativação atômica do primeiro `admin`; seus eventos não guardam token ou senha. A rota de emissão devolve o token apenas à chamada interna que possui a chave temporária; o caminho do token é mascarado nos logs. O produto ainda não envia e-mail nem oferece gestão de equipe. Login, sessão, MFA, SSO, recuperação, RBAC/tenancy e papéis finais continuam em tasks próprias (P1-011/P1-013 e sucessoras), sob Architecture Gate e revisão de segurança.
+**Implementado no P1-009/P1-010/P1-011:** solicitação com protocolo sem enumeração, aprovação para `pending_activation`, emissão/revogação interna do convite, ativação atômica do primeiro `admin`, identidade global mínima, login por senha, sessão opaca e logout persistente. Tokens de convite e de sessão só existem em transporte/cookie e como HMAC no banco; caminhos de convite são mascarados nos logs. O produto ainda não envia e-mail nem oferece gestão de equipe. MFA, SSO, recuperação, RBAC/tenancy e papéis finais continuam em tasks próprias (P1-012/P1-013 e sucessoras), sob Architecture Gate e revisão de segurança.
 
 ### Contratos do convite implementados
 
