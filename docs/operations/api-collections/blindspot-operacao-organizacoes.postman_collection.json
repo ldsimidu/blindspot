@@ -1,0 +1,96 @@
+{
+  "info": {
+    "_postman_id": "b6cf216d-69c4-4e2d-b9a1-3f0a9c7fd7f2",
+    "name": "BlindSpot — Operação de organizações (MVP)",
+    "description": "Operação interna temporária para listar, aprovar ou recusar cadastros corporativos. Nunca exporte valores reais de chave, CNPJ, e-mail, senha ou cookies.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "operatorApprovalKey",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "requestProtocol",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Listar empresas em espera",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "x-operator-approval-key",
+            "value": "{{operatorApprovalKey}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/operacoes/organizacoes/solicitacoes?state=received&page=1&page_size=20",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "operacoes", "organizacoes", "solicitacoes"],
+          "query": [
+            { "key": "state", "value": "received" },
+            { "key": "page", "value": "1" },
+            { "key": "page_size", "value": "20" }
+          ]
+        },
+        "description": "Retorna solicitações pendentes paginadas. Copie o campo protocol para a variável requestProtocol antes de decidir."
+      },
+      "response": []
+    },
+    {
+      "name": "Aprovar empresa",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "type": "text" },
+          { "key": "x-operator-approval-key", "value": "{{operatorApprovalKey}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"decision\": \"approved\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/organizacoes/solicitacoes/{{requestProtocol}}/decisao",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "organizacoes", "solicitacoes", "{{requestProtocol}}", "decisao"]
+        },
+        "description": "Decisão única: ativa solicitação, organização, conta e membro inicial na mesma transação."
+      },
+      "response": []
+    },
+    {
+      "name": "Recusar empresa",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json", "type": "text" },
+          { "key": "x-operator-approval-key", "value": "{{operatorApprovalKey}}", "type": "text" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"decision\": \"rejected\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/organizacoes/solicitacoes/{{requestProtocol}}/decisao",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "organizacoes", "solicitacoes", "{{requestProtocol}}", "decisao"]
+        },
+        "description": "Decisão única: recusa solicitação, organização, conta e membro inicial na mesma transação."
+      },
+      "response": []
+    }
+  ]
+}

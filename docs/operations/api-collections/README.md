@@ -9,4 +9,16 @@ export BLINDSPOT_API_URL="http://localhost:3001"
 export OPERATOR_APPROVAL_KEY="valor-configurado-no-env-local"
 ```
 
+## Postman
+
+Importe [blindspot-operacao-organizacoes.postman_collection.json](blindspot-operacao-organizacoes.postman_collection.json) pelo botão **Import** do Postman. Depois, na aba **Variables** da collection, informe localmente:
+
+- `baseUrl`: por exemplo, `http://localhost:3001`;
+- `operatorApprovalKey`: o valor local de `OPERATOR_APPROVAL_KEY`;
+- `requestProtocol`: a referência retornada por **Listar empresas em espera**.
+
+A collection possui três requests: listar em espera, aprovar e recusar. Seus valores padrão são vazios e nenhum segredo, cookie, senha, CNPJ ou e-mail real é versionado.
+
+## Terminal
+
 Use os comandos de [organizacoes-curl.sh](organizacoes-curl.sh). A listagem retorna referências operacionais temporárias; use uma delas em `REQUEST_PROTOCOL` apenas no terminal. Chave ausente/inválida, referência malformada e decisão repetida não alteram estado. O serviço mascara referência de decisão no log HTTP.
