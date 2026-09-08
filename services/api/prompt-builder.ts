@@ -1,5 +1,5 @@
 import type { VehicleInput, VehiclePayload } from "./types";
-import { readRuntimeAsset, readRuntimeSchema, type NormalizationPolicy, type SourcePolicy } from "./runtime-assets";
+import { readRuntimeAsset, readRuntimeSchema, type FieldPolicy, type NormalizationPolicy, type SourcePolicy } from "./runtime-assets";
 
 interface PromptCompositionInput {
   baseAgentPrompt: string;
@@ -7,6 +7,7 @@ interface PromptCompositionInput {
   vehiclePayload: VehiclePayload;
   sourcePolicy?: SourcePolicy;
   normalizationPolicy?: NormalizationPolicy;
+  fieldPolicy?: FieldPolicy;
 }
 
 export async function readBaseAgentPrompt(): Promise<string> {
@@ -53,6 +54,9 @@ export function composeFinalPrompt(input: PromptCompositionInput): string {
     ...(input.normalizationPolicy
       ? ["", "### NORMALIZATION_POLICY_JSON", JSON.stringify(input.normalizationPolicy, null, 2)]
       : []),
+    ...(input.fieldPolicy
+      ? ["", "### FIELD_POLICY_JSON", JSON.stringify(input.fieldPolicy, null, 2)]
+      : []),
     "",
     "### EXECUTION_RULES",
     "Interpret BASE_AGENT_PROMPT as the main instruction source.",
@@ -60,6 +64,7 @@ export function composeFinalPrompt(input: PromptCompositionInput): string {
     "Fill every variable listed in SCHEMA_VARIABLES_TARGET whenever reliable evidence exists.",
     "Use source references for each filled field as instructed by BASE_AGENT_PROMPT.",
     "For allowlisted technical measurements, use canonical units from NORMALIZATION_POLICY_JSON; do not infer ambiguous units.",
+    "Use generic body and propulsion values from FIELD_POLICY_JSON; resolve every conditional field with an explicit status.",
     "Output must strictly match OUTPUT_SCHEMA_JSON.",
     "Return only valid JSON."
   ].join("\n");

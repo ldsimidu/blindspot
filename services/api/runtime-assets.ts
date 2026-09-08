@@ -33,8 +33,17 @@ export interface NormalizationPolicy {
   }>;
 }
 
+export interface FieldPolicy {
+  version: string;
+  coverage: { totalPaths: number; statusFields: number; collectionFields: number };
+  body: { field: string; allowedValues: string[] };
+  propulsion: { field: string; allowedValues: string[] };
+  conditionalFields: Array<{ path: string; applicableTo: string[] }>;
+  extensionFamilies: Record<string, string[]>;
+}
+
 export async function readRuntimeAsset(
-  fileName: "base-agent-prompt.txt" | "schema.json" | "mock-response.json" | "source-policy.json" | "normalization-policy.json"
+  fileName: "base-agent-prompt.txt" | "schema.json" | "mock-response.json" | "source-policy.json" | "normalization-policy.json" | "field-policy.json"
 ): Promise<string> {
   return readFile(path.join(RUNTIME_ASSETS_DIR, fileName), "utf-8");
 }
@@ -53,4 +62,8 @@ export async function readSourcePolicy(): Promise<SourcePolicy> {
 
 export async function readNormalizationPolicy(): Promise<NormalizationPolicy> {
   return JSON.parse(await readRuntimeAsset("normalization-policy.json")) as NormalizationPolicy;
+}
+
+export async function readFieldPolicy(): Promise<FieldPolicy> {
+  return JSON.parse(await readRuntimeAsset("field-policy.json")) as FieldPolicy;
 }

@@ -1106,6 +1106,30 @@
         "conflitantes": {
           "type": "integer",
           "minimum": 0
+        },
+        "total_caminhos": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "caminhos_presentes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "campos_status_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "campos_status_resolvidos": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "colecoes_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "colecoes_presentes": {
+          "type": "integer",
+          "minimum": 0
         }
       }
     }

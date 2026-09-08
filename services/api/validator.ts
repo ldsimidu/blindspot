@@ -5,12 +5,15 @@ import { ValidationError, type VehicleInput } from "./types";
 import type { SourcePolicy } from "./runtime-assets";
 import type { NormalizationPolicy } from "./runtime-assets";
 import { normalizeTechnicalMeasurements } from "./normalizer";
+import type { FieldPolicy } from "./runtime-assets";
+import { validateFieldPolicy } from "./field-policy-validator";
 
 interface ValidationContext {
   vehicle: VehicleInput;
   provider: "claude" | "openrouter" | "simulated";
   sourcePolicy: SourcePolicy;
   normalizationPolicy?: NormalizationPolicy;
+  fieldPolicy?: FieldPolicy;
 }
 
 export function validateResponse(
@@ -21,7 +24,8 @@ export function validateResponse(
   const normalizedResponse = normalizeCandidateResponse(candidateResponse);
   normalizeStatusFieldShapes(normalizedResponse);
   if (context?.normalizationPolicy) normalizeTechnicalMeasurements(normalizedResponse, context.normalizationPolicy);
-  enrichResumoCompletude(normalizedResponse);
+  if (context?.fieldPolicy) validateFieldPolicy(normalizedResponse, context.fieldPolicy);
+  enrichResumoCompletude(normalizedResponse, outputSchema, context?.fieldPolicy);
   validateWithAjv(normalizedResponse, outputSchema);
   validateFonteRefConsistency(normalizedResponse);
   if (context) {
@@ -301,7 +305,7 @@ function tryParsePossiblyFencedJson(text: string): unknown | null {
   }
 }
 
-function enrichResumoCompletude(candidateResponse: unknown): void {
+function enrichResumoCompletude(candidateResponse: unknown, outputSchema: Record<string, unknown>, fieldPolicy?: FieldPolicy): void {
   if (!isObject(candidateResponse) || !isObject(candidateResponse.ficha_tecnica)) {
     return;
   }
@@ -321,8 +325,63 @@ function enrichResumoCompletude(candidateResponse: unknown): void {
     preenchidas: counters.preenchidas,
     nao_encontradas: counters.nao_encontradas,
     nao_aplicaveis: counters.nao_aplicaveis,
-    conflitantes: counters.conflitantes
+    conflitantes: counters.conflitantes,
+    ...(fieldPolicy ? summarizeCoverage(candidateResponse.ficha_tecnica, outputSchema, fieldPolicy) : {})
   };
+}
+
+function summarizeCoverage(fichaTecnica: Record<string, unknown>, outputSchema: Record<string, unknown>, policy: FieldPolicy): Record<string, number> {
+  const expectedPaths = extractRequiredFieldPaths(outputSchema);
+  const presentPaths = expectedPaths.filter((path) => hasOwnPath(fichaTecnica, path));
+  const statusFields = presentPaths.filter((path) => isObject(readOwnPath(fichaTecnica, path)) && typeof (readOwnPath(fichaTecnica, path) as Record<string, unknown>).status === "string");
+  const collectionFields = presentPaths.filter((path) => Array.isArray(readOwnPath(fichaTecnica, path)));
+
+  if (expectedPaths.length !== policy.coverage.totalPaths || statusFields.length !== policy.coverage.statusFields || collectionFields.length !== policy.coverage.collectionFields) {
+    throw new ValidationError("Cobertura da ficha tecnica esta incompleta.", {
+      code: "technical_sheet_coverage_incomplete",
+      expectedPaths: policy.coverage.totalPaths,
+      presentPaths: presentPaths.length,
+      expectedStatusFields: policy.coverage.statusFields,
+      presentStatusFields: statusFields.length,
+      expectedCollections: policy.coverage.collectionFields,
+      presentCollections: collectionFields.length
+    });
+  }
+
+  return {
+    total_caminhos: expectedPaths.length,
+    caminhos_presentes: presentPaths.length,
+    campos_status_total: policy.coverage.statusFields,
+    campos_status_resolvidos: statusFields.length,
+    colecoes_total: policy.coverage.collectionFields,
+    colecoes_presentes: collectionFields.length
+  };
+}
+
+function extractRequiredFieldPaths(outputSchema: Record<string, unknown>): string[] {
+  const rootProperties = isObject(outputSchema.properties) ? outputSchema.properties : null;
+  const fichaSchema = rootProperties && isObject(rootProperties.ficha_tecnica) ? rootProperties.ficha_tecnica : null;
+  const groups = fichaSchema && isObject(fichaSchema.properties) ? fichaSchema.properties : null;
+  if (!groups) return [];
+
+  const paths: string[] = [];
+  for (const [groupName, groupSchema] of Object.entries(groups)) {
+    if (!isObject(groupSchema) || !Array.isArray(groupSchema.required)) continue;
+    for (const fieldName of groupSchema.required) {
+      if (typeof fieldName === "string") paths.push(`${groupName}.${fieldName}`);
+    }
+  }
+  return paths;
+}
+
+function hasOwnPath(root: Record<string, unknown>, path: string): boolean {
+  const [group, field] = path.split(".");
+  return Boolean(group && field && isObject(root[group]) && Object.prototype.hasOwnProperty.call(root[group], field));
+}
+
+function readOwnPath(root: Record<string, unknown>, path: string): unknown {
+  const [group, field] = path.split(".");
+  return group && field && isObject(root[group]) ? root[group][field] : undefined;
 }
 
 function normalizeStatusFieldShapes(candidateResponse: unknown): void {

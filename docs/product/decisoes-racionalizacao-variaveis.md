@@ -1,6 +1,6 @@
 # Decisões pendentes — racionalização de variáveis
 
-> Produzido pela P0-006. É uma recomendação para Lucas; nenhuma opção abaixo altera os 204 caminhos obrigatórios do schema atual (199 campos com status e 5 coleções).
+> Produzido pela P0-006 e aplicado de forma compatível na P0-007. Nenhuma opção abaixo removeu os 204 caminhos obrigatórios do schema atual (199 campos com status e 5 coleções).
 
 ## Decisão 1 — modelo de corpo do veículo
 

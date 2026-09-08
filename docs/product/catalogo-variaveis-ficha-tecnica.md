@@ -1,6 +1,6 @@
 # Catálogo de variáveis da ficha técnica
 
-> Estado: governança aprovada na P0-006 em 08/09/2026. Este documento descreve os 204 caminhos obrigatórios do contrato atual: 199 campos com `status` e 5 coleções de adicionais. Não adiciona valores técnicos, campos ou comportamento de runtime.
+> Estado: governança aprovada na P0-006 e aplicada ao runtime pela P0-007 em 08/09/2026. Este documento descreve os 204 caminhos obrigatórios do contrato atual: 199 campos com `status` e 5 coleções de adicionais.
 
 ## Regras de cobertura e preenchimento
 
@@ -16,6 +16,8 @@ A ficha possui sempre os mesmos **204 caminhos canônicos**. Os 199 campos de da
 | `conflitante` | `valor: null`, fontes divergentes e CF1; não escolhe vencedor. |
 
 `Núcleo` significa que o campo é útil à leitura de qualquer veículo, ainda que seu valor possa estar ausente. `Condicional` exige um discriminador de configuração. `Extensão` é detalhe especializado, mantido no schema atual para não perder comparabilidade, mas candidato à decisão de racionalização. Nenhuma célula abaixo autoriza usar `false`, `0`, string “N/A”, array vazia ou valor de outro veículo como padrão.
+
+A política de runtime [field-policy.json](../../packages/agent-runtime/assets/field-policy.json) aplica nesta v1 o vocabulário de `tipo_carroceria` e `motor_tipo`, a incompatibilidade comprovada entre propulsão e extensões elétricas/térmicas e os indicadores de cobertura. As demais classificações continuam como governança até receberem regra de domínio específica.
 
 ## Identificação — 8
 

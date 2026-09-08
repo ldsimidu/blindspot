@@ -1,0 +1,87 @@
+{
+  "version": "1.0.0",
+  "coverage": {
+    "totalPaths": 204,
+    "statusFields": 199,
+    "collectionFields": 5
+  },
+  "body": {
+    "field": "identificacao.tipo_carroceria",
+    "allowedValues": ["sedan", "hatch", "suv", "crossover", "cupe", "picape", "caminhonete", "van", "minivan", "utilitario", "conversivel", "wagon", "monovolume", "outro"]
+  },
+  "propulsion": {
+    "field": "motorizacao.motor_tipo",
+    "allowedValues": ["combustao", "eletrico", "hibrido", "hibrido_plugin", "celula_combustivel"]
+  },
+  "conditionalFields": [
+    {
+      "path": "motorizacao.cilindrada_l",
+      "applicableTo": ["combustao", "hibrido", "hibrido_plugin", "celula_combustivel"]
+    },
+    {
+      "path": "motorizacao.configuracao_motor",
+      "applicableTo": ["combustao", "hibrido", "hibrido_plugin", "celula_combustivel"]
+    },
+    {
+      "path": "motorizacao.aspiracao",
+      "applicableTo": ["combustao", "hibrido", "hibrido_plugin", "celula_combustivel"]
+    },
+    {
+      "path": "motorizacao.potencia_rpm",
+      "applicableTo": ["combustao", "hibrido", "hibrido_plugin", "celula_combustivel"]
+    },
+    {
+      "path": "motorizacao.torque_rpm",
+      "applicableTo": ["combustao", "hibrido", "hibrido_plugin", "celula_combustivel"]
+    },
+    {
+      "path": "motorizacao.motor_combustivel",
+      "applicableTo": ["combustao", "hibrido", "hibrido_plugin", "celula_combustivel"]
+    },
+    {
+      "path": "tecnologia_dinamica.modos_escapamento",
+      "applicableTo": ["combustao", "hibrido", "hibrido_plugin", "celula_combustivel"]
+    },
+    {
+      "path": "tecnologia_dinamica.start_stop",
+      "applicableTo": ["combustao", "hibrido", "hibrido_plugin"]
+    },
+    {
+      "path": "dimensoes_e_capacidade.tanque_combustivel_l",
+      "applicableTo": ["combustao", "hibrido", "hibrido_plugin", "celula_combustivel"]
+    },
+    {
+      "path": "conectividade_via_aplicativo.status_remoto_combustivel",
+      "applicableTo": ["combustao", "hibrido", "hibrido_plugin", "celula_combustivel"]
+    },
+    {
+      "path": "motorizacao.motor_eletrificacao_tipo",
+      "applicableTo": ["eletrico", "hibrido", "hibrido_plugin"]
+    },
+    {
+      "path": "motorizacao.motor_eletrico_presente",
+      "applicableTo": ["eletrico", "hibrido", "hibrido_plugin"]
+    },
+    {
+      "path": "motorizacao.autonomia_eletrica_km",
+      "applicableTo": ["eletrico", "hibrido_plugin"]
+    },
+    {
+      "path": "conectividade_via_aplicativo.app_conectividade_ev",
+      "applicableTo": ["eletrico", "hibrido", "hibrido_plugin"]
+    },
+    {
+      "path": "garantia_servicos_e_comercial.garantia_bateria_anos",
+      "applicableTo": ["eletrico", "hibrido", "hibrido_plugin"]
+    },
+    {
+      "path": "garantia_servicos_e_comercial.garantia_bateria_limite_km",
+      "applicableTo": ["eletrico", "hibrido", "hibrido_plugin"]
+    }
+  ],
+  "extensionFamilies": {
+    "eletrificacao": ["motorizacao.motor_eletrificacao_tipo", "motorizacao.motor_eletrico_presente", "motorizacao.autonomia_eletrica_km", "conectividade_via_aplicativo.app_conectividade_ev", "garantia_servicos_e_comercial.garantia_bateria_anos", "garantia_servicos_e_comercial.garantia_bateria_limite_km"],
+    "offroad_utilitario": ["transmissao_e_tracao.diferencial_dianteiro_blocante", "transmissao_e_tracao.diferencial_traseiro_blocante", "exterior.protetor_offroad_dianteiro", "exterior.protecoes_inferiores_offroad", "performance_offroad.protecao_inferior_itens", "performance_offroad.offroad_recursos", "performance_offroad.ganchos_reboque_qtd", "seguranca.piloto_automatico_offroad"],
+    "conectividade_servico": ["sistema_multimidia_e_conectividade.atualizacoes_ota", "sistema_multimidia_e_conectividade.wifi_hotspot", "sistema_multimidia_e_conectividade.assistente_digital_integrado", "conectividade_via_aplicativo.app_conectividade_recursos", "conectividade_via_aplicativo.app_conectividade_seguranca"]
+  }
+}

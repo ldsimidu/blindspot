@@ -13,7 +13,7 @@ import { callLLM } from "./llm";
 import { getPersistenceMode } from "./db/client";
 import { persistTechnicalSheet, readLatestTechnicalSheet, readTechnicalSheetHistory } from "./db/repository";
 import { buildVehiclePayload, composeFinalPrompt, readBaseAgentPrompt, readOutputSchema } from "./prompt-builder";
-import { readNormalizationPolicy, readSourcePolicy } from "./runtime-assets";
+import { readFieldPolicy, readNormalizationPolicy, readSourcePolicy } from "./runtime-assets";
 import { FichaTecnicaHistoryItem, HttpError, VehicleInput } from "./types";
 import { validateResponse } from "./validator";
 
@@ -55,11 +55,12 @@ app.post("/api/ficha-tecnica", async (req: Request, res: Response, next: NextFun
   try {
     const vehicleInput = parseVehicleInput(req.body);
 
-    const [baseAgentPrompt, outputSchema, sourcePolicy, normalizationPolicy] = await Promise.all([
+    const [baseAgentPrompt, outputSchema, sourcePolicy, normalizationPolicy, fieldPolicy] = await Promise.all([
       readBaseAgentPrompt(),
       readOutputSchema(),
       readSourcePolicy(),
-      readNormalizationPolicy()
+      readNormalizationPolicy(),
+      readFieldPolicy()
     ]);
     const vehiclePayload = buildVehiclePayload(vehicleInput);
     const finalPrompt = composeFinalPrompt({
@@ -67,7 +68,8 @@ app.post("/api/ficha-tecnica", async (req: Request, res: Response, next: NextFun
       outputSchema,
       vehiclePayload,
       sourcePolicy,
-      normalizationPolicy
+      normalizationPolicy,
+      fieldPolicy
     });
 
     const llmRawResponse = await callLLM(finalPrompt, vehicleInput);
@@ -78,7 +80,8 @@ app.post("/api/ficha-tecnica", async (req: Request, res: Response, next: NextFun
       vehicle: vehicleInput,
       provider: snapshotProvider,
       sourcePolicy,
-      normalizationPolicy
+      normalizationPolicy,
+      fieldPolicy
     });
     if (getPersistenceMode() === "postgres") {
       await persistTechnicalSheet({ requestId, provider: snapshotProvider, vehicle: vehicleInput, response: validatedResponse, outputSchema, finalPrompt });

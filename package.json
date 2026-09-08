@@ -13,6 +13,7 @@
     "verify:source-policy": "tsx scripts/verify-source-policy.ts",
     "verify:normalization": "tsx scripts/verify-normalization.ts",
     "verify:technical-sheet-catalog": "tsx scripts/verify-technical-sheet-catalog.ts",
+    "verify:field-policy": "tsx scripts/verify-field-policy.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },
