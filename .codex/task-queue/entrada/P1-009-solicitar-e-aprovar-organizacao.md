@@ -1,4 +1,4 @@
-# 🚧 Em execução — E01-01 Solicitar e aprovar organização
+# ✅ Concluída — E01-01 Solicitar e aprovar organização
 
 > Prioridade: P1
 >
@@ -63,7 +63,7 @@ Implementar solicitação de organização, protocolo seguro, revisão por opera
 
 ## Resultado do agente
 
-- Estado: `🚧 Em execução`; Arquitetura: `APPROVED`; Segurança: `Aplicável — controles proporcionais registrados nesta task`.
-- Implementação parcial: schema/migration aditiva, HMAC de deduplicação, protocolo aleatório, rotas de solicitação/decisão, mensagens neutras e comparação em tempo constante implementados. A aprovação cria somente organização `pending_activation`; não cria sessão, senha, convite ou acesso.
-- Verificações: `npm run typecheck` e `npm run build` aprovados.
-- Bloqueio atual: faltam `OPERATOR_APPROVAL_KEY` e `ORGANIZATION_HASH_KEY` (valores distintos, aleatórios e com ao menos 32 caracteres) no `.env`/secret manager para aplicar a migration e executar o smoke seguro no Neon.
+- Estado: `✅ Concluída`; Arquitetura: `APPROVED`; Segurança: `Aplicável — controles proporcionais registrados nesta task`.
+- Implementação: schema/migration aditiva, HMAC de deduplicação, protocolo aleatório, rotas de solicitação/decisão, mensagens neutras e comparação em tempo constante. A aprovação cria somente organização `pending_activation`; não cria sessão, senha, convite ou acesso.
+- Verificações: `npm run typecheck` e `npm run build` aprovados; migration P1-009 aplicada no Neon. Smoke contra a API local/Neon: criação 202/`received`, repetição com mesma resposta externa neutra, chave inválida 404 sanitizado, aprovação 200/`approved`, organização `pending_activation` e dois eventos de auditoria. Nenhum provider foi chamado.
+- Limites e pendências: há uma organização de smoke `pending_activation` no Neon como evidência; P1-010 é responsável por convite/ativação e P1-011/P1-013 substituirão o operador temporário por sessão/RBAC. Retenção de 90 dias continua como política documentada, sem job automático neste corte.
