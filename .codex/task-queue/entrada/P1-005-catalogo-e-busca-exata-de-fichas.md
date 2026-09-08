@@ -1,4 +1,4 @@
-# ❌ Bloqueada — E02-05a Catálogo e busca exata de fichas
+# ✅ Concluída — E02-05a Catálogo e busca exata de fichas
 
 > Prioridade: P1
 >
@@ -10,7 +10,7 @@
 >
 > Triagem automática: `Material — cria consultas, índices e comportamento de produto.`
 >
-> Segurança: `A avaliar — API, persistência e acesso futuro a dados corporativos.`
+> Segurança: `Aplicável — API, persistência e acesso futuro a dados corporativos; revisão atualizada em 08/09/2026.`
 
 ## Pedido
 
@@ -142,3 +142,31 @@ O slug legível é derivado de marca/modelo/versão/ano/mercado e exposto como m
 - Verificações aprovadas: `npm run typecheck`; `npm run verify:catalog-contract`; `npm run verify:quality-policy`; `npm run verify:field-policy`; `npm run verify:normalization`; `npm run verify:source-policy`; `npm run verify:technical-sheet-catalog`; `npm run build`. Smoke em modo `file`: health 200, catálogo 503 controlado e página inválida 400.
 - Verificação bloqueada: o driver Neon via `Pool` recebe erro de transporte WebSocket `Received network error or non-101 status code` neste ambiente, inclusive fora do sandbox. A consulta transacional ao PostgreSQL e a confirmação da migration não foram declaradas aprovadas. O pacote `ws`, recomendado pela documentação do Neon para fornecer o construtor WebSocket em Node, não foi instalado porque o registry não concluiu a operação local.
 - Próximo passo: disponibilizar transporte WebSocket compatível para o Neon (ou autorizar/viabilizar a instalação de `ws`), repetir `db:migrate` e os smokes PostgreSQL de descoberta, seleção exata, ausência e incompatibilidade; somente então avaliar a conclusão da P1-005A.
+
+## Retomada do bloqueio — 2026-09-08
+
+### Diagnóstico confirmado
+
+- O Neon e a `DATABASE_URL` configurada responderam a uma consulta somente leitura quando o Node 22.19 usou a store de certificados do Windows (`--use-system-ca`). A URL não foi registrada nem exibida.
+- O erro anterior não era ausência de `ws`: o WebSocket nativo do Node é compatível. Fora do sandbox, o diagnóstico retornou `unable to verify the first certificate`, isto é, uma cadeia TLS confiada pelo Windows, mas não pela store bundled do Node.
+- A solução não desativa TLS e não adiciona certificado, proxy, URL ou segredo ao repositório. `dev:api` e `db:migrate` passam a iniciar Node com `--use-system-ca`, mantendo a validação da cadeia por uma store confiável do sistema. O servidor usa `--import tsx --watch`, evitando que um watcher filho perca a configuração de certificados ao iniciar a aplicação.
+- A migration Drizzle aditiva existente foi aplicada com sucesso ao Neon depois da correção de confiança TLS.
+
+### Revisão de segurança atualizada
+
+- **Fronteira revisada:** processo Node local -> store de certificados do sistema operacional -> WebSocket TLS -> Neon. Nenhuma CA é embutida, nenhuma validação é ignorada e nenhum segredo é exposto.
+- **Cenário evitado:** configurar `NODE_TLS_REJECT_UNAUTHORIZED=0`, `sslmode=disable` ou equivalente ocultaria uma interceptação/certificado inválido. Essas alternativas foram deliberadamente rejeitadas.
+- **Verificação aprovada:** `SELECT 1` somente leitura via `Pool` e WebSocket nativo do Node, com `--use-system-ca`, retornou sucesso; `db:migrate` aplicou as migrations com sucesso.
+- **Risco residual:** a correção exige Node 22.19+ para a flag. Ambientes que usem outra versão devem atualizar o runtime ou fornecer uma cadeia confiável por mecanismo equivalente, sem desligar TLS.
+
+### Verificações concluídas nesta execução
+
+- **Schema e migration:** leitura do catálogo de metadados confirmou `public.vehicle_configurations`, `public.vehicle_configuration_aliases` e `drizzle.__drizzle_migrations`; a reaplicação de `db:migrate` foi idempotente e bem-sucedida.
+- **Smoke PostgreSQL da API:** `GET /api/health` respondeu 200; descoberta paginada encontrou a configuração já existente; página inválida respondeu 400 sanitizado; UUID ausente retornou `not_registered`; abertura com identidade completa retornou `found`; a alteração deliberada de um campo canônico retornou `incompatible`. Nenhum provider foi chamado nem ficha de teste foi criada.
+- **Gates locais:** `npm run typecheck`, `verify:catalog-contract`, `verify:quality-policy`, `verify:field-policy`, `verify:normalization`, `verify:source-policy`, `verify:technical-sheet-catalog` (204 campos) e `npm run build` passaram.
+
+### Resultado final
+
+- **Estado:** `✅ Concluída`.
+- **Critérios de aceite comprovados:** a busca não seleciona aproximados; a abertura confirma UUID mais os cinco campos canônicos; ausência e incompatibilidade são explícitas; a paginação tem limite/ordem determinística; schema, migration e endpoints PostgreSQL foram verificados contra o Neon.
+- **Limite preservado:** catálogo segue técnico/local até os Gates de autenticação e RBAC; a correção de TLS não aceita certificado inválido e não amplia exposição de dados.

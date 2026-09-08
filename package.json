@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently \"npm:dev:api\" \"npm:dev:web\"",
     "dev:web": "vite --config vite.config.ts",
-    "dev:api": "tsx watch services/api/index.ts",
+    "dev:api": "node --use-system-ca --import tsx --watch services/api/index.ts",
     "build": "vite build --config vite.config.ts",
     "preview": "vite preview --config vite.config.ts",
     "typecheck": "tsc --noEmit",
@@ -17,7 +17,7 @@
     "verify:quality-policy": "tsx scripts/verify-quality-policy.ts",
     "verify:catalog-contract": "tsx scripts/verify-catalog-contract.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "db:migrate": "node --use-system-ca ./node_modules/drizzle-kit/bin.cjs migrate"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.1.0",
