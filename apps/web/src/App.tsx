@@ -1,9 +1,9 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { gerarFichaTecnica, obterHistoricoFichas, obterUltimaFichaTecnica } from "./api";
-import type { FichaTecnicaHistoryItem, FichaTecnicaResponse, VehicleInput } from "./types";
+import { abrirFichaCatalogo, buscarCatalogo, gerarFichaTecnica, obterHistoricoFichas, obterUltimaFichaTecnica } from "./api";
+import type { CatalogEntryResult, CatalogSearchResult, FichaTecnicaHistoryItem, FichaTecnicaResponse, VehicleInput } from "./types";
 import logoBlindspot from "./assets/blindspot-mark.png";
 
-type AppView = "request" | "history";
+type AppView = "request" | "catalog" | "history";
 type ThemeMode = "dark" | "light";
 
 interface FormState {
@@ -58,6 +58,12 @@ function App() {
   const [result, setResult] = useState<FichaTecnicaResponse | null>(null);
   const [history, setHistory] = useState<FichaTecnicaHistoryItem[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
+  const [catalogQuery, setCatalogQuery] = useState("");
+  const [catalogPage, setCatalogPage] = useState(1);
+  const [catalogResult, setCatalogResult] = useState<CatalogSearchResult | null>(null);
+  const [catalogEntry, setCatalogEntry] = useState<CatalogEntryResult | null>(null);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
 
   const isFormValid = useMemo(() => {
     const hasRequiredText =
@@ -159,6 +165,33 @@ function App() {
     setSelectedHistoryId(recentHistory[0]?.id ?? null);
   }
 
+  async function runCatalogSearch(page = 1): Promise<void> {
+    setCatalogLoading(true);
+    setCatalogError(null);
+    setCatalogEntry(null);
+    try {
+      setCatalogResult(await buscarCatalogo(catalogQuery, page));
+      setCatalogPage(page);
+    } catch (err) {
+      setCatalogResult(null);
+      setCatalogError(err instanceof Error ? err.message : "Erro inesperado ao consultar catalogo.");
+    } finally {
+      setCatalogLoading(false);
+    }
+  }
+
+  async function openCatalogEntry(id: string, vehicle: VehicleInput): Promise<void> {
+    setCatalogLoading(true);
+    setCatalogError(null);
+    try {
+      setCatalogEntry(await abrirFichaCatalogo(id, vehicle));
+    } catch (err) {
+      setCatalogError(err instanceof Error ? err.message : "Erro inesperado ao abrir ficha do catalogo.");
+    } finally {
+      setCatalogLoading(false);
+    }
+  }
+
   return (
     <main className={`dashboard-page ${isSidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <aside className="sidebar">
@@ -198,6 +231,15 @@ function App() {
               <RequestIcon />
             </span>
             <span className="sidebar-link-label">Requisitar ficha</span>
+          </button>
+          <button
+            type="button"
+            className={`sidebar-link ${activeView === "catalog" ? "active" : ""}`}
+            onClick={() => setActiveView("catalog")}
+            title="Catalogo"
+          >
+            <span className="sidebar-link-icon">⌕</span>
+            <span className="sidebar-link-label">Catalogo</span>
           </button>
           <button
             type="button"
@@ -280,6 +322,55 @@ function App() {
 
             {result ? <FichaDashboard title="Ultima ficha validada" ficha={result} showTraceability={false} /> : null}
           </>
+        ) : activeView === "catalog" ? (
+          <section className="history-layout">
+            <section className="panel history-panel">
+              <h2>Catalogo de fichas</h2>
+              <p>Pesquise candidatas e selecione a configuracao exata. A busca nunca abre um veiculo aproximado.</p>
+              <form
+                className="form-grid"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void runCatalogSearch(1);
+                }}
+              >
+                <label>
+                  Marca, modelo ou versao
+                  <input value={catalogQuery} maxLength={100} onChange={(event) => setCatalogQuery(event.target.value)} />
+                </label>
+                <button className="primary-button" disabled={catalogLoading} type="submit">
+                  {catalogLoading ? "Consultando..." : "Buscar no catalogo"}
+                </button>
+              </form>
+              {catalogLoading ? <p className="status-text">Carregando catalogo...</p> : null}
+              {catalogError ? <div className="error-box">{catalogError}</div> : null}
+              {catalogResult?.state === "not_registered" ? <p className="status-text">Nao cadastrado. Solicite uma nova coleta sem usar uma ficha aproximada.</p> : null}
+              {catalogResult?.state === "found" ? (
+                <>
+                  <p className="status-text">{catalogResult.total} configuracao(oes) encontrada(s).</p>
+                  <div className="history-list">
+                    {catalogResult.entries.map((entry) => (
+                      <button key={entry.id} type="button" className="history-item" onClick={() => void openCatalogEntry(entry.id, entry.vehicle)}>
+                        <strong>{entry.vehicle.marca} {entry.vehicle.modelo} {entry.vehicle.versao} {entry.vehicle.ano_modelo}</strong>
+                        <span>{entry.vehicle.mercado} · slug: {entry.slug || "pendente de atualizacao"}</span>
+                        <span>Versao atual: {entry.latestVersion ?? "indisponivel"}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <div className="details-toolbar">
+                    <button type="button" className="collapse-all-button" disabled={catalogPage <= 1 || catalogLoading} onClick={() => void runCatalogSearch(catalogPage - 1)}>Pagina anterior</button>
+                    <button type="button" className="collapse-all-button" disabled={catalogLoading || catalogPage * catalogResult.pageSize >= catalogResult.total} onClick={() => void runCatalogSearch(catalogPage + 1)}>Proxima pagina</button>
+                  </div>
+                </>
+              ) : null}
+            </section>
+            <section className="panel history-detail">
+              {!catalogEntry ? <p className="status-text">Selecione uma configuracao para confirmar a identidade e abrir a ficha.</p> : null}
+              {catalogEntry?.state === "incompatible" ? <div className="error-box">Configuracao incompativel. Nenhuma ficha foi aberta.</div> : null}
+              {catalogEntry?.state === "not_registered" ? <p className="status-text">A configuracao nao possui ficha catalogada.</p> : null}
+              {catalogEntry?.state === "found" ? <FichaDashboard title={`Ficha catalogada · versao ${catalogEntry.entry.latestVersion ?? "-"}`} ficha={catalogEntry.entry.response} showTraceability /> : null}
+            </section>
+          </section>
         ) : (
           <section className="history-layout">
             <section className="panel history-panel">

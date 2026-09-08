@@ -43,3 +43,24 @@ export interface FichaTecnicaHistoryItem {
   isValid: boolean;
   validationError?: string;
 }
+
+export interface CatalogCandidate {
+  id: string;
+  slug: string;
+  vehicle: VehicleInput;
+  latestVersion: number | null;
+  latestAt: string | null;
+}
+
+export interface CatalogSearchResult {
+  state: "found" | "not_registered";
+  page: number;
+  pageSize: number;
+  total: number;
+  entries: CatalogCandidate[];
+}
+
+export type CatalogEntryResult =
+  | { state: "found"; entry: CatalogCandidate & { response: FichaTecnicaResponse } }
+  | { state: "not_registered" }
+  | { state: "incompatible" };

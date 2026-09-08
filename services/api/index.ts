@@ -11,7 +11,7 @@ import {
 } from "./logger";
 import { callLLM } from "./llm";
 import { getPersistenceMode } from "./db/client";
-import { persistTechnicalSheet, readLatestTechnicalSheet, readTechnicalSheetHistory } from "./db/repository";
+import { persistTechnicalSheet, readCatalogEntryExact, readLatestTechnicalSheet, readTechnicalSheetHistory, searchCatalog } from "./db/repository";
 import { buildVehiclePayload, composeFinalPrompt, readBaseAgentPrompt, readOutputSchema } from "./prompt-builder";
 import { readFieldPolicy, readNormalizationPolicy, readQualityPolicy, readSourcePolicy } from "./runtime-assets";
 import { FichaTecnicaHistoryItem, HttpError, VehicleInput } from "./types";
@@ -49,6 +49,28 @@ app.use((req, res, next) => {
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
+});
+
+app.get("/api/catalogo/fichas", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    res.status(200).json(await searchCatalog(parseCatalogSearchInput(req.query)));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/catalogo/fichas/:id", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const result = await readCatalogEntryExact(parseCatalogId(req.params.id), parseVehicleInput(req.query));
+    if (result.state !== "found") {
+      res.status(200).json(result);
+      return;
+    }
+    const outputSchema = await readOutputSchema();
+    res.status(200).json({ ...result, entry: { ...result.entry, response: validateResponse(result.entry.response, outputSchema) } });
+  } catch (error) {
+    next(error);
+  }
 });
 
 app.post("/api/ficha-tecnica", async (req: Request, res: Response, next: NextFunction) => {
@@ -237,6 +259,31 @@ function toYear(value: unknown): number {
   }
 
   throw new HttpError(400, "Campo ano_modelo deve ser um inteiro entre 1900 e 2100.");
+}
+
+function parseCatalogSearchInput(query: Request["query"]): { query: string; page: number; pageSize: number } {
+  const rawQuery = query.q;
+  if (rawQuery !== undefined && (typeof rawQuery !== "string" || rawQuery.length > 100 || /[\u0000-\u001f\u007f]/.test(rawQuery))) {
+    throw new HttpError(400, "Parametro q invalido.");
+  }
+  const page = parsePositiveInteger(query.page, "page", 1, 10_000);
+  const pageSize = parsePositiveInteger(query.page_size, "page_size", 20, 20);
+  return { query: rawQuery?.trim() ?? "", page, pageSize };
+}
+
+function parsePositiveInteger(value: unknown, name: string, fallback: number, max: number): number {
+  if (value === undefined) return fallback;
+  if (typeof value !== "string" || !/^\d+$/.test(value)) throw new HttpError(400, `Parametro ${name} invalido.`);
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > max) throw new HttpError(400, `Parametro ${name} invalido.`);
+  return parsed;
+}
+
+function parseCatalogId(value: string): string {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)) {
+    throw new HttpError(400, "Identificador de catalogo invalido.");
+  }
+  return value;
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {

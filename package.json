@@ -15,6 +15,7 @@
     "verify:technical-sheet-catalog": "tsx scripts/verify-technical-sheet-catalog.ts",
     "verify:field-policy": "tsx scripts/verify-field-policy.ts",
     "verify:quality-policy": "tsx scripts/verify-quality-policy.ts",
+    "verify:catalog-contract": "tsx scripts/verify-catalog-contract.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
   },
