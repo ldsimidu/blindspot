@@ -1,10 +1,11 @@
 import type { VehicleInput, VehiclePayload } from "./types";
-import { readRuntimeAsset, readRuntimeSchema } from "./runtime-assets";
+import { readRuntimeAsset, readRuntimeSchema, type SourcePolicy } from "./runtime-assets";
 
 interface PromptCompositionInput {
   baseAgentPrompt: string;
   outputSchema: unknown;
   vehiclePayload: VehiclePayload;
+  sourcePolicy?: SourcePolicy;
 }
 
 export async function readBaseAgentPrompt(): Promise<string> {
@@ -45,6 +46,9 @@ export function composeFinalPrompt(input: PromptCompositionInput): string {
     "",
     "### SCHEMA_VARIABLES_TARGET",
     JSON.stringify(schemaVariables, null, 2),
+    ...(input.sourcePolicy
+      ? ["", "### SOURCE_POLICY_JSON", JSON.stringify(input.sourcePolicy, null, 2)]
+      : []),
     "",
     "### EXECUTION_RULES",
     "Interpret BASE_AGENT_PROMPT as the main instruction source.",

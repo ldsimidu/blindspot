@@ -1,19 +1,134 @@
 import Ajv2020, { ErrorObject } from "ajv/dist/2020";
 import addFormats from "ajv-formats";
 import type { FichaTecnicaResponse } from "./types";
-import { ValidationError } from "./types";
+import { ValidationError, type VehicleInput } from "./types";
+import type { SourcePolicy } from "./runtime-assets";
+
+interface ValidationContext {
+  vehicle: VehicleInput;
+  provider: "claude" | "openrouter" | "simulated";
+  sourcePolicy: SourcePolicy;
+}
 
 export function validateResponse(
   candidateResponse: unknown,
-  outputSchema: Record<string, unknown>
+  outputSchema: Record<string, unknown>,
+  context?: ValidationContext
 ): FichaTecnicaResponse {
   const normalizedResponse = normalizeCandidateResponse(candidateResponse);
   normalizeStatusFieldShapes(normalizedResponse);
   enrichResumoCompletude(normalizedResponse);
   validateWithAjv(normalizedResponse, outputSchema);
   validateFonteRefConsistency(normalizedResponse);
+  if (context) {
+    validateVehicleIdentity(normalizedResponse, context.vehicle);
+    validateSourcePolicy(normalizedResponse, context);
+  }
 
   return normalizedResponse as FichaTecnicaResponse;
+}
+
+function validateVehicleIdentity(candidateResponse: unknown, requestedVehicle: VehicleInput): void {
+  if (!isObject(candidateResponse) || !isObject(candidateResponse.veiculo_alvo)) {
+    throw new ValidationError("Resposta precisa declarar o veiculo alvo.");
+  }
+
+  const returnedVehicle = candidateResponse.veiculo_alvo;
+  const fields: Array<keyof VehicleInput> = ["marca", "modelo", "versao", "ano_modelo", "mercado"];
+  const mismatches = fields.filter((field) => normalizeIdentityValue(returnedVehicle[field]) !== normalizeIdentityValue(requestedVehicle[field]));
+
+  if (mismatches.length > 0) {
+    throw new ValidationError("Resposta nao corresponde ao veiculo solicitado.", {
+      code: "vehicle_identity_mismatch",
+      fields: mismatches
+    });
+  }
+}
+
+function validateSourcePolicy(candidateResponse: unknown, context: ValidationContext): void {
+  if (!isObject(candidateResponse) || !Array.isArray(candidateResponse.fontes_utilizadas)) {
+    throw new ValidationError("Fontes utilizadas ausentes ou invalidas.");
+  }
+
+  const policyMarket = context.sourcePolicy.markets.find(
+    (entry) =>
+      normalizeIdentityValue(entry.brand) === normalizeIdentityValue(context.vehicle.marca) &&
+      normalizeIdentityValue(entry.market) === normalizeIdentityValue(context.vehicle.mercado)
+  );
+
+  if (!policyMarket) {
+    throw new ValidationError("Mercado do veiculo ainda nao possui politica de fontes aprovada.", {
+      code: "source_policy_market_not_approved"
+    });
+  }
+
+  const violations: Array<{ sourceId: string; code: string }> = [];
+  for (const source of candidateResponse.fontes_utilizadas) {
+    if (!isObject(source)) {
+      violations.push({ sourceId: "unknown", code: "source_not_object" });
+      continue;
+    }
+    const sourceId = typeof source.id === "string" ? source.id : "unknown";
+    const type = typeof source.tipo === "string" ? source.tipo : "";
+    const host = parseHttpsHost(source.url);
+
+    if (!host) {
+      violations.push({ sourceId, code: "source_url_not_https" });
+      continue;
+    }
+
+    if (context.provider === "simulated") {
+      if (!context.sourcePolicy.simulated.allowedSourceTypes.includes(type) || !hostMatchesAny(host, context.sourcePolicy.simulated.allowedHosts)) {
+        violations.push({ sourceId, code: "simulated_source_not_allowed" });
+      }
+      continue;
+    }
+
+    if (context.sourcePolicy.officialSourceTypes.includes(type)) {
+      if (!hostMatchesAny(host, policyMarket.officialDomains)) {
+        violations.push({ sourceId, code: "official_source_host_not_allowed" });
+      }
+      continue;
+    }
+
+    if (context.sourcePolicy.partnerSourceTypes.includes(type)) {
+      if (!hostMatchesAny(host, context.sourcePolicy.partnerDomains)) {
+        violations.push({ sourceId, code: "partner_source_host_not_allowed" });
+      }
+      continue;
+    }
+
+    violations.push({ sourceId, code: "source_type_not_allowed" });
+  }
+
+  if (violations.length > 0) {
+    throw new ValidationError("Resposta contem fontes fora da politica aprovada.", {
+      code: "source_policy_violation",
+      violations
+    });
+  }
+}
+
+function parseHttpsHost(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" ? url.hostname.toLowerCase().replace(/\.$/, "") : null;
+  } catch {
+    return null;
+  }
+}
+
+function hostMatchesAny(host: string, allowedHosts: string[]): boolean {
+  return allowedHosts.some((allowedHost) => {
+    const normalizedAllowedHost = allowedHost.toLowerCase().replace(/\.$/, "");
+    return host === normalizedAllowedHost || host.endsWith(`.${normalizedAllowedHost}`);
+  });
+}
+
+function normalizeIdentityValue(value: unknown): string {
+  if (typeof value === "number") return String(value);
+  return typeof value === "string" ? value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("pt-BR") : "";
 }
 
 function normalizeCandidateResponse(candidateResponse: unknown): unknown {

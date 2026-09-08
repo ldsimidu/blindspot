@@ -42,6 +42,13 @@ A estrutura detalhada de `ficha_tecnica` e demais campos está em `packages/agen
 - O schema compilado é o mesmo objeto canônico carregado de `packages/agent-runtime/assets/schema.json`.
 - Se inválido: erro `422` com mensagem do tipo "Resposta do LLM invalida para o schema." e lista `ajvErrors` formatada (`instancePath` + mensagem).
 
+## Passo 3: identidade e política de fontes
+
+- A rota de geração compara `veiculo_alvo` com os cinco campos solicitados: marca, modelo, versão, ano-modelo e mercado. Não aplica aliases ou aproximações silenciosas.
+- `packages/agent-runtime/assets/source-policy.json` é a política canônica e versionada para tipos e hosts de fonte.
+- URLs devem usar HTTPS. Fontes oficiais exigem host oficial aprovado para marca/mercado; parceiras usam tipo não oficial e host da allowlist; a fonte `mock_local` só é aceita com provider `simulated`.
+- Violação de identidade ou política retorna `422` sanitizado, sem consulta de URL, fallback de provider ou publicação da ficha.
+
 ## Passo 2: Consistência `fonte_ref` × `fontes_utilizadas`
 
 Após passar no AJV:

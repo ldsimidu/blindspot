@@ -10,7 +10,10 @@ import {
   saveLLMResponseSnapshot
 } from "./logger";
 import { callLLM } from "./llm";
+import { getPersistenceMode } from "./db/client";
+import { persistTechnicalSheet, readLatestTechnicalSheet, readTechnicalSheetHistory } from "./db/repository";
 import { buildVehiclePayload, composeFinalPrompt, readBaseAgentPrompt, readOutputSchema } from "./prompt-builder";
+import { readSourcePolicy } from "./runtime-assets";
 import { FichaTecnicaHistoryItem, HttpError, VehicleInput } from "./types";
 import { validateResponse } from "./validator";
 
@@ -52,20 +55,29 @@ app.post("/api/ficha-tecnica", async (req: Request, res: Response, next: NextFun
   try {
     const vehicleInput = parseVehicleInput(req.body);
 
-    const [baseAgentPrompt, outputSchema] = await Promise.all([readBaseAgentPrompt(), readOutputSchema()]);
+    const [baseAgentPrompt, outputSchema, sourcePolicy] = await Promise.all([readBaseAgentPrompt(), readOutputSchema(), readSourcePolicy()]);
     const vehiclePayload = buildVehiclePayload(vehicleInput);
     const finalPrompt = composeFinalPrompt({
       baseAgentPrompt,
       outputSchema,
-      vehiclePayload
+      vehiclePayload,
+      sourcePolicy
     });
 
     const llmRawResponse = await callLLM(finalPrompt, vehicleInput);
-    const validatedResponse = validateResponse(llmRawResponse, outputSchema);
     const requestId = String(res.getHeader("x-request-id") ?? createRequestId());
     const provider = (process.env.LLM_PROVIDER ?? "simulated").toLowerCase();
     const snapshotProvider = provider === "claude" || provider === "openrouter" ? provider : "simulated";
-    void saveLLMResponseSnapshot(requestId, snapshotProvider, vehicleInput, validatedResponse);
+    const validatedResponse = validateResponse(llmRawResponse, outputSchema, {
+      vehicle: vehicleInput,
+      provider: snapshotProvider,
+      sourcePolicy
+    });
+    if (getPersistenceMode() === "postgres") {
+      await persistTechnicalSheet({ requestId, provider: snapshotProvider, vehicle: vehicleInput, response: validatedResponse, outputSchema, finalPrompt });
+    } else {
+      void saveLLMResponseSnapshot(requestId, snapshotProvider, vehicleInput, validatedResponse);
+    }
 
     res.status(200).json(validatedResponse);
   } catch (error) {
@@ -75,10 +87,8 @@ app.post("/api/ficha-tecnica", async (req: Request, res: Response, next: NextFun
 
 app.get("/api/ficha-tecnica/latest", async (_req: Request, res: Response, next: NextFunction) => {
   try {
-    const [outputSchema, latestSnapshot] = await Promise.all([
-      readOutputSchema(),
-      readLatestLLMResponseSnapshot()
-    ]);
+    const outputSchema = await readOutputSchema();
+    const latestSnapshot = getPersistenceMode() === "postgres" ? await readLatestTechnicalSheet() : await readLatestLLMResponseSnapshot();
 
     if (!latestSnapshot) {
       res.status(404).json({
@@ -100,10 +110,8 @@ app.get("/api/ficha-tecnica/history", async (req: Request, res: Response, next: 
       typeof req.query.limit === "string" ? Number.parseInt(req.query.limit, 10) : Number.NaN;
     const limit = Number.isInteger(requestedLimit) && requestedLimit > 0 ? requestedLimit : 2;
 
-    const [outputSchema, recentResponses] = await Promise.all([
-      readOutputSchema(),
-      readRecentLLMResponses(limit)
-    ]);
+    const outputSchema = await readOutputSchema();
+    const recentResponses = getPersistenceMode() === "postgres" ? await readTechnicalSheetHistory(limit) : await readRecentLLMResponses(limit);
 
     const history: FichaTecnicaHistoryItem[] = recentResponses.map((entry) => {
       try {
@@ -151,10 +159,9 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
     return;
   }
 
-  const unexpectedMessage = error instanceof Error ? error.message : "Erro interno nao mapeado.";
   res.status(500).json({
     message: "Erro interno no servidor.",
-    details: unexpectedMessage
+    details: null
   });
 });
 
