@@ -11,7 +11,9 @@ export OPERATOR_APPROVAL_KEY="valor-configurado-no-env-local"
 
 ## Postman
 
-Importe [blindspot-operacao-organizacoes.postman_collection.json](blindspot-operacao-organizacoes.postman_collection.json) pelo botão **Import** do Postman. Depois, na aba **Variables** da collection, informe localmente:
+Importe [blindspot-operacao-organizacoes.postman_collection.json](blindspot-operacao-organizacoes.postman_collection.json) e o template [blindspot.local.postman_environment.json](blindspot.local.postman_environment.json) pelo botão **Import** do Postman. Em seguida, selecione o environment **BlindSpot — Local** no canto superior direito do Postman e preencha seus **Current values**.
+
+Veja o guia completo em [variaveis-de-ambiente.md](variaveis-de-ambiente.md). Resumo das variáveis Postman:
 
 - `baseUrl`: por exemplo, `http://localhost:3001`;
 - `operatorApprovalKey`: o valor local de `OPERATOR_APPROVAL_KEY`;
