@@ -22,7 +22,20 @@ export interface SourcePolicy {
   };
 }
 
-export async function readRuntimeAsset(fileName: "base-agent-prompt.txt" | "schema.json" | "mock-response.json" | "source-policy.json"): Promise<string> {
+export interface NormalizationPolicy {
+  version: string;
+  description: string;
+  fields: Array<{
+    path: string;
+    canonicalUnit: string;
+    kind: "engine_displacement" | "power" | "torque" | "fuel_consumption";
+    acceptedUnits: string[];
+  }>;
+}
+
+export async function readRuntimeAsset(
+  fileName: "base-agent-prompt.txt" | "schema.json" | "mock-response.json" | "source-policy.json" | "normalization-policy.json"
+): Promise<string> {
   return readFile(path.join(RUNTIME_ASSETS_DIR, fileName), "utf-8");
 }
 
@@ -36,4 +49,8 @@ export async function readRuntimeMockResponse(): Promise<Record<string, unknown>
 
 export async function readSourcePolicy(): Promise<SourcePolicy> {
   return JSON.parse(await readRuntimeAsset("source-policy.json")) as SourcePolicy;
+}
+
+export async function readNormalizationPolicy(): Promise<NormalizationPolicy> {
+  return JSON.parse(await readRuntimeAsset("normalization-policy.json")) as NormalizationPolicy;
 }

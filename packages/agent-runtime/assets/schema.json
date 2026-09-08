@@ -1199,6 +1199,9 @@
         "valor": {
           "$ref": "#/$defs/valor_base"
         },
+        "valor_original": {
+          "$ref": "#/$defs/valor_base"
+        },
         "status": {
           "const": "confirmado"
         },
@@ -1217,6 +1220,9 @@
       ],
       "properties": {
         "valor": {
+          "$ref": "#/$defs/valor_base"
+        },
+        "valor_original": {
           "$ref": "#/$defs/valor_base"
         },
         "status": {
@@ -1331,6 +1337,9 @@
       ],
       "properties": {
         "valor": {
+          "$ref": "#/$defs/valor_base"
+        },
+        "valor_original": {
           "$ref": "#/$defs/valor_base"
         },
         "status": {

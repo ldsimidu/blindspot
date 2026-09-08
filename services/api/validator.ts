@@ -3,11 +3,14 @@ import addFormats from "ajv-formats";
 import type { FichaTecnicaResponse } from "./types";
 import { ValidationError, type VehicleInput } from "./types";
 import type { SourcePolicy } from "./runtime-assets";
+import type { NormalizationPolicy } from "./runtime-assets";
+import { normalizeTechnicalMeasurements } from "./normalizer";
 
 interface ValidationContext {
   vehicle: VehicleInput;
   provider: "claude" | "openrouter" | "simulated";
   sourcePolicy: SourcePolicy;
+  normalizationPolicy?: NormalizationPolicy;
 }
 
 export function validateResponse(
@@ -17,6 +20,7 @@ export function validateResponse(
 ): FichaTecnicaResponse {
   const normalizedResponse = normalizeCandidateResponse(candidateResponse);
   normalizeStatusFieldShapes(normalizedResponse);
+  if (context?.normalizationPolicy) normalizeTechnicalMeasurements(normalizedResponse, context.normalizationPolicy);
   enrichResumoCompletude(normalizedResponse);
   validateWithAjv(normalizedResponse, outputSchema);
   validateFonteRefConsistency(normalizedResponse);
@@ -341,11 +345,13 @@ function walkAndNormalizeStatus(node: unknown): void {
     // Keeps semantics aligned with schema defs in prompt-assets/schema.json.
     if (status === "nao_aplicavel") {
       node.valor = null;
+      delete node.valor_original;
       delete node.fonte_ref;
       delete node.obs_ref;
       delete node.observacoes;
     } else if (status === "nao_encontrado") {
       node.valor = null;
+      delete node.valor_original;
       node.obs_ref = "NF1";
       delete node.fonte_ref;
       delete node.observacoes;
@@ -358,6 +364,7 @@ function walkAndNormalizeStatus(node: unknown): void {
       }
     } else if (status === "conflitante") {
       node.valor = null;
+      delete node.valor_original;
       if (!isNonEmptyString(node.obs_ref) && !isNonEmptyString(node.observacoes)) {
         node.obs_ref = "CF1";
       }

@@ -35,7 +35,18 @@ interface FonteUtilizada {
 
 A estrutura detalhada de `ficha_tecnica` e demais campos está em `packages/agent-runtime/assets/schema.json`.
 
-## Passo 1: JSON Schema (AJV)
+## Passo 1: normalização determinística de medidas
+
+Na geração, antes do AJV, `services/api/normalizer.ts` lê a política canônica `packages/agent-runtime/assets/normalization-policy.json`. A versão atual só normaliza os campos allowlisted `motorizacao.cilindrada_l`, `motorizacao.potencia_cv`, `motorizacao.torque_nm` e `motorizacao.consumo_valor`.
+
+- A conversão é local, determinística e não consulta rede.
+- Conversões preservam o texto observado em `valor_original`; o campo `valor` recebe a unidade canônica.
+- O normalizador não muda `status`, `fonte_ref`, identidade ou completude; ausência, conflito e não aplicabilidade permanecem sem valor.
+- Unidade ausente, formato livre, valor não positivo onde a medida exige positividade e `mpg` sem o sufixo `us`/`uk` retornam `422` sanitizado, com código `normalization_invalid_measurement` e caminho do campo, sem expor payload do modelo.
+
+`valor_original` é opcional somente nos estados de campo que contêm valor (`confirmado`, `parcial` e `inferido_minimamente`). Fichas persistidas antes desta versão continuam compatíveis porque o novo campo é aditivo.
+
+## Passo 2: JSON Schema (AJV)
 
 - Biblioteca: **Ajv 2020** (`ajv/dist/2020`) com **`ajv-formats`**.
 - Opções: `allErrors: true`, `strict: false`.
@@ -49,7 +60,7 @@ A estrutura detalhada de `ficha_tecnica` e demais campos está em `packages/agen
 - URLs devem usar HTTPS. Fontes oficiais exigem host oficial aprovado para marca/mercado; parceiras usam tipo não oficial e host da allowlist; a fonte `mock_local` só é aceita com provider `simulated`.
 - Violação de identidade ou política retorna `422` sanitizado, sem consulta de URL, fallback de provider ou publicação da ficha.
 
-## Passo 2: Consistência `fonte_ref` × `fontes_utilizadas`
+## Passo 4: Consistência `fonte_ref` × `fontes_utilizadas`
 
 Após passar no AJV:
 

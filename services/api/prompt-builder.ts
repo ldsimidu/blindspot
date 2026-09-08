@@ -1,11 +1,12 @@
 import type { VehicleInput, VehiclePayload } from "./types";
-import { readRuntimeAsset, readRuntimeSchema, type SourcePolicy } from "./runtime-assets";
+import { readRuntimeAsset, readRuntimeSchema, type NormalizationPolicy, type SourcePolicy } from "./runtime-assets";
 
 interface PromptCompositionInput {
   baseAgentPrompt: string;
   outputSchema: unknown;
   vehiclePayload: VehiclePayload;
   sourcePolicy?: SourcePolicy;
+  normalizationPolicy?: NormalizationPolicy;
 }
 
 export async function readBaseAgentPrompt(): Promise<string> {
@@ -49,12 +50,16 @@ export function composeFinalPrompt(input: PromptCompositionInput): string {
     ...(input.sourcePolicy
       ? ["", "### SOURCE_POLICY_JSON", JSON.stringify(input.sourcePolicy, null, 2)]
       : []),
+    ...(input.normalizationPolicy
+      ? ["", "### NORMALIZATION_POLICY_JSON", JSON.stringify(input.normalizationPolicy, null, 2)]
+      : []),
     "",
     "### EXECUTION_RULES",
     "Interpret BASE_AGENT_PROMPT as the main instruction source.",
     "Research on the web for the exact vehicle from VEHICLE_PAYLOAD_JSON.",
     "Fill every variable listed in SCHEMA_VARIABLES_TARGET whenever reliable evidence exists.",
     "Use source references for each filled field as instructed by BASE_AGENT_PROMPT.",
+    "For allowlisted technical measurements, use canonical units from NORMALIZATION_POLICY_JSON; do not infer ambiguous units.",
     "Output must strictly match OUTPUT_SCHEMA_JSON.",
     "Return only valid JSON."
   ].join("\n");

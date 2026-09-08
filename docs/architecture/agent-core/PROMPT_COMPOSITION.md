@@ -28,12 +28,17 @@ O texto final concatena, nesta ordem:
    - Percorre `properties.ficha_tecnica.properties` no schema.
    - Para cada grupo, lê `required` e emite strings `"<nome_do_grupo>.<campo>"`.
 
-5. `### EXECUTION_RULES` — linhas fixas em inglês que reforçam:
+5. `### SOURCE_POLICY_JSON` — política canônica de fontes, quando carregada para a geração.
+
+6. `### NORMALIZATION_POLICY_JSON` — política canônica e versionada de medidas, quando carregada para a geração. Ela informa os poucos campos/unidades convertíveis; não autoriza inferir unidade, versão ou valor ausente.
+
+7. `### EXECUTION_RULES` — linhas fixas em inglês que reforçam:
    - interpretar `BASE_AGENT_PROMPT` como fonte principal de instrução;
    - pesquisar na web o veículo exato de `VEHICLE_PAYLOAD_JSON`;
    - preencher todas as variáveis listadas em `SCHEMA_VARIABLES_TARGET` quando houver evidência confiável;
    - usar referências de fonte conforme o base prompt;
-   - saída estritamente conforme `OUTPUT_SCHEMA_JSON`;
+  - uso de unidade canônica apenas quando a política de normalização a define, sem inferir unidade ambígua;
+  - saída estritamente conforme `OUTPUT_SCHEMA_JSON`;
    - retornar **apenas JSON válido** (sem texto extra).
 
 ## Observação para outros agentes

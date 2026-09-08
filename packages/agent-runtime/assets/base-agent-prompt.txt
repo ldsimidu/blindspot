@@ -96,7 +96,7 @@ obs_catalog[3]{id,texto}:
   NA1,item_nao_se_aplica_a_configuracao_do_veiculo
   CF1,divergencia_entre_fontes_relevantes_sem_desempate_oficial_conclusivo
 
-hard_rules[27]:
+hard_rules[29]:
   usar_somente_dados_do_veiculo_exato_informado
   nao_misturar_mercados_ou_anos_modelo_ou_versoes_ou_motorizacoes
   priorizar_fontes_oficiais
@@ -124,6 +124,8 @@ hard_rules[27]:
   classificar_fontes_utilizadas_por_bucket_montadora_oficial_ou_fontes_parceiras
   nao_tratar_fonte_parceira_como_oficial_da_montadora
   quando_status_for_nao_aplicavel_o_campo_valor_deve_ser_null_nunca_false_ou_true
+  para_medidas_listadas_na_politica_de_normalizacao_usar_a_unidade_canonica_sem_inferir_unidade_ambigua
+  quando_houver_conversao_deterministica_o_servidor_preserva_valor_original_e_fonte_ref_sem_mudar_status
 
 field_templates:
   confirmado:

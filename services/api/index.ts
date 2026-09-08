@@ -13,7 +13,7 @@ import { callLLM } from "./llm";
 import { getPersistenceMode } from "./db/client";
 import { persistTechnicalSheet, readLatestTechnicalSheet, readTechnicalSheetHistory } from "./db/repository";
 import { buildVehiclePayload, composeFinalPrompt, readBaseAgentPrompt, readOutputSchema } from "./prompt-builder";
-import { readSourcePolicy } from "./runtime-assets";
+import { readNormalizationPolicy, readSourcePolicy } from "./runtime-assets";
 import { FichaTecnicaHistoryItem, HttpError, VehicleInput } from "./types";
 import { validateResponse } from "./validator";
 
@@ -55,13 +55,19 @@ app.post("/api/ficha-tecnica", async (req: Request, res: Response, next: NextFun
   try {
     const vehicleInput = parseVehicleInput(req.body);
 
-    const [baseAgentPrompt, outputSchema, sourcePolicy] = await Promise.all([readBaseAgentPrompt(), readOutputSchema(), readSourcePolicy()]);
+    const [baseAgentPrompt, outputSchema, sourcePolicy, normalizationPolicy] = await Promise.all([
+      readBaseAgentPrompt(),
+      readOutputSchema(),
+      readSourcePolicy(),
+      readNormalizationPolicy()
+    ]);
     const vehiclePayload = buildVehiclePayload(vehicleInput);
     const finalPrompt = composeFinalPrompt({
       baseAgentPrompt,
       outputSchema,
       vehiclePayload,
-      sourcePolicy
+      sourcePolicy,
+      normalizationPolicy
     });
 
     const llmRawResponse = await callLLM(finalPrompt, vehicleInput);
@@ -71,7 +77,8 @@ app.post("/api/ficha-tecnica", async (req: Request, res: Response, next: NextFun
     const validatedResponse = validateResponse(llmRawResponse, outputSchema, {
       vehicle: vehicleInput,
       provider: snapshotProvider,
-      sourcePolicy
+      sourcePolicy,
+      normalizationPolicy
     });
     if (getPersistenceMode() === "postgres") {
       await persistTechnicalSheet({ requestId, provider: snapshotProvider, vehicle: vehicleInput, response: validatedResponse, outputSchema, finalPrompt });

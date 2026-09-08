@@ -10,11 +10,11 @@ Origem: `services/api/index.ts`.
 ## Sequência do handler principal
 
 1. `parseVehicleInput(req.body)` — validação 400 se faltar campo ou ano inválido.
-2. Em paralelo: `readBaseAgentPrompt()` e `readOutputSchema()` a partir de `packages/agent-runtime/assets/` por `runtime-assets.ts` (não desta pasta).
+2. Em paralelo: `readBaseAgentPrompt()`, `readOutputSchema()`, `readSourcePolicy()` e `readNormalizationPolicy()` a partir de `packages/agent-runtime/assets/` por `runtime-assets.ts` (não desta pasta).
 3. `buildVehiclePayload(vehicleInput)` — monta `context.vehicle`.
 4. `composeFinalPrompt({ baseAgentPrompt, outputSchema, vehiclePayload })` — ver `PROMPT_COMPOSITION.md`.
 5. `callLLM(finalPrompt, vehicleInput)` — ver `LLM_RUNTIME.md`.
-6. `validateResponse(llmRawResponse, outputSchema)` — ver `VALIDATION_AND_TYPES.md`; em falha, **422**.
+6. `validateResponse(llmRawResponse, outputSchema, contexto)` — normaliza somente medidas allowlisted antes de AJV, preserva proveniência e então valida fonte/identidade; ver `VALIDATION_AND_TYPES.md`; em falha, **422**.
 7. Resposta **200** com JSON validado.
 
 ## Middleware
