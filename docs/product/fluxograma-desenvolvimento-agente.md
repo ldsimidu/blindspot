@@ -19,12 +19,16 @@
 ```mermaid
 flowchart LR
   semConta([Sem conta]) --> pedir[Solicitar acesso corporativo\nE01-01 · RF09]
-  pedir --> empresa{Empresa aprovada?}
+  pedir --> empresa{Empresa aprovada?\nP1-009}
   empresa -- não --> recusa[Recusa segura\nsem sessão]
-  empresa -- sim --> convite[Convite único e ativação\nE01-02]
-  convite --> identidade{Senha ou SSO/MFA válidos?}
-  identidade -- não, expirado ou IdP indisponível --> recuperar[Recuperar ou reenviar ativação]
-  identidade -- sim --> acesso{Servidor valida\nsessão + tenant + papel + recurso\nE01-03/E01-06}
+  empresa -- sim --> pendente[Organização pending_activation\nsem membro, senha ou sessão]
+  pendente --> convite[Operador emite/revoga convite\nP1-010 · token HMAC · 72h]
+  convite --> ativar{Token único válido,\nnão revogado e não usado?}
+  ativar -- não --> recuperar[Resposta neutra; operador\npode reemitir sem expor empresa]
+  ativar -- sim --> credencial[Nome + senha 12–128\nscrypt + salt + pepper]
+  credencial --> ativacao[Transação: consumir token,\ncriar admin, ativar organização]
+  ativacao --> identidade[Sem sessão neste corte\nP1-011 fará login; P1-013 RBAC]
+  identidade --> acesso{Servidor valida\nsessão + tenant + papel + recurso\nE01-03/E01-06}
   acesso -- negado --> bloqueio[Ação bloqueada\nfalha fechada]
   acesso -- autorizado --> consultar[Consultar ficha\nidentidade exata · RF01]
 
@@ -67,7 +71,7 @@ flowchart LR
   classDef decidir fill:#432859,stroke:#b780e3,color:#fff;
   classDef gate fill:#542126,stroke:#ff626b,color:#fff;
   class qualidade,consultar,health parcial;
-  class convite,coleta,qa,comparativo,artefato,reporte,resolver,membros,consumo,alerta,incidente futuro;
+  class pendente,convite,ativar,credencial,ativacao,coleta,qa,comparativo,artefato,reporte,resolver,membros,consumo,alerta,incidente futuro;
   class pedir,empresa,identidade,utilizavel,acao,admin,limite decidir;
   class acesso,compat,exportar gate;
 ```
@@ -122,7 +126,7 @@ flowchart LR
 
 Este fluxo implementa a intenção de E02-04/E02-05. Banco, retenção, migration, backup, formato de slug e política de merge continuam decisões de task e Architecture Gate próprios.
 
-## 4. Conta, sessão e autorização (planejado; não implementar por inferência)
+## 4. Conta, convite, sessão e autorização (P1-009/P1-010 implementados parcialmente)
 
 ```mermaid
 flowchart LR
@@ -130,11 +134,15 @@ flowchart LR
   pedido -- não --> respostaSegura[Protocolo/erro seguro\nsem enumeração]
   pedido -- sim --> aprovar{Operação aprova empresa?}
   aprovar -- não --> recusar[Recusar sem liberar acesso]
-  aprovar -- sim --> token[Convite único\nexpira, revoga, ativa admin]
-  token --> ativar{Convite válido\ne ainda não usado?}
-  ativar -- não --> novoConvite[Nova ativação\nsem expor dados]
-  ativar -- sim --> senha[Definir credencial e\nconcluir onboarding retomável]
-  senha --> entradaLogin{Login por senha\nou SSO aprovado?}
+  aprovar -- sim --> pendente[Organização pending_activation\nsem conta, membro ou sessão]
+  pendente --> token[Operador emite/revoga\nconvite inicial por rota interna]
+  token --> hash[Token aleatório 32 bytes\nHMAC no banco; URL/token só uma vez]
+  hash --> ativar{Convite válido,\nem 72h, não revogado/usado?}
+  ativar -- não --> novoConvite[Resposta neutra; reemissão\nrevoga anterior sem expor empresa]
+  ativar -- sim --> senha[Definir nome e senha 12–128\nscrypt + salt + pepper]
+  senha --> transacao[Transação: token used,\nadmin active, organização active]
+  transacao --> semLogin[Ativação não cria sessão\nP1-011 implementará login]
+  semLogin --> entradaLogin{Login por senha\nou SSO aprovado?}
   entradaLogin -- senha --> credencial{Credencial, conta e\norganização ativas?}
   entradaLogin -- SSO --> idp{Callback, issuer, audience\ne claims válidos?}
   credencial -- não --> recuperar[Recuperar acesso\ntoken único, rate limit]
@@ -154,7 +162,17 @@ flowchart LR
   auditoria --> logout[Logout revoga sessão]
 ```
 
-SSO, MFA, modelo de tenancy, recuperação, retenção de sessão, canais e papéis finais continuam **a decidir**. Qualquer implementação desses nós requer task própria, Architecture Gate e revisão de segurança.
+**Implementado no P1-009/P1-010:** solicitação com protocolo sem enumeração, aprovação para `pending_activation`, emissão/revogação interna do convite e ativação atômica do primeiro `admin`; seus eventos não guardam token ou senha. A rota de emissão devolve o token apenas à chamada interna que possui a chave temporária; o caminho do token é mascarado nos logs. O produto ainda não envia e-mail nem oferece gestão de equipe. Login, sessão, MFA, SSO, recuperação, RBAC/tenancy e papéis finais continuam em tasks próprias (P1-011/P1-013 e sucessoras), sob Architecture Gate e revisão de segurança.
+
+### Contratos do convite implementados
+
+| Ação | Rota e fronteira | Resultado e estados | Dados que não podem vazar |
+|---|---|---|---|
+| Emitir primeiro administrador | `POST /api/organizacoes/solicitacoes/:protocol/convites/admin-inicial`; exige `x-operator-approval-key` | `201` retorna `invitationId`, token **uma única vez**, expiração e `issued`; só para organização `pending_activation`; reemissão revoga convite `issued` anterior | Chave, token em banco e token em logs/auditoria |
+| Revogar | `POST /api/organizacoes/convites/:id/revogar`; exige a mesma chave temporária | `200 revoked`; somente convite ainda `issued` pode mudar | Token, e-mail ou dados da empresa na resposta de falha |
+| Ativar | `POST /api/convites/:token/ativar`; recebe `display_name` e senha | `200 activated`; senha válida cria membro `admin`, credencial e organização `active` em uma transação | Token inválido/revogado/expirado/reutilizado recebe `404` neutro; senha e derivação nunca são logadas |
+
+O token tem o formato de transporte `INV-…`, 32 bytes aleatórios codificados em base64url; somente seu HMAC é armazenado. A senha tem 12–128 caracteres e é derivada por `scrypt` com salt aleatório e `PASSWORD_PEPPER`, sem sessão criada. A expiração foi verificada pela regra de 72 horas e pela guarda de estado; o smoke local persistido no Neon cobriu emissão (`201`), revogação (`200`), ativação revogada (`404`), senha fraca (`400`), ativação válida (`200`) e replay (`404`).
 
 ## 5. Análise, exportação, compartilhamento e reporte (planejado)
 
@@ -228,7 +246,7 @@ flowchart TB
   req -. correlação .-> log[request id + log sanitizado]
 ```
 
-Rotas hoje presentes: `GET /api/health`, `POST /api/ficha-tecnica`, `GET /api/ficha-tecnica/latest` e `GET /api/ficha-tecnica/history`. Todas devem conservar o contrato de erro de `HttpError`: `{ message, details }`; exceções não mapeadas retornam `500` com mensagem genérica.
+Rotas hoje presentes incluem `GET /api/health`, `POST /api/ficha-tecnica`, `GET /api/ficha-tecnica/latest`, `GET /api/ficha-tecnica/history`, solicitação/aprovação de organização e as três rotas de convite descritas acima. Todas devem conservar o contrato de erro de `HttpError`: `{ message, details }`; exceções não mapeadas retornam `500` com mensagem genérica.
 
 ### Mapa de implementação — onde mudar, o que preservar
 

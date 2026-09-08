@@ -13,7 +13,7 @@ import { callLLM } from "./llm";
 import { getPersistenceMode } from "./db/client";
 import { persistTechnicalSheet, readCatalogEntryExact, readLatestTechnicalSheet, readTechnicalSheetHistory, searchCatalog } from "./db/repository";
 import { confirmImportRun, createImportDryRun, hashImportPayload, readImportRun, type PreparedImportItem } from "./imports";
-import { decideOrganizationRequest, submitOrganizationRequest } from "./organizations";
+import { activateInitialAdmin, decideOrganizationRequest, issueInitialAdminInvitation, revokeInitialAdminInvitation, submitOrganizationRequest } from "./organizations";
 import { buildVehiclePayload, composeFinalPrompt, readBaseAgentPrompt, readOutputSchema } from "./prompt-builder";
 import { readFieldPolicy, readNormalizationPolicy, readQualityPolicy, readSourcePolicy } from "./runtime-assets";
 import { FichaTecnicaHistoryItem, HttpError, VehicleInput } from "./types";
@@ -38,7 +38,7 @@ app.use((req, res, next) => {
     void logHttpRequest({
       requestId,
       method: req.method,
-      path: req.originalUrl,
+      path: sanitizeRequestPath(req.originalUrl),
       statusCode: res.statusCode,
       durationMs,
       ip: req.ip ?? "unknown",
@@ -64,6 +64,29 @@ app.post("/api/organizacoes/solicitacoes/:protocol/decisao", async (req: Request
     const decision = isObject(req.body) && (req.body.decision === "approved" || req.body.decision === "rejected") ? req.body.decision : null;
     if (!decision) throw new HttpError(400, "Decisao invalida.");
     res.status(200).json(await decideOrganizationRequest(parseProtocol(req.params.protocol), decision, key));
+  } catch (error) { next(error); }
+});
+
+app.post("/api/organizacoes/solicitacoes/:protocol/convites/admin-inicial", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const key = req.header("x-operator-approval-key");
+    if (!key) throw new HttpError(404, "Solicitacao indisponivel para convite.");
+    res.status(201).json(await issueInitialAdminInvitation(parseProtocol(req.params.protocol), key));
+  } catch (error) { next(error); }
+});
+
+app.post("/api/organizacoes/convites/:id/revogar", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const key = req.header("x-operator-approval-key");
+    if (!key) throw new HttpError(404, "Convite indisponivel.");
+    res.status(200).json(await revokeInitialAdminInvitation(parseCatalogId(req.params.id), key));
+  } catch (error) { next(error); }
+});
+
+app.post("/api/convites/:token/ativar", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const input = parseInvitationActivation(req.body);
+    res.status(200).json(await activateInitialAdmin(parseInvitationToken(req.params.token), input.displayName, input.password));
   } catch (error) { next(error); }
 });
 
@@ -326,6 +349,9 @@ function parseOrganizationRequest(body: unknown) {
 }
 function requiredBoundedText(value: unknown, min: number, max: number, _field: string): string { if (typeof value !== "string") throw new HttpError(400, "Solicitacao invalida."); const normalized = value.normalize("NFKC").trim().replace(/\s+/g, " "); if (normalized.length < min || normalized.length > max || /[\u0000-\u001f\u007f]/.test(normalized)) throw new HttpError(400, "Solicitacao invalida."); return normalized; }
 function parseProtocol(value: string): string { if (!/^ORG-[A-Za-z0-9_-]{20,64}$/.test(value)) throw new HttpError(404, "Solicitacao indisponivel para decisao."); return value; }
+function parseInvitationToken(value: string): string { if (!/^INV-[A-Za-z0-9_-]{40,96}$/.test(value)) throw new HttpError(404, "Convite indisponivel."); return value; }
+function parseInvitationActivation(body: unknown): { displayName: string; password: string } { if (!isObject(body)) throw new HttpError(400, "Ativacao indisponivel."); const displayName = requiredBoundedText(body.display_name, 2, 120, "display_name"); const password = typeof body.password === "string" ? body.password : ""; if (password.length < 12 || password.length > 128 || /[\u0000-\u001f\u007f]/.test(password)) throw new HttpError(400, "Ativacao indisponivel."); return { displayName, password }; }
+function sanitizeRequestPath(value: string): string { return value.replace(/(\/api\/convites\/)[^/?]+(\/ativar(?:\?.*)?$)/, "$1[redacted]$2"); }
 
 async function prepareImportInput(body: unknown): Promise<{ idempotencyKey: string; items: PreparedImportItem[]; outputSchema: Record<string, unknown> }> {
   if (!isObject(body) || typeof body.idempotency_key !== "string" || !/^[A-Za-z0-9._:-]{16,128}$/.test(body.idempotency_key)) throw new HttpError(400, "Chave de idempotencia invalida.");
