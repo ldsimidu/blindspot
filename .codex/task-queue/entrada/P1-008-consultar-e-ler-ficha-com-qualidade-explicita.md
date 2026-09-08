@@ -1,4 +1,4 @@
-# ❌ Bloqueada — E03-02 Consultar e ler ficha com qualidade explícita
+# ✅ Concluída — E03-02 Consultar e ler ficha com qualidade explícita
 
 > Prioridade: P1
 >
@@ -6,7 +6,7 @@
 >
 > Origem ou referência: `docs/product/backlog.md` E03-02; fluxo detalhado de consulta
 >
-> Arquitetura: `BLOCKED — depende da P1-005/consulta PostgreSQL exata`
+> Arquitetura: `APPROVED — Lucas autorizou a retomada após a conclusão da P1-005 em 08/09/2026`
 >
 > Triagem automática: `Material — altera API/UI e apresentação de dados rastreáveis.`
 >
@@ -58,3 +58,24 @@ Permitir localizar e ler fichas pela identidade exata, exibindo campos, unidade,
 
 - Estado: `❌ Bloqueada`; Arquitetura: `BLOCKED — depende da P1-005/consulta PostgreSQL exata`; Segurança: `Aplicável — revisão proporcional registrada acima`.
 - Implementação: não iniciada; nenhuma API, UI ou contrato foi alterado para evitar uma leitura aproximada ou fallback silencioso.
+
+## Retomada, Architecture Gate e resultado — 2026-09-08
+
+### Fatos confirmados
+
+- A P1-005 está concluída e comprovou no Neon a descoberta paginada, abertura exata por UUID mais os cinco campos canônicos, ausência e incompatibilidade. Portanto, a dependência que bloqueava esta task não existe mais.
+- A interface já consumia esse contrato: a visão **Catálogo** lista candidatas sem seleção automática, exibe a versão atual e só abre `FichaDashboard` após a seleção explícita.
+- `FichaDashboard` exibe a versão no cabeçalho, completude, total de fontes, status de cada campo, referências de fonte, observações e a lista de fontes. Os estados `conflitante`, `nao_encontrado` e `nao_aplicavel` não recebem valor vencedor artificial.
+
+### Segurança proporcional e decisão
+
+- **Fronteira:** catálogo PostgreSQL local -> resposta discriminada -> interface. A leitura recusa o modo `file`, exige identidade completa no detalhe e preserva erros sanitizados.
+- **Risco residual:** ainda não há sessão, tenant ou RBAC. A conclusão é de experiência técnica local; P1-011/P1-013 continuam obrigatórias antes de acesso corporativo.
+- **Decisão:** não criar endpoint, fallback ou componente duplicado. A funcionalidade já era entregue pelo corte canônico P1-005 e só precisava da validação da dependência agora resolvida. Architecture Gate: `APPROVED` pela autorização direta de Lucas.
+
+### Verificações e conclusão
+
+- Revisão estática: a lista exibe versão; o detalhe trata `found`, `not_registered` e `incompatible`; a interface mantém `loading` e erro distintos; `FichaDashboard` renderiza fontes, completude, status e observações.
+- Verificação de contrato: `npm run verify:catalog-contract` aprovado.
+- Gates: `npm run typecheck` e `npm run build` aprovados na retomada.
+- **Estado:** `✅ Concluída`. Nenhum dado, endpoint ou contrato novo foi criado; a task reutiliza o comportamento comprovado da P1-005 sem ampliar escopo.
