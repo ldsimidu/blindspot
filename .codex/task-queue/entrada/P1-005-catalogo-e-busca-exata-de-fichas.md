@@ -1,4 +1,4 @@
-# 🚧 Em execução — E02-05a Catálogo e busca exata de fichas
+# ❌ Bloqueada — E02-05a Catálogo e busca exata de fichas
 
 > Prioridade: P1
 >
@@ -136,7 +136,7 @@ O slug legível é derivado de marca/modelo/versão/ano/mercado e exposto como m
 
 ## Resultado do agente
 
-- Estado: `🚧 Em execução`; Arquitetura: `APPROVED — Lucas autorizou a implementação da P1-005A em 08/09/2026`; Segurança: `Aplicável — revisão proporcional registrada acima`.
+- Estado: `❌ Bloqueada`; Arquitetura: `APPROVED — Lucas autorizou a implementação da P1-005A em 08/09/2026`; Segurança: `Aplicável — revisão proporcional registrada acima`.
 - Implementação parcial: adicionados slug legível e aliases determinísticos por configuração, migration aditiva, repositório de descoberta/abertura exata, endpoints de catálogo, contrato de interface e visão Catálogo. A abertura exige UUID e os cinco campos da identidade; alias só lista candidatas. Modo `file` retorna 503 e não lê snapshots como fallback.
 - Arquivos principais: `services/api/catalog.ts`, `services/api/db/schema.ts`, `services/api/db/repository.ts`, `services/api/index.ts`, `drizzle/0001_boring_emma_frost.sql`, `apps/web/src/App.tsx`, `apps/web/src/api.ts`, `apps/web/src/types.ts`, `scripts/verify-catalog-contract.ts` e `docs/architecture/agent-core/HTTP_PIPELINE.md`.
 - Verificações aprovadas: `npm run typecheck`; `npm run verify:catalog-contract`; `npm run verify:quality-policy`; `npm run verify:field-policy`; `npm run verify:normalization`; `npm run verify:source-policy`; `npm run verify:technical-sheet-catalog`; `npm run build`. Smoke em modo `file`: health 200, catálogo 503 controlado e página inválida 400.
