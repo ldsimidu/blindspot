@@ -1,10 +1,11 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { abrirFichaCatalogo, buscarCatalogo, entrar, gerarFichaTecnica, obterHistoricoFichas, obterSessao, obterUltimaFichaTecnica, sair } from "./api";
+import { abrirFichaCatalogo, buscarCatalogo, cadastrarOrganizacao, entrar, gerarFichaTecnica, obterHistoricoFichas, obterSessao, obterUltimaFichaTecnica, sair } from "./api";
 import type { CatalogEntryResult, CatalogSearchResult, FichaTecnicaHistoryItem, FichaTecnicaResponse, VehicleInput } from "./types";
 import logoBlindspot from "./assets/blindspot-mark.png";
 
 type AppView = "request" | "catalog" | "history";
 type ThemeMode = "dark" | "light";
+type AccessView = "login" | "registration" | "received" | "pending_review" | "rejected";
 
 interface FormState {
   marca: string;
@@ -50,6 +51,10 @@ function App() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [accessView, setAccessView] = useState<AccessView>("login");
+  const [registration, setRegistration] = useState({ company_name: "", cnpj: "", contact_name: "", contact_email: "", password: "", password_confirmation: "", privacy_notice_version: "2026-09" });
+  const [registrationLoading, setRegistrationLoading] = useState(false);
+  const [registrationError, setRegistrationError] = useState<string | null>(null);
   const [signedInName, setSignedInName] = useState("");
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     const saved = typeof window !== "undefined" ? window.localStorage.getItem("blindspot_theme_mode") : null;
@@ -223,7 +228,24 @@ function App() {
 
   async function handleLogin(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault(); setLoginLoading(true); setLoginError(null);
-    try { const session = await entrar(loginEmail, loginPassword); setSignedInName(session.displayName); setLoginPassword(""); setAuthState("signed_in"); } catch (error) { setLoginError(error instanceof Error ? error.message : "Credenciais invalidas."); } finally { setLoginLoading(false); }
+    try { const outcome = await entrar(loginEmail, loginPassword); if (outcome.state !== "authenticated") { setAccessView(outcome.state); return; } setSignedInName(outcome.displayName); setLoginPassword(""); setAuthState("signed_in"); } catch { setLoginError("Não foi possível entrar com essas credenciais."); } finally { setLoginLoading(false); }
+  }
+
+  async function handleRegistration(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault(); setRegistrationError(null);
+    if (registration.password !== registration.password_confirmation) { setRegistrationError("As senhas precisam ser iguais."); return; }
+    if (!registration.privacy_notice_version) { setRegistrationError("Confirme a leitura do aviso de privacidade."); return; }
+    setRegistrationLoading(true);
+    try { await cadastrarOrganizacao(registration); setLoginEmail(registration.contact_email); setLoginPassword(registration.password); setAccessView("received"); }
+    catch { setRegistrationError("Não foi possível enviar o cadastro agora. Revise os dados e tente novamente."); }
+    finally { setRegistrationLoading(false); }
+  }
+
+  async function refreshApprovalStatus(): Promise<void> {
+    setLoginLoading(true); setLoginError(null);
+    try { const outcome = await entrar(loginEmail, loginPassword); if (outcome.state !== "authenticated") { setAccessView(outcome.state); return; } setSignedInName(outcome.displayName); setLoginPassword(""); setAuthState("signed_in"); }
+    catch { setAccessView("login"); setLoginError("Não foi possível atualizar agora. Entre novamente para tentar."); }
+    finally { setLoginLoading(false); }
   }
 
   async function handleLogout(): Promise<void> {
@@ -241,13 +263,28 @@ function App() {
       <main className="dashboard-page login-page">
         <section className="panel login-panel" aria-busy={authState === "checking"}>
           <img className="brand-logo" src={logoBlindspot} alt="BlindSpot" />
-          <h1>Acessar BlindSpot</h1>
-          <p>{authState === "checking" ? "Verificando sessão…" : "Entre com seu e-mail corporativo e senha."}</p>
-          {authState === "signed_out" && <form onSubmit={handleLogin} className="form-grid">
+          <h1>{accessView === "registration" ? "Criar cadastro corporativo" : accessView === "rejected" ? "Não foi possível aprovar sua empresa" : accessView === "received" || accessView === "pending_review" ? "Estamos verificando sua empresa" : "Acessar BlindSpot"}</h1>
+          {accessView === "registration" ? <p>Informe os dados corporativos. O acesso será liberado somente após a análise do BlindSpot.</p> : accessView === "rejected" ? <p>Seu cadastro não foi aprovado neste momento. Entre em contato com o suporte para orientações.</p> : accessView === "received" || accessView === "pending_review" ? <p>Recebemos seu cadastro e ele está em análise. Você ainda não tem acesso ao sistema.</p> : <p>{authState === "checking" ? "Verificando sessão…" : "Entre com seu e-mail corporativo e senha."}</p>}
+          {accessView === "registration" && <form onSubmit={handleRegistration} className="form-grid" aria-busy={registrationLoading}>
+            <label>Nome da empresa<input value={registration.company_name} onChange={(event) => setRegistration((current) => ({ ...current, company_name: event.target.value }))} minLength={2} maxLength={160} required /></label>
+            <label>CNPJ<input value={registration.cnpj} onChange={(event) => setRegistration((current) => ({ ...current, cnpj: event.target.value }))} inputMode="numeric" required /></label>
+            <label>Nome do responsável<input value={registration.contact_name} onChange={(event) => setRegistration((current) => ({ ...current, contact_name: event.target.value }))} minLength={2} maxLength={120} required /></label>
+            <label>E-mail corporativo<input type="email" autoComplete="email" value={registration.contact_email} onChange={(event) => setRegistration((current) => ({ ...current, contact_email: event.target.value }))} required /></label>
+            <label>Senha (mínimo de 12 caracteres)<input type="password" autoComplete="new-password" value={registration.password} onChange={(event) => setRegistration((current) => ({ ...current, password: event.target.value }))} minLength={12} maxLength={128} required /></label>
+            <label>Confirmar senha<input type="password" autoComplete="new-password" value={registration.password_confirmation} onChange={(event) => setRegistration((current) => ({ ...current, password_confirmation: event.target.value }))} minLength={12} maxLength={128} required /></label>
+            <label className="checkbox-label"><input type="checkbox" checked={Boolean(registration.privacy_notice_version)} onChange={(event) => setRegistration((current) => ({ ...current, privacy_notice_version: event.target.checked ? "2026-09" : "" }))} /> Li e aceito o aviso de privacidade.</label>
+            {registrationError && <p role="alert">{registrationError}</p>}
+            <button className="primary-button" type="submit" disabled={registrationLoading}>{registrationLoading ? "Enviando cadastro…" : "Enviar cadastro"}</button>
+            <button type="button" onClick={() => setAccessView("login")}>Voltar ao login</button>
+          </form>}
+          {(accessView === "received" || accessView === "pending_review") && <div className="access-actions"><p role="status" aria-live="polite">Status: em análise.</p><button className="primary-button" type="button" disabled={loginLoading} onClick={() => void refreshApprovalStatus()}>{loginLoading ? "Atualizando…" : "Atualizar status"}</button><button type="button" onClick={() => setAccessView("login")}>Voltar ao login</button><a href="mailto:suporte@blindspot.local">Falar com o suporte</a></div>}
+          {accessView === "rejected" && <div className="access-actions"><a href="mailto:suporte@blindspot.local">Falar com o suporte</a><button type="button" onClick={() => setAccessView("login")}>Voltar ao login</button></div>}
+          {accessView === "login" && authState === "signed_out" && <form onSubmit={handleLogin} className="form-grid">
             <label>E-mail corporativo<input type="email" autoComplete="username" value={loginEmail} onChange={(event) => setLoginEmail(event.target.value)} required /></label>
             <label>Senha<input type="password" autoComplete="current-password" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} required /></label>
             {loginError && <p role="alert">{loginError}</p>}
             <button type="submit" disabled={loginLoading}>{loginLoading ? "Entrando…" : "Entrar"}</button>
+            <button type="button" onClick={() => { setLoginError(null); setAccessView("registration"); }}>Cadastrar minha empresa</button>
           </form>}
         </section>
       </main>

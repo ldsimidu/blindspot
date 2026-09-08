@@ -841,6 +841,30 @@ pre {
   margin-bottom: 18px;
 }
 
+.access-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.access-actions a {
+  color: var(--accent-soft);
+  font-weight: 700;
+}
+
+.checkbox-label {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.checkbox-label input {
+  width: 18px;
+  height: 18px;
+}
+
 @media (max-width: 1080px) {
   .dashboard-page {
     grid-template-columns: 1fr;

@@ -5,11 +5,12 @@ Origem: `services/api/index.ts`.
 ## Endpoint
 
 - `GET /api/health` — `{ "ok": true }`.
-- `POST /api/auth/login` — e-mail e senha; valida conta, membro e organização ativos, aplica limite local de tentativas e emite somente cookie de sessão opaca. A resposta não contém token.
+- `POST /api/auth/login` — e-mail e senha; credencial inválida recebe `401` neutro; credencial válida de cadastro pendente/recusado recebe `403 pending_review|rejected`, sem sessão; as três identidades `active` recebem somente cookie de sessão opaca. A resposta não contém token.
 - `GET /api/auth/session` — valida cookie, expiração, revogação, conta, membro e organização; retorna somente estado e identidade mínima da sessão.
 - `POST /api/auth/logout` — revoga a sessão indicada pelo cookie e a limpa; é idempotente e não enumera sessão.
-- `POST /api/organizacoes/solicitacoes` — recebe solicitação corporativa mínima e retorna protocolo neutro; não cria sessão, convite ou acesso.
-- `POST /api/organizacoes/solicitacoes/:protocol/decisao` — rota interna temporária para aprovar/recusar usando `x-operator-approval-key`; aprovação cria apenas organização `pending_activation`.
+- `POST /api/organizacoes/cadastro` — cadastro público com empresa, CNPJ, responsável, e-mail, senha, confirmação e versão de privacidade; retorna `202 received` neutro e cria organização/conta/membro pendentes sem sessão.
+- `GET /api/operacoes/organizacoes/solicitacoes?state=received&page=&page_size=` — rota interna temporária, paginada e protegida por `x-operator-approval-key`; devolve somente dados de análise necessários e referência operacional.
+- `POST /api/organizacoes/solicitacoes/:protocol/decisao` — rota interna temporária para aprovar/recusar usando `x-operator-approval-key`; para o cadastro novo, a decisão atualiza solicitação, organização, conta e membro na mesma transação. O convite continua só para registros legados `pending_activation`.
 - `POST /api/ficha-tecnica` — corpo JSON conforme `VEHICLE_INPUT_SPEC.md` (nesta pasta `docs/`).
 - `GET /api/catalogo/fichas?q=&page=&page_size=` — descoberta paginada no PostgreSQL; devolve candidatas ou `not_registered`, sem selecionar veículo aproximado.
 - `GET /api/catalogo/fichas/:id?marca=&modelo=&versao=&ano_modelo=&mercado=` — abre a ficha atual somente quando o UUID e a identidade canônica completa coincidem; devolve `incompatible` se divergem.

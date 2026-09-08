@@ -127,7 +127,66 @@ flowchart LR
 
 Este fluxo implementa a intenção de E02-04/E02-05. Banco, retenção, migration, backup, formato de slug e política de merge continuam decisões de task e Architecture Gate próprios.
 
-## 4. Conta, convite, sessão e autorização (P1-009/P1-010 implementados parcialmente)
+## 4. Cadastro, espera, aprovação e login — visão da pessoa usuária (P0-008 implementado)
+
+```mermaid
+flowchart TB
+  abrir([Abrir BlindSpot]) --> escolher{Escolher uma ação}
+  escolher -->|Clicar Entrar| email[Inserir e-mail corporativo]
+  email --> senha[Inserir senha]
+  senha --> clicarEntrar[Clicar Entrar]
+  clicarEntrar --> validarLogin{Servidor valida e-mail e senha}
+  validarLogin -->|inválidos| erroNeutro[Ver Não foi possível entrar com essas credenciais\nTentar novamente]
+  erroNeutro --> email
+  validarLogin -->|limite local| aguardar[Aguardar e tentar mais tarde\nou contatar suporte]
+  validarLogin -->|válidos + pending_review| esperaLogin[Ver Estamos verificando sua empresa\nSem sessão]
+  validarLogin -->|válidos + rejected| recusada[Ver Empresa não aprovada\nSem motivo interno]
+  validarLogin -->|válidos + active| cookie[Sessão criada em cookie HttpOnly]
+  cookie --> dashboard[Entrar no dashboard da fase atual]
+
+  escolher -->|Clicar Cadastrar minha empresa| cadastro[Ver Criar cadastro corporativo]
+  cadastro --> preencher[Preencher empresa, CNPJ, responsável\ne-mail, senha e confirmação]
+  preencher --> privacidade[Marcar aceite de privacidade]
+  privacidade --> validarCadastro{Campos, senha e aceite válidos?}
+  validarCadastro -->|não| corrigir[Ver validação local e corrigir]
+  corrigir --> preencher
+  validarCadastro -->|sim| enviar[Clicar Enviar cadastro\nBotão desabilitado e progresso]
+  enviar --> recebido[Ver Cadastro recebido\nEstamos verificando sua empresa]
+  recebido --> atualizar[Clicar Atualizar status]
+  atualizar --> reautenticar[Reenviar e-mail/senha mantidos\nsomente na memória]
+  reautenticar --> status{Estado atual após credencial válida}
+  status -->|em análise| esperaCadastro[Continuar na tela de espera\ncom orientação e suporte]
+  esperaCadastro --> atualizar
+  status -->|aprovado| aprovado[Ver empresa aprovada\nClicar Entrar]
+  aprovado --> email
+  status -->|recusado| recusada
+  recebido -->|erro de rede| falha[Mensagem neutra\nTentar novamente]
+  falha --> enviar
+  esperaLogin -->|Atualizar status| reautenticar
+  esperaLogin -->|Voltar ao login| email
+  recusada --> suporte[Contatar suporte ou voltar ao login]
+  suporte --> email
+
+  subgraph operacao[Operação interna MVP — não visível à pessoa usuária]
+    listar[Listar solicitações received\npaginadas] --> analisar[Analisar dados sanitizados]
+    analisar --> decidir{Decidir uma vez}
+    decidir -->|aprovar| ativarTudo[Evento approved\norganização, conta e membro active]
+    decidir -->|recusar| recusarTudo[Evento rejected\norganização, conta e membro rejected]
+  end
+  ativarTudo -. mudança de estado .-> status
+  recusarTudo -. mudança de estado .-> status
+
+  classDef atual fill:#153b2b,stroke:#40c986,color:#fff;
+  classDef gate fill:#542126,stroke:#ff626b,color:#fff;
+  classDef interno fill:#523814,stroke:#e7a43c,color:#fff;
+  class recebido,esperaLogin,esperaCadastro,aprovado,cookie,dashboard,ativarTudo,recusarTudo atual;
+  class validarLogin,validarCadastro,status,decidir gate;
+  class listar,analisar interno;
+```
+
+O cadastro cria em uma transação a solicitação `received`, organização `pending_review`, conta/membro inicial `pending` e credencial com `scrypt`, salt e pepper. A aprovação/recusa atualiza as quatro entidades na mesma transação. Não há consulta pública por protocolo, CNPJ ou e-mail: a atualização depende de credenciais válidas e não persiste senha em URL, `localStorage` ou logs. Veja a coleção de operação em `../operations/api-collections/`; ela usa variáveis locais e não contém chave real. Convites P1-010 continuam somente para organizações legadas `pending_activation`.
+
+## 5. Conta, convite legado, sessão e autorização
 
 ```mermaid
 flowchart LR

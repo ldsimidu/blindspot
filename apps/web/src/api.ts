@@ -16,11 +16,23 @@ const API_LOGOUT_ENDPOINT = "/api/auth/logout";
 const API_SESSION_ENDPOINT = "/api/auth/session";
 
 export interface AuthSession { state: "authenticated"; email: string; displayName: string; expires_at?: string; }
+export type LoginOutcome = AuthSession | { state: "pending_review" | "rejected" };
+export interface OrganizationRegistration { company_name: string; cnpj: string; contact_name: string; contact_email: string; password: string; password_confirmation: string; privacy_notice_version: string; }
 
-export async function entrar(email: string, password: string): Promise<AuthSession> {
+export async function entrar(email: string, password: string): Promise<LoginOutcome> {
   const response = await fetch(API_LOGIN_ENDPOINT, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ email, password }) });
+  if (response.status === 403) {
+    const payload = await safeJson(response);
+    if (isLoginState(payload)) return payload;
+  }
   if (!response.ok) throw await apiError(response, "Credenciais invalidas");
   return (await response.json()) as AuthSession;
+}
+
+export async function cadastrarOrganizacao(payload: OrganizationRegistration): Promise<{ state: "received" }> {
+  const response = await fetch("/api/organizacoes/cadastro", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+  if (!response.ok) throw await apiError(response, "Nao foi possivel enviar o cadastro");
+  return (await response.json()) as { state: "received" };
 }
 
 export async function obterSessao(): Promise<AuthSession | null> {
@@ -107,4 +119,8 @@ async function safeJson(response: Response): Promise<unknown | null> {
   } catch {
     return null;
   }
+}
+
+function isLoginState(value: unknown): value is { state: "pending_review" | "rejected" } {
+  return typeof value === "object" && value !== null && "state" in value && ((value as { state?: unknown }).state === "pending_review" || (value as { state?: unknown }).state === "rejected");
 }

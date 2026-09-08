@@ -1,6 +1,6 @@
 # Backlog detalhado do BlindSpot
 
-> Estado: **planejamento revisado em 2026-09-07**. Este documento não altera runtime, schema, prompt, provider, API, UI, banco, integração, SLA ou política de segurança.
+> Estado: **produto e implementação atualizados em 2026-09-08**. Comportamentos marcados como implementados têm evidência no checkout; os demais continuam planejamento e não alteram runtime por si só.
 >
 > Fonte principal: `C:\Users\lucas\Documents\bedrock\knowledge\01-fiap\corventures\blindspot\fontes\2026-09-07-cf-backlog-ford-280426-232211-docling.md`, conversão Docling do PDF `CF-Backlog Ford-280426-232211.pdf` (hash registrado na própria conversão). É contexto de produto, não prova de implementação. A conversão termina ao abrir a task 3.3.2; as features listadas no índice, mas sem corpo extraído, foram detalhadas como **propostas**, não como transcrição.
 >
@@ -25,15 +25,21 @@ Dependências: `qualidade → persistência → consulta/comparação`; `identid
 
 ### Conta e acesso corporativo
 
-1. Responsável informa empresa, CNPJ, contato técnico e e-mail corporativo; recebe protocolo, nunca acesso imediato. **P1-009 implementado:** a solicitação e seus eventos são persistidos; CNPJ, e-mail e protocolo usam HMAC e a repetição preserva resposta neutra.
-2. Operador temporário autorizado aprova/recusa; aprovação cria organização `pending_activation`, sem membro, credencial ou sessão. **P1-009 implementado.**
-3. Para uma solicitação aprovada, o operador emite ou revoga convite do administrador inicial. **P1-010 implementado:** o token tem 32 bytes, é devolvido somente uma vez à rota interna, é armazenado apenas como HMAC, expira em 72 horas e uma reemissão revoga o anterior. Não há envio real de e-mail neste corte.
-4. O destinatário ativa com token, nome e senha de 12–128 caracteres. A mesma transação consome o convite, cria o único administrador inicial, persiste a derivação `scrypt` com salt e pepper, registra evento sanitizado e move a organização para `active`. Token inválido, expirado, revogado ou reutilizado recebe resposta neutra; não há dados da empresa na resposta.
-5. **P1-011 implementado:** login valida conta, membro e organização `active`, cria sessão opaca em cookie `HttpOnly` e permite logout com revogação persistida. Falha é neutra e há limite local de cinco tentativas por 15 minutos. **P1-013 pendente:** autorização por tenant, papel e recurso substitui a chave temporária de operação e protege recursos de negócio. MFA e SSO continuam escopos próprios, não pressupostos pela ativação.
+1. **P0-008 implementado:** na tela inicial, responsável clica em **Cadastrar minha empresa**, informa empresa, CNPJ, responsável, e-mail corporativo, senha, confirmação e aceite de privacidade. `POST /api/organizacoes/cadastro` cria, em uma transação, solicitação `received`, organização `pending_review`, conta e membro inicial `pending` e credencial `scrypt` com salt e pepper. A resposta é neutra (`202 received`), sem sessão, token, protocolo público ou confirmação de duplicidade.
+2. A tela **Cadastro recebido / Estamos verificando sua empresa** oferece atualização, retorno ao login e suporte. Atualizar repete o login apenas com e-mail/senha preservados somente na memória da interface; não há endpoint público por CNPJ, e-mail ou protocolo.
+3. Operador MVP lista somente solicitações `received` com paginação, por `GET /api/operacoes/organizacoes/solicitacoes`, e decide por cURL com `x-operator-approval-key`. Aprovar torna solicitação `approved` e organização, conta e membro `active`; recusar torna todos `rejected`, sempre na mesma transação. Consulte `../operations/api-collections/` para comandos sem segredo.
+4. Login com e-mail/senha inválidos permanece neutro. Depois de verificar corretamente a senha, cadastro pendente recebe `403 pending_review` e tela de espera; recusado recebe `403 rejected` e orientação de suporte; ativo recebe cookie de sessão opaca `HttpOnly`. O limite local continua cinco tentativas em 15 minutos.
+5. O convite P1-010 não aparece para novo cadastro: ele continua apenas para registros legados `pending_activation`. Não há envio real de e-mail neste corte. **P1-013 pendente:** RBAC, tenant e recurso ainda precisam ser verificados pelo servidor antes de proteger o produto corporativamente.
 5. Administrador convida, troca papel ou desativa membro; servidor revoga sessão e conserva auditoria conforme retenção aprovada.
 6. Cada recurso resolve organização e autorização no servidor; UI nunca é a barreira de segurança.
 
-Estados: entrada inválida, recebido, em revisão, aprovado, recusado, convite expirado/revogado, conta desativada, MFA pendente, sessão expirada, sem permissão, tenant suspenso e IdP indisponível.
+| Entidade | Implementado | Transições permitidas nesta fase |
+|---|---|---|
+| Solicitação | `received`, `approved`, `rejected` | `received → approved \| rejected` por operador; repetição falha fechada |
+| Organização | `pending_review`, `active`, `rejected` | acompanha a decisão da solicitação; `pending_activation` é legado de convite |
+| Conta/membro inicial | `pending`, `active`, `rejected` | acompanha a decisão; não cria sessão enquanto pendente/recusado |
+| Sessão | inexistente, ativa, revogada/expirada | só nasce com as três identidades `active`; logout a revoga |
+| Planejado | `suspended`, MFA pendente, IdP indisponível | dependem de P1-012 a P1-014 |
 
 ### Consulta, qualidade e análise
 
@@ -62,21 +68,21 @@ Estados: entrada inválida, recebido, em revisão, aprovado, recusado, convite e
 
 ## E01 — Autenticação e gestão de acesso corporativo
 
-**Objetivo:** somente clientes autorizados acessam dados no menor privilégio. **Estado:** Parcial — P1-009 e P1-010 concluídos; login, sessão, MFA, SSO e RBAC continuam planejados. **RF:** RF09–RF11; habilita RF08.
+**Objetivo:** somente clientes autorizados acessam dados no menor privilégio. **Estado:** Parcial — P0-008 cobre cadastro, análise e sessão; MFA, SSO, RBAC e proteção de recursos continuam pendentes. **RF:** RF09–RF11; habilita RF08.
 
 ### F01.1 Cadastro e onboarding
 
 #### E01-01 — Solicitar e aprovar organização
 
-- **Problema/pessoa/fluxo:** responsável corporativo solicita conta com CNPJ, responsável e e-mail; operador revisa e aprova/recusa; aprovação não entrega credencial, só cria a organização `pending_activation` que permite convite.
+- **Problema/pessoa/fluxo:** responsável se cadastra pela interface com CNPJ, contato, e-mail e senha; espera análise e usa as mesmas credenciais para receber estado pendente, recusa segura ou sessão ativa.
 - **Fora do escopo:** validação fiscal automática, preço, cobrança e provider de e-mail.
 - **Tasks/subtasks:** definir minimização/consentimento, estados e aprovador; validar campos e duplicidade; criar protocolo; prevenir enumeração; registrar decisão sanitizada.
-- **Aceite, evidência e DoD:** acesso não existe antes da aprovação; duplicidade e erro têm resposta segura; trilha mostra ator/data/motivo sem segredo; testes de entrada/repetição passam e revisão de privacidade está registrada. **Estado comprovado: P1-009 implementado, ainda sem identidade de usuário.**
+- **Aceite, evidência e DoD:** acesso não existe antes da aprovação; duplicidade e erro têm resposta segura; decisão atualiza solicitação, organização, conta e membro atomicamente; trilha mostra ator/data sem segredo; login válido comunica pendência/recusa sem enumeração; coleção MVP não contém chave. **Estado comprovado: P0-008 implementado.**
 - **Prioridade/dependência/risco/fonte:** Próximo; modelo de organização; fraude e coleta excessiva; Ford 1.1.1–1.1.2.
 
 #### E01-02 — Convidar e ativar administrador inicial
 
-- **Problema/pessoa/fluxo:** operador autorizado emite ou revoga convite para o contato da organização aprovada; responsável ativa o primeiro administrador com nome e senha. A organização só sai de `pending_activation` quando essa transação termina.
+- **Problema/pessoa/fluxo:** fluxo legado: operador autorizado emite ou revoga convite para contato de organização pré-P0-008 `pending_activation`. Novo cadastro usa E01-01 e não cria convite.
 - **Fora do escopo:** envio real de credenciais/e-mail, sessão, login, MFA, SSO, gestão de mais membros, retenção final e automação comercial.
 - **Tasks/subtasks:** token aleatório de 32 bytes, HMAC com segredo distinto, expiração de 72 horas, reemissão que revoga o anterior, revogação explícita, credencial `scrypt` com salt e pepper, eventos sanitizados e tela/rota de primeiro acesso retomável.
 - **Aceite, evidência e DoD:** convite expirado/revogado/reutilizado não ativa conta; token e senha nunca são persistidos ou auditados em claro; ativação inválida não revela empresa; emissão/revogação/uso têm evento sanitizado; criação de membro, consumo do token e ativação da organização são atômicos; smoke de válido, replay, expiração, revogação e senha fraca, além de revisão de segurança, passam.

@@ -14,7 +14,7 @@ import { getPersistenceMode } from "./db/client";
 import { persistTechnicalSheet, readCatalogEntryExact, readLatestTechnicalSheet, readTechnicalSheetHistory, searchCatalog } from "./db/repository";
 import { confirmImportRun, createImportDryRun, hashImportPayload, readImportRun, type PreparedImportItem } from "./imports";
 import { login, logout, readCurrentSession, sessionCookieName, sessionCookieOptions } from "./authentication";
-import { activateInitialAdmin, decideOrganizationRequest, issueInitialAdminInvitation, revokeInitialAdminInvitation, submitOrganizationRequest } from "./organizations";
+import { activateInitialAdmin, decideOrganizationRequest, issueInitialAdminInvitation, listPendingOrganizationRequests, registerOrganization, revokeInitialAdminInvitation, submitOrganizationRequest } from "./organizations";
 import { buildVehiclePayload, composeFinalPrompt, readBaseAgentPrompt, readOutputSchema } from "./prompt-builder";
 import { readFieldPolicy, readNormalizationPolicy, readQualityPolicy, readSourcePolicy } from "./runtime-assets";
 import { FichaTecnicaHistoryItem, HttpError, VehicleInput } from "./types";
@@ -57,9 +57,10 @@ app.get("/api/health", (_req, res) => {
 app.post("/api/auth/login", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const input = parseLogin(req.body);
-    const session = await login(input.email, input.password, req.ip ?? "unknown");
-    res.cookie(sessionCookieName(), session.token, sessionCookieOptions(session.expiresAt));
-    res.status(200).json({ state: "authenticated", expires_at: session.expiresAt.toISOString() });
+    const result = await login(input.email, input.password, req.ip ?? "unknown");
+    if (result.state !== "authenticated") { res.status(403).json({ state: result.state }); return; }
+    res.cookie(sessionCookieName(), result.token, sessionCookieOptions(result.expiresAt));
+    res.status(200).json({ state: "authenticated", expires_at: result.expiresAt.toISOString() });
   } catch (error) { next(error); }
 });
 
@@ -77,6 +78,21 @@ app.get("/api/auth/session", async (req: Request, res: Response, next: NextFunct
 
 app.post("/api/organizacoes/solicitacoes", async (req: Request, res: Response, next: NextFunction) => {
   try { res.status(202).json(await submitOrganizationRequest(parseOrganizationRequest(req.body))); } catch (error) { next(error); }
+});
+
+app.post("/api/organizacoes/cadastro", async (req: Request, res: Response, next: NextFunction) => {
+  try { res.status(202).json(await registerOrganization(parseOrganizationRegistration(req.body))); } catch (error) { next(error); }
+});
+
+app.get("/api/operacoes/organizacoes/solicitacoes", async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const key = req.header("x-operator-approval-key");
+    if (!key) throw new HttpError(404, "Solicitacao indisponivel para decisao.");
+    const state = req.query.state === undefined || req.query.state === "received" ? "received" : null;
+    if (!state) throw new HttpError(400, "Consulta invalida.");
+    const page = parsePositiveQuery(req.query.page, 1, 10000); const pageSize = parsePositiveQuery(req.query.page_size, 20, 100);
+    res.status(200).json(await listPendingOrganizationRequests(key, page, pageSize));
+  } catch (error) { next(error); }
 });
 
 app.post("/api/organizacoes/solicitacoes/:protocol/decisao", async (req: Request, res: Response, next: NextFunction) => {
@@ -369,12 +385,19 @@ function parseOrganizationRequest(body: unknown) {
   const cnpj = typeof body.cnpj === "string" ? body.cnpj.replace(/\D/g, "") : ""; if (!/^\d{14}$/.test(cnpj)) throw new HttpError(400, "Solicitacao invalida.");
   return { companyName, cnpj, contactName, contactEmail, privacyNoticeVersion };
 }
+function parseOrganizationRegistration(body: unknown) {
+  const input = parseOrganizationRequest(body); if (!isObject(body)) throw new HttpError(400, "Cadastro indisponivel.");
+  const password = typeof body.password === "string" ? body.password : ""; const passwordConfirmation = typeof body.password_confirmation === "string" ? body.password_confirmation : "";
+  if (password.length < 12 || password.length > 128 || /[\u0000-\u001f\u007f]/.test(password) || password !== passwordConfirmation) throw new HttpError(400, "Cadastro indisponivel.");
+  return { ...input, password };
+}
 function requiredBoundedText(value: unknown, min: number, max: number, _field: string): string { if (typeof value !== "string") throw new HttpError(400, "Solicitacao invalida."); const normalized = value.normalize("NFKC").trim().replace(/\s+/g, " "); if (normalized.length < min || normalized.length > max || /[\u0000-\u001f\u007f]/.test(normalized)) throw new HttpError(400, "Solicitacao invalida."); return normalized; }
 function parseProtocol(value: string): string { if (!/^ORG-[A-Za-z0-9_-]{20,64}$/.test(value)) throw new HttpError(404, "Solicitacao indisponivel para decisao."); return value; }
 function parseInvitationToken(value: string): string { if (!/^INV-[A-Za-z0-9_-]{40,96}$/.test(value)) throw new HttpError(404, "Convite indisponivel."); return value; }
 function parseInvitationActivation(body: unknown): { displayName: string; password: string } { if (!isObject(body)) throw new HttpError(400, "Ativacao indisponivel."); const displayName = requiredBoundedText(body.display_name, 2, 120, "display_name"); const password = typeof body.password === "string" ? body.password : ""; if (password.length < 12 || password.length > 128 || /[\u0000-\u001f\u007f]/.test(password)) throw new HttpError(400, "Ativacao indisponivel."); return { displayName, password }; }
-function sanitizeRequestPath(value: string): string { return value.replace(/(\/api\/convites\/)[^/?]+(\/ativar(?:\?.*)?$)/, "$1[redacted]$2"); }
+function sanitizeRequestPath(value: string): string { return value.replace(/(\/api\/convites\/)[^/?]+(\/ativar(?:\?.*)?$)/, "$1[redacted]$2").replace(/(\/api\/organizacoes\/solicitacoes\/)[^/?]+(\/decisao(?:\?.*)?$)/, "$1[redacted]$2"); }
 function parseLogin(body: unknown): { email: string; password: string } { if (!isObject(body)) throw new HttpError(400, "Credenciais invalidas."); const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : ""; const password = typeof body.password === "string" ? body.password : ""; if (email.length < 5 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 1 || password.length > 128 || /[\u0000-\u001f\u007f]/.test(password)) throw new HttpError(400, "Credenciais invalidas."); return { email, password }; }
+function parsePositiveQuery(value: unknown, fallback: number, max: number): number { if (value === undefined) return fallback; if (typeof value !== "string" || !/^\d+$/.test(value)) throw new HttpError(400, "Consulta invalida."); const parsed = Number(value); if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > max) throw new HttpError(400, "Consulta invalida."); return parsed; }
 function readCookie(req: Request, name: string): string | undefined { const raw = req.header("cookie"); if (!raw) return undefined; const prefix = `${name}=`; for (const part of raw.split(";")) { const item = part.trim(); if (item.startsWith(prefix)) return item.slice(prefix.length); } return undefined; }
 
 async function prepareImportInput(body: unknown): Promise<{ idempotencyKey: string; items: PreparedImportItem[]; outputSchema: Record<string, unknown> }> {

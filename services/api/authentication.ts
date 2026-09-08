@@ -11,20 +11,25 @@ const loginWindowMs = 15 * 60 * 1000;
 const loginAttemptLimit = 5;
 const loginAttempts = new Map<string, { count: number; expiresAt: number }>();
 
-export async function login(email: string, password: string, ip: string): Promise<{ token: string; expiresAt: Date }> {
+export type LoginResult = { state: "authenticated"; token: string; expiresAt: Date } | { state: "pending_review" | "rejected" };
+
+export async function login(email: string, password: string, ip: string): Promise<LoginResult> {
   const normalizedEmail = email.toLowerCase(); const rateKey = loginRateKey(normalizedEmail, ip);
   assertRateLimit(rateKey);
   const db = requireDb(); const [account] = await db.select().from(accounts).where(eq(accounts.email, normalizedEmail)).limit(1);
-  if (!account || account.status !== "active") return failedLogin(rateKey, password);
+  if (!account) return failedLogin(rateKey, password);
   const memberships = await db.select({ member: organizationMembers, organization: organizations, credential: passwordCredentials }).from(organizationMembers).innerJoin(organizations, eq(organizationMembers.organizationId, organizations.id)).leftJoin(passwordCredentials, eq(passwordCredentials.memberId, organizationMembers.id)).where(eq(organizationMembers.accountId, account.id));
-  const eligible = memberships.filter((entry) => entry.member.status === "active" && entry.organization.status === "active" && entry.credential !== null);
-  if (eligible.length !== 1) return failedLogin(rateKey, password);
-  const candidate = eligible[0]; const credential = candidate.credential;
+  const candidates = memberships.filter((entry) => entry.credential !== null);
+  if (candidates.length !== 1) return failedLogin(rateKey, password);
+  const candidate = candidates[0]; const credential = candidate.credential;
   if (!credential || !await verifyPassword(password, credential.passwordSalt, credential.passwordHash)) return failedLoginAfterVerification(rateKey);
   loginAttempts.delete(rateKey);
+  if (account.status === "pending" && candidate.member.status === "pending" && candidate.organization.status === "pending_review") return { state: "pending_review" };
+  if (account.status === "rejected" && candidate.member.status === "rejected" && candidate.organization.status === "rejected") return { state: "rejected" };
+  if (account.status !== "active" || candidate.member.status !== "active" || candidate.organization.status !== "active") return failedLoginAfterVerification(rateKey);
   const token = `SES-${randomBytes(32).toString("base64url")}`; const expiresAt = new Date(Date.now() + sessionTtlMs);
   await db.insert(authSessions).values({ tokenHash: sessionHash(token), accountId: account.id, organizationId: candidate.organization.id, memberId: candidate.member.id, expiresAt });
-  return { token, expiresAt };
+  return { state: "authenticated", token, expiresAt };
 }
 
 export async function logout(token: string | undefined): Promise<void> {
