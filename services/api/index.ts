@@ -16,6 +16,7 @@ import { confirmImportRun, createImportDryRun, hashImportPayload, readImportRun,
 import { login, logout, readAuthenticationContext, readCurrentSession, sessionCookieName, sessionCookieOptions, type AuthContext, type OrganizationRole } from "./authentication";
 import { recordAudit, type AuditAction, type AuditResourceType } from "./audit";
 import { activateOrganizationMemberInvitation, changeOrganizationMemberRole, deactivateOrganizationMember, inviteOrganizationMember, listOrganizationPeople, revokeOrganizationMemberInvitation } from "./members";
+import { parseUsagePeriod, readUsageSummary, recordUsageFailure } from "./usage";
 import { activateInitialAdmin, decideOrganizationRequest, issueInitialAdminInvitation, listPendingOrganizationRequests, registerOrganization, revokeInitialAdminInvitation, submitOrganizationRequest } from "./organizations";
 import { buildVehiclePayload, composeFinalPrompt, readBaseAgentPrompt, readOutputSchema } from "./prompt-builder";
 import { readFieldPolicy, readNormalizationPolicy, readQualityPolicy, readSourcePolicy } from "./runtime-assets";
@@ -154,6 +155,10 @@ app.post("/api/convites/membros/:token/ativar", async (req: Request, res: Respon
   try { const input = parseInvitationActivation(req.body); res.status(200).json(await activateOrganizationMemberInvitation(parseMemberInvitationToken(req.params.token), input.displayName, input.password, requestIdOf(res))); } catch (error) { next(error); }
 });
 
+app.get("/api/organizacoes/consumo", requireRole("usage.denied", "usage", "admin"), async (req: Request, res: Response, next: NextFunction) => {
+  try { res.status(200).json(await readUsageSummary(authorizationContext(req), parseUsagePeriod(req.query.period))); } catch (error) { next(error); }
+});
+
 app.get("/api/catalogo/fichas", requireAuthenticated, async (req: Request, res: Response, next: NextFunction) => {
   try {
     res.status(200).json(await searchCatalog(parseCatalogSearchInput(req.query)));
@@ -196,7 +201,10 @@ app.post("/api/importacoes/:id/confirmar", requireRole("import.denied", "import_
 });
 
 app.post("/api/ficha-tecnica", requireRole("technical_sheet.denied", "technical_sheet", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => {
+  let usageActor: AuthContext | null = null;
+  let usageAttempted = false;
   try {
+    usageActor = authorizationContext(req);
     const vehicleInput = parseVehicleInput(req.body);
 
     const [baseAgentPrompt, outputSchema, sourcePolicy, normalizationPolicy, fieldPolicy, qualityPolicy] = await Promise.all([
@@ -218,6 +226,7 @@ app.post("/api/ficha-tecnica", requireRole("technical_sheet.denied", "technical_
       qualityPolicy
     });
 
+    usageAttempted = true;
     const llmRawResponse = await callLLM(finalPrompt, vehicleInput);
     const requestId = String(res.getHeader("x-request-id") ?? createRequestId());
     const provider = (process.env.LLM_PROVIDER ?? "simulated").toLowerCase();
@@ -231,13 +240,14 @@ app.post("/api/ficha-tecnica", requireRole("technical_sheet.denied", "technical_
       qualityPolicy
     });
     if (getPersistenceMode() === "postgres") {
-      await persistTechnicalSheet({ requestId, provider: snapshotProvider, vehicle: vehicleInput, response: validatedResponse, outputSchema, finalPrompt, actor: authorizationContext(req), auditAction: "technical_sheet.generated" });
+      await persistTechnicalSheet({ requestId, provider: snapshotProvider, vehicle: vehicleInput, response: validatedResponse, outputSchema, finalPrompt, actor: usageActor, auditAction: "technical_sheet.generated" });
     } else {
       void saveLLMResponseSnapshot(requestId, snapshotProvider, vehicleInput, validatedResponse);
     }
 
     res.status(200).json(validatedResponse);
   } catch (error) {
+    if (usageAttempted && usageActor) void recordUsageFailure(usageActor, requestIdOf(res)).catch(() => undefined);
     next(error);
   }
 });

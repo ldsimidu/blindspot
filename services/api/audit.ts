@@ -3,8 +3,8 @@ import { auditEvents } from "./db/schema";
 import { HttpError } from "./types";
 import type { AuthContext } from "./authentication";
 
-export type AuditAction = "technical_sheet.generated" | "technical_sheet.denied" | "import.dry_run_created" | "import.confirmed" | "import.denied" | "member.denied" | "member.invitation_issued" | "member.invitation_revoked" | "member.activated" | "member.role_changed" | "member.deactivated";
-export type AuditResourceType = "technical_sheet" | "import_run" | "organization_member" | "member_invitation";
+export type AuditAction = "technical_sheet.generated" | "technical_sheet.denied" | "import.dry_run_created" | "import.confirmed" | "import.denied" | "member.denied" | "member.invitation_issued" | "member.invitation_revoked" | "member.activated" | "member.role_changed" | "member.deactivated" | "usage.denied";
+export type AuditResourceType = "technical_sheet" | "import_run" | "organization_member" | "member_invitation" | "usage";
 export interface AuditInput { actor: AuthContext; action: AuditAction; resourceType: AuditResourceType; resourceId?: string; outcome: "allowed" | "denied" | "failed"; requestId: string; }
 
 export async function recordAudit(input: AuditInput): Promise<void> {

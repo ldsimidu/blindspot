@@ -64,6 +64,20 @@
       "when": 1788900000000,
       "tag": "0008_organization_member_management",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1788903600000,
+      "tag": "0009_usage_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788907200000,
+      "tag": "0010_usage_event_request_dedupe",
+      "breakpoints": true
     }
   ]
 }

@@ -218,11 +218,11 @@ Dependências: `qualidade → persistência → consulta/comparação`; `identid
 
 #### E04-02 — Medir consumo reproduzível
 
-- **Problema/pessoa/fluxo:** eventos classificam consulta/comparativo/exportação por organização, usuário e resultado; admin vê período e definição de unidade.
+- **Problema/pessoa/fluxo:** eventos técnicos classificam geração persistida e falha por organização/resultado; admin vê período e definição de unidade, sem eventos brutos.
 - **Fora do escopo:** preço/cobrança e histórico de seis meses como política fechada.
-- **Tasks/subtasks:** decidir unidade, evento idempotente, separação de tentativa/sucesso/falha/custo provider, agregação, correção e privacidade.
-- **Aceite, evidência e DoD:** total se reproduz dos eventos; retry segue política; tenant não vê uso alheio; testes de deduplicação/isolamento passam.
-- **Prioridade/dependência/risco/fonte:** Depois; E01/E04-01; sobrecontagem/privacidade; Ford 4.2.1, 4.2.2, 4.2.4; RF10.
+- **Tasks/subtasks:** unidade `technical_sheet_persisted`; evento idempotente por execução/request; falha com zero unidade; agregação mensal privada; definição explícita; preço/cota seguem fora do escopo.
+- **Aceite, evidência e DoD:** definição da unidade é explícita; retry não duplica; admin só vê o próprio tenant; totais conciliam com eventos; falha não vira sucesso; testes passam. **Estado comprovado: P1-015 implementado.**
+- **Prioridade/dependência/risco/fonte:** Concluído no P1-015; E01/E04-01; sobrecontagem/privacidade; Ford 4.2.1, 4.2.2, 4.2.4; RF10.
 
 #### E04-03 — Alertar cota sem vazar consumo
 

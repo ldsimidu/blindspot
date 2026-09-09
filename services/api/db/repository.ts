@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { and, asc, count, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { createCatalogSlug, createDeterministicAliases, normalizeCatalogText } from "../catalog";
 import { getDatabase } from "./client";
-import { auditEvents, collectionRuns, schemaContracts, sources, technicalSheetSources, technicalSheetVersions, vehicleConfigurationAliases, vehicleConfigurations } from "./schema";
+import { auditEvents, collectionRuns, schemaContracts, sources, technicalSheetSources, technicalSheetVersions, usageEvents, vehicleConfigurationAliases, vehicleConfigurations } from "./schema";
 import { HttpError, type CatalogCandidate, type CatalogEntryResult, type CatalogSearchResult, type FichaTecnicaHistoryItem, type FichaTecnicaResponse, type VehicleInput } from "../types";
 import type { LLMProvider } from "../logger";
 import type { AuthContext } from "../authentication";
@@ -44,6 +44,9 @@ export async function persistTechnicalSheetInTransaction(tx: any, input: Persist
   const [lastVersion] = await tx.select({ versionNumber: technicalSheetVersions.versionNumber }).from(technicalSheetVersions).where(eq(technicalSheetVersions.vehicleConfigurationId, vehicle.id)).orderBy(desc(technicalSheetVersions.versionNumber)).limit(1);
   const [run] = await tx.insert(collectionRuns).values({ requestId: input.requestId, vehicleConfigurationId: vehicle.id, organizationId: input.actor?.organizationId, accountId: input.actor?.accountId, memberId: input.actor?.memberId, provider: input.provider, modelName: resolveModel(input.provider), status: "succeeded", schemaContractId: schemaContract.id, promptSha256: sha256(input.finalPrompt), startedAt: now, finishedAt: now }).returning();
   const [sheet] = await tx.insert(technicalSheetVersions).values({ collectionRunId: run.id, vehicleConfigurationId: vehicle.id, schemaContractId: schemaContract.id, versionNumber: (lastVersion?.versionNumber ?? 0) + 1, payload: input.response, completenessSummary: input.response.resumo_completude, payloadSha256: sha256(input.response) }).returning();
+  if (input.actor) {
+    await tx.insert(usageEvents).values({ organizationId: input.actor.organizationId, accountId: input.actor.accountId, memberId: input.actor.memberId, collectionRunId: run.id, action: "technical_sheet_persisted", outcome: "succeeded", units: 1, requestId: input.requestId });
+  }
   if (input.actor && input.auditAction) {
     await tx.insert(auditEvents).values({ organizationId: input.actor.organizationId, accountId: input.actor.accountId, memberId: input.actor.memberId, action: input.auditAction, resourceType: "technical_sheet", resourceId: sheet.id, outcome: "allowed", requestId: input.requestId });
   }

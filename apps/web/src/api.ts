@@ -7,7 +7,8 @@ import type {
   VehicleInput,
   OrganizationMember,
   OrganizationMemberInvitation,
-  OrganizationRole
+  OrganizationRole,
+  UsageSummary
 } from "./types";
 
 const API_ENDPOINT = "/api/ficha-tecnica";
@@ -141,6 +142,12 @@ export async function desativarMembro(id: string): Promise<void> {
 export async function ativarConviteMembro(token: string, displayName: string, password: string): Promise<void> {
   const response = await fetch(`/api/convites/membros/${encodeURIComponent(token)}/ativar`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ display_name: displayName, password }) });
   if (!response.ok) throw await apiError(response, "Erro ao ativar convite");
+}
+
+export async function obterConsumo(period: string): Promise<UsageSummary> {
+  const response = await fetch(`/api/organizacoes/consumo?period=${encodeURIComponent(period)}`, { credentials: "same-origin" });
+  if (!response.ok) throw await apiError(response, "Erro ao consultar consumo");
+  return (await response.json()) as UsageSummary;
 }
 
 async function apiError(response: Response, fallback: string): Promise<Error> {

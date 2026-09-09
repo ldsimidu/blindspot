@@ -1,9 +1,9 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { abrirFichaCatalogo, ativarConviteMembro, alterarPapelMembro, buscarCatalogo, cadastrarOrganizacao, convidarMembro, desativarMembro, entrar, gerarFichaTecnica, obterEquipe, obterHistoricoFichas, obterSessao, obterUltimaFichaTecnica, revogarConviteMembro, sair } from "./api";
-import type { CatalogEntryResult, CatalogSearchResult, FichaTecnicaHistoryItem, FichaTecnicaResponse, OrganizationMember, OrganizationMemberInvitation, OrganizationRole, VehicleInput } from "./types";
+import { abrirFichaCatalogo, ativarConviteMembro, alterarPapelMembro, buscarCatalogo, cadastrarOrganizacao, convidarMembro, desativarMembro, entrar, gerarFichaTecnica, obterConsumo, obterEquipe, obterHistoricoFichas, obterSessao, obterUltimaFichaTecnica, revogarConviteMembro, sair } from "./api";
+import type { CatalogEntryResult, CatalogSearchResult, FichaTecnicaHistoryItem, FichaTecnicaResponse, OrganizationMember, OrganizationMemberInvitation, OrganizationRole, UsageSummary, VehicleInput } from "./types";
 import logoBlindspot from "./assets/blindspot-mark.png";
 
-type AppView = "request" | "catalog" | "history" | "team";
+type AppView = "request" | "catalog" | "history" | "team" | "usage";
 type ThemeMode = "dark" | "light";
 type AccessView = "login" | "registration" | "received" | "pending_review" | "rejected";
 
@@ -365,6 +365,7 @@ function App() {
             <span className="sidebar-link-label">Historico</span>
           </button>
           {signedInRole === "admin" ? <button type="button" className={`sidebar-link ${activeView === "team" ? "active" : ""}`} onClick={() => setActiveView("team")} aria-pressed={activeView === "team"} title="Equipe"><span className="sidebar-link-icon">♙</span><span className="sidebar-link-label">Equipe</span></button> : null}
+          {signedInRole === "admin" ? <button type="button" className={`sidebar-link ${activeView === "usage" ? "active" : ""}`} onClick={() => setActiveView("usage")} aria-pressed={activeView === "usage"} title="Consumo"><span className="sidebar-link-icon">◴</span><span className="sidebar-link-label">Consumo</span></button> : null}
           <button type="button" className="sidebar-link" onClick={() => setIsOnboardingOpen(true)} title="Ver orientação inicial">
             <span className="sidebar-link-icon">i</span>
             <span className="sidebar-link-label">Orientação</span>
@@ -491,6 +492,8 @@ function App() {
           </section>
         ) : activeView === "team" && signedInRole === "admin" ? (
           <TeamPanel />
+        ) : activeView === "usage" && signedInRole === "admin" ? (
+          <UsagePanel />
         ) : (
           <section className="history-layout">
             <section className="panel history-panel">
@@ -574,6 +577,13 @@ function TeamPanel() {
   useEffect(() => { void refresh(); }, []);
   async function invite(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setError(null); setLink(null); try { const result = await convidarMembro(email, role); setLink(`${window.location.origin}${result.activation_path}`); setEmail(""); await refresh(); } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível criar o convite."); } }
   return <section className="panel"><h1>Equipe</h1><p>Convide pessoas, ajuste papéis e encerre acessos da sua organização.</p><form className="form-grid" onSubmit={invite}><label>E-mail corporativo<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label><label>Papel inicial<select value={role} onChange={(event) => setRole(event.target.value as OrganizationRole)}><option value="viewer">Visualizador</option><option value="analyst">Analista</option><option value="admin">Administrador</option></select></label><button className="primary-button" type="submit">Gerar convite</button></form>{link ? <div className="status-text" role="status"><strong>Copie agora o link de ativação:</strong><input readOnly value={link} aria-label="Link único de ativação" onFocus={(event) => event.currentTarget.select()} /></div> : null}{error ? <div className="error-box" role="alert">{error}</div> : null}<h2>Membros</h2>{people?.members.map((member) => <article key={member.id} className="history-item"><strong>{member.display_name}</strong><span>{member.email} · {member.state}</span><label>Papel<select value={member.role} disabled={member.state !== "active"} onChange={(event) => void alterarPapelMembro(member.id, event.target.value as OrganizationRole).then(refresh).catch((err: unknown) => setError(err instanceof Error ? err.message : "Não foi possível alterar o papel."))}><option value="viewer">Visualizador</option><option value="analyst">Analista</option><option value="admin">Administrador</option></select></label><button type="button" disabled={member.state !== "active"} onClick={() => void desativarMembro(member.id).then(refresh).catch((err: unknown) => setError(err instanceof Error ? err.message : "Não foi possível desativar o membro."))}>Desativar</button></article>) ?? <p className="status-text">Carregando equipe…</p>}<h2>Convites</h2>{people?.invitations.length ? people.invitations.map((invitation) => <article key={invitation.id} className="history-item"><strong>{invitation.email}</strong><span>{invitation.role} · {invitation.state}</span>{invitation.state === "issued" ? <button type="button" onClick={() => void revogarConviteMembro(invitation.id).then(refresh).catch((err: unknown) => setError(err instanceof Error ? err.message : "Não foi possível revogar o convite."))}>Revogar convite</button> : null}</article>) : <p className="status-text">Nenhum convite pendente.</p>}</section>;
+}
+
+function UsagePanel() {
+  const currentPeriod = new Date().toISOString().slice(0, 7); const [period, setPeriod] = useState(currentPeriod); const [summary, setSummary] = useState<UsageSummary | null>(null); const [error, setError] = useState<string | null>(null);
+  async function load() { try { setError(null); setSummary(await obterConsumo(period)); } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível consultar o consumo."); } }
+  useEffect(() => { void load(); }, []);
+  return <section className="panel"><h1>Consumo</h1><p>Visão técnica mensal da sua organização. Não representa preço, cobrança ou limite.</p><form className="form-grid" onSubmit={(event) => { event.preventDefault(); void load(); }}><label>Período<input type="month" value={period} onChange={(event) => setPeriod(event.target.value)} required /></label><button className="primary-button" type="submit">Consultar</button></form>{error ? <div className="error-box" role="alert">{error}</div> : null}{summary ? <><p className="status-text">{summary.definition}</p><div className="history-list"><article className="history-item"><strong>{summary.successful_units} unidade(s)</strong><span>Fichas técnicas persistidas com sucesso</span></article><article className="history-item"><strong>{summary.failed_attempts} falha(s)</strong><span>Tentativas que não geraram unidades</span></article></div><h2>Detalhamento do período {summary.period}</h2>{summary.breakdown.length ? summary.breakdown.map((item) => <article key={`${item.action}-${item.outcome}`} className="history-item"><strong>{item.action === "technical_sheet_persisted" ? "Ficha persistida" : "Persistência não concluída"}</strong><span>{item.events} evento(s) · {item.units} unidade(s) · {item.outcome === "succeeded" ? "sucesso" : "falha"}</span></article>) : <p className="status-text">Não há eventos de consumo neste período.</p>}</> : <p className="status-text">Carregando consumo…</p>}</section>;
 }
 
 function MemberInvitationActivation({ token }: { token: string }) {
