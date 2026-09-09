@@ -226,11 +226,11 @@ Dependências: `qualidade → persistência → consulta/comparação`; `identid
 
 #### E04-03 — Alertar cota sem vazar consumo
 
-- **Problema/pessoa/fluxo:** agregador avalia política aprovada e manda alerta in-app/e-mail a destinatários autorizados com motivo/período/ação.
+- **Problema/pessoa/fluxo:** agregador avalia política mensal configurada explicitamente pelo admin e cria alerta interno para admins ativos da própria organização, com período, limiar e ação de revisão.
 - **Fora do escopo:** fixar 70/90/100% ou suspender serviço automaticamente.
-- **Tasks/subtasks:** cota/destinatários, deduplicação, opt-in de canal, acessibilidade, falha de entrega e reprocessamento.
-- **Aceite, evidência e DoD:** alerta não revela tenant; duplicado é suprimido; falha de canal não muda consumo; limiar tem origem contratual aprovada e testes passam.
-- **Prioridade/dependência/risco/fonte:** Depois; E04-02; comunicação indevida; Ford 3.1.5, 4.2.3; RF11.
+- **Tasks/subtasks:** política sem default, destinatários admin ativos, alerta in-app deduplicado, reconhecimento idempotente e auditoria; canal externo segue fora do escopo.
+- **Aceite, evidência e DoD:** alerta não revela tenant; duplicado é suprimido; falha de alerta não muda consumo; limiar é configurado explicitamente pela organização e testes passam. **Estado comprovado: P1-016 implementado.**
+- **Prioridade/dependência/risco/fonte:** Concluído no P1-016; E04-02; comunicação indevida; Ford 3.1.5, 4.2.3; RF11.
 
 ## E05 — Observabilidade, segurança, incidentes e SLA
 

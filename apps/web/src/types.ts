@@ -37,6 +37,7 @@ export type OrganizationRole = "viewer" | "analyst" | "admin";
 export interface OrganizationMember { id: string; display_name: string; email: string; role: OrganizationRole; state: "active" | "inactive"; created_at: string; }
 export interface OrganizationMemberInvitation { id: string; email: string; role: OrganizationRole; state: "issued" | "revoked" | "used" | "expired"; expires_at: string; created_at: string; }
 export interface UsageSummary { definition: string; period: string; starts_at: string; ends_at: string; successful_units: number; failed_attempts: number; breakdown: Array<{ action: "technical_sheet_persisted" | "technical_sheet_persist_failed"; outcome: "succeeded" | "failed"; units: number; events: number }>; }
+export interface UsageAlertSettings { policy: { threshold_units: number; is_active: boolean; version: number } | null; alerts: Array<{ id: string; period: string; threshold_units: number; total_units: number; policy_version: number; state: "open"; created_at: string; acknowledged_at: string | null }>; }
 
 export interface FichaTecnicaHistoryItem {
   id: string;

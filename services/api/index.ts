@@ -16,7 +16,7 @@ import { confirmImportRun, createImportDryRun, hashImportPayload, readImportRun,
 import { login, logout, readAuthenticationContext, readCurrentSession, sessionCookieName, sessionCookieOptions, type AuthContext, type OrganizationRole } from "./authentication";
 import { recordAudit, type AuditAction, type AuditResourceType } from "./audit";
 import { activateOrganizationMemberInvitation, changeOrganizationMemberRole, deactivateOrganizationMember, inviteOrganizationMember, listOrganizationPeople, revokeOrganizationMemberInvitation } from "./members";
-import { parseUsagePeriod, readUsageSummary, recordUsageFailure } from "./usage";
+import { acknowledgeUsageAlert, evaluateUsagePolicy, parseUsagePeriod, readUsageAlerts, readUsageSummary, recordUsageFailure, updateUsagePolicy } from "./usage";
 import { activateInitialAdmin, decideOrganizationRequest, issueInitialAdminInvitation, listPendingOrganizationRequests, registerOrganization, revokeInitialAdminInvitation, submitOrganizationRequest } from "./organizations";
 import { buildVehiclePayload, composeFinalPrompt, readBaseAgentPrompt, readOutputSchema } from "./prompt-builder";
 import { readFieldPolicy, readNormalizationPolicy, readQualityPolicy, readSourcePolicy } from "./runtime-assets";
@@ -159,6 +159,18 @@ app.get("/api/organizacoes/consumo", requireRole("usage.denied", "usage", "admin
   try { res.status(200).json(await readUsageSummary(authorizationContext(req), parseUsagePeriod(req.query.period))); } catch (error) { next(error); }
 });
 
+app.get("/api/organizacoes/consumo/alertas", requireRole("usage.denied", "usage", "admin"), async (req: Request, res: Response, next: NextFunction) => {
+  try { res.status(200).json(await readUsageAlerts(authorizationContext(req))); } catch (error) { next(error); }
+});
+
+app.post("/api/organizacoes/consumo/politica", requireRole("usage.denied", "usage", "admin"), async (req: Request, res: Response, next: NextFunction) => {
+  try { const input = parseUsagePolicy(req.body); res.status(200).json(await updateUsagePolicy(authorizationContext(req), input.thresholdUnits, input.isActive, requestIdOf(res))); } catch (error) { next(error); }
+});
+
+app.post("/api/organizacoes/consumo/alertas/:id/reconhecer", requireRole("usage.denied", "usage", "admin"), async (req: Request, res: Response, next: NextFunction) => {
+  try { res.status(200).json(await acknowledgeUsageAlert(authorizationContext(req), parseCatalogId(req.params.id), requestIdOf(res))); } catch (error) { next(error); }
+});
+
 app.get("/api/catalogo/fichas", requireAuthenticated, async (req: Request, res: Response, next: NextFunction) => {
   try {
     res.status(200).json(await searchCatalog(parseCatalogSearchInput(req.query)));
@@ -196,6 +208,7 @@ app.get("/api/importacoes/:id", requireRole("import.denied", "import_run", "anal
 app.post("/api/importacoes/:id/confirmar", requireRole("import.denied", "import_run", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => {
   try {
     const actor = authorizationContext(req); const result = await confirmImportRun(parseCatalogId(req.params.id), await readOutputSchema(), actor, requestIdOf(res));
+    await evaluateUsagePolicy(actor).catch(() => undefined);
     res.status(200).json(result);
   } catch (error) { next(error); }
 });
@@ -241,6 +254,7 @@ app.post("/api/ficha-tecnica", requireRole("technical_sheet.denied", "technical_
     });
     if (getPersistenceMode() === "postgres") {
       await persistTechnicalSheet({ requestId, provider: snapshotProvider, vehicle: vehicleInput, response: validatedResponse, outputSchema, finalPrompt, actor: usageActor, auditAction: "technical_sheet.generated" });
+      await evaluateUsagePolicy(usageActor).catch(() => undefined);
     } else {
       void saveLLMResponseSnapshot(requestId, snapshotProvider, vehicleInput, validatedResponse);
     }
@@ -471,6 +485,7 @@ function parseInvitationToken(value: string): string { if (!/^INV-[A-Za-z0-9_-]{
 function parseMemberInvitationToken(value: string): string { if (!/^MINV-[A-Za-z0-9_-]{40,96}$/.test(value)) throw new HttpError(404, "Convite indisponivel."); return value; }
 function parseInvitationActivation(body: unknown): { displayName: string; password: string } { if (!isObject(body)) throw new HttpError(400, "Ativacao indisponivel."); const displayName = requiredBoundedText(body.display_name, 2, 120, "display_name"); const password = typeof body.password === "string" ? body.password : ""; if (password.length < 12 || password.length > 128 || /[\u0000-\u001f\u007f]/.test(password)) throw new HttpError(400, "Ativacao indisponivel."); return { displayName, password }; }
 function parseMemberInvitation(body: unknown): { email: string; role: OrganizationRole } { if (!isObject(body)) throw new HttpError(400, "Convite indisponivel."); const email = requiredBoundedText(body.email, 5, 254, "email").toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new HttpError(400, "Convite indisponivel."); return { email, role: parseOrganizationRole(body) }; }
+function parseUsagePolicy(body: unknown): { thresholdUnits: number; isActive: boolean } { if (!isObject(body) || typeof body.threshold_units !== "number" || !Number.isSafeInteger(body.threshold_units) || body.threshold_units < 1 || typeof body.is_active !== "boolean") throw new HttpError(400, "Politica de consumo invalida."); return { thresholdUnits: body.threshold_units, isActive: body.is_active }; }
 function parseOrganizationRole(body: unknown): OrganizationRole { if (!isObject(body) || (body.role !== "viewer" && body.role !== "analyst" && body.role !== "admin")) throw new HttpError(400, "Papel indisponivel."); return body.role; }
 function sanitizeRequestPath(value: string): string { return value.replace(/(\/api\/convites\/)[^/?]+(\/ativar(?:\?.*)?$)/, "$1[redacted]$2").replace(/(\/api\/organizacoes\/solicitacoes\/)[^/?]+(\/decisao(?:\?.*)?$)/, "$1[redacted]$2").replace(/(\/api\/convites\/membros\/)[^/?]+(\/ativar(?:\?.*)?$)/, "$1[redacted]$2"); }
 function parseLogin(body: unknown): { email: string; password: string } { if (!isObject(body)) throw new HttpError(400, "Credenciais invalidas."); const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : ""; const password = typeof body.password === "string" ? body.password : ""; if (email.length < 5 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 1 || password.length > 128 || /[\u0000-\u001f\u007f]/.test(password)) throw new HttpError(400, "Credenciais invalidas."); return { email, password }; }

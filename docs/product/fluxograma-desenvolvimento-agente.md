@@ -60,8 +60,9 @@ flowchart LR
   admin -- sim --> consumo[Admin consulta consumo mensal\n1 por ficha persistida]
   coleta --> eventoUso[Evento imutável por collection run\nsucesso 1 · falha 0]
   eventoUso --> consumo
-  consumo --> limite{Limiar atingido?}
-  limite -- sim --> alerta[Notificar destinatário\nautorizado · RF11]
+  consumo --> limite{Política mensal ativa\ne limiar atingido?}
+  limite -- sim --> alerta[Alerta interno único\nadmins ativos do tenant]
+  alerta --> reconhecer[Admin reconhece alerta\ntrilha preservada]
   limite -- não --> sair([Logout])
   membros --> sair
   comparativo --> sair
@@ -230,7 +231,7 @@ flowchart LR
   auditoria --> logout[Logout revoga sessão]
 ```
 
-**Implementado no P1-009/P1-010/P1-011/P1-013/P1-014/P1-015:** solicitação com protocolo sem enumeração, aprovação para `pending_activation`, emissão/revogação interna do convite, ativação atômica do primeiro `admin`, identidade global mínima, login por senha, sessão opaca e logout persistente. P1-013 valida sessão, organização, papel e recurso no servidor: catálogo automotivo é global para toda sessão corporativa ativa; geração e importações exigem `analyst` ou `admin`; execuções de importação ficam privadas por organização; e ações sensíveis deixam evento sanitizado de auditoria. P1-014 adiciona a tela Equipe para administradores: convite de membro por link único de 72h, ativação sem sessão, alteração de papel, revogação de convite e desativação com revogação de sessões. P1-015 adiciona a visão mensal privada de consumo: cada ficha persistida soma uma unidade, falhas somam zero e a mesma execução não é duplicada. Tokens de convite e de sessão só existem em transporte/cookie e como HMAC no banco; caminhos de convite são mascarados nos logs. O produto ainda não envia e-mail automático, não cobra e não aplica cotas. MFA, SSO e recuperação continuam em tasks próprias (P1-012 e sucessoras), sob Architecture Gate e revisão de segurança.
+**Implementado no P1-009/P1-010/P1-011/P1-013/P1-014/P1-015/P1-016:** solicitação com protocolo sem enumeração, aprovação para `pending_activation`, emissão/revogação interna do convite, ativação atômica do primeiro `admin`, identidade global mínima, login por senha, sessão opaca e logout persistente. P1-013 valida sessão, organização, papel e recurso no servidor: catálogo automotivo é global para toda sessão corporativa ativa; geração e importações exigem `analyst` ou `admin`; execuções de importação ficam privadas por organização; e ações sensíveis deixam evento sanitizado de auditoria. P1-014 adiciona a tela Equipe para administradores: convite de membro por link único de 72h, ativação sem sessão, alteração de papel, revogação de convite e desativação com revogação de sessões. P1-015 adiciona a visão mensal privada de consumo: cada ficha persistida soma uma unidade, falhas somam zero e a mesma execução não é duplicada. P1-016 permite política mensal sem default e alerta interno único, visível/reconhecível somente por admins ativos do tenant. Tokens de convite e de sessão só existem em transporte/cookie e como HMAC no banco; caminhos de convite são mascarados nos logs. O produto ainda não envia e-mail automático, não cobra e não bloqueia uso. MFA, SSO e recuperação continuam em tasks próprias (P1-012 e sucessoras), sob Architecture Gate e revisão de segurança.
 
 ### Contratos do convite implementados
 

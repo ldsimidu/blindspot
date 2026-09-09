@@ -8,7 +8,8 @@ import type {
   OrganizationMember,
   OrganizationMemberInvitation,
   OrganizationRole,
-  UsageSummary
+  UsageSummary,
+  UsageAlertSettings
 } from "./types";
 
 const API_ENDPOINT = "/api/ficha-tecnica";
@@ -149,6 +150,10 @@ export async function obterConsumo(period: string): Promise<UsageSummary> {
   if (!response.ok) throw await apiError(response, "Erro ao consultar consumo");
   return (await response.json()) as UsageSummary;
 }
+
+export async function obterAlertasConsumo(): Promise<UsageAlertSettings> { const response = await fetch("/api/organizacoes/consumo/alertas", { credentials: "same-origin" }); if (!response.ok) throw await apiError(response, "Erro ao consultar alertas"); return (await response.json()) as UsageAlertSettings; }
+export async function salvarPoliticaConsumo(thresholdUnits: number, isActive: boolean): Promise<void> { const response = await fetch("/api/organizacoes/consumo/politica", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ threshold_units: thresholdUnits, is_active: isActive }) }); if (!response.ok) throw await apiError(response, "Erro ao salvar política"); }
+export async function reconhecerAlertaConsumo(id: string): Promise<void> { const response = await fetch(`/api/organizacoes/consumo/alertas/${encodeURIComponent(id)}/reconhecer`, { method: "POST", credentials: "same-origin" }); if (!response.ok) throw await apiError(response, "Erro ao reconhecer alerta"); }
 
 async function apiError(response: Response, fallback: string): Promise<Error> {
   const errorPayload = (await safeJson(response)) as ApiErrorResponse | null;
