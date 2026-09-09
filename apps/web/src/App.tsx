@@ -1,9 +1,9 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { abrirFichaCatalogo, buscarCatalogo, cadastrarOrganizacao, entrar, gerarFichaTecnica, obterHistoricoFichas, obterSessao, obterUltimaFichaTecnica, sair } from "./api";
-import type { CatalogEntryResult, CatalogSearchResult, FichaTecnicaHistoryItem, FichaTecnicaResponse, VehicleInput } from "./types";
+import { abrirFichaCatalogo, ativarConviteMembro, alterarPapelMembro, buscarCatalogo, cadastrarOrganizacao, convidarMembro, desativarMembro, entrar, gerarFichaTecnica, obterEquipe, obterHistoricoFichas, obterSessao, obterUltimaFichaTecnica, revogarConviteMembro, sair } from "./api";
+import type { CatalogEntryResult, CatalogSearchResult, FichaTecnicaHistoryItem, FichaTecnicaResponse, OrganizationMember, OrganizationMemberInvitation, OrganizationRole, VehicleInput } from "./types";
 import logoBlindspot from "./assets/blindspot-mark.png";
 
-type AppView = "request" | "catalog" | "history";
+type AppView = "request" | "catalog" | "history" | "team";
 type ThemeMode = "dark" | "light";
 type AccessView = "login" | "registration" | "received" | "pending_review" | "rejected";
 
@@ -56,6 +56,7 @@ function App() {
   const [registrationLoading, setRegistrationLoading] = useState(false);
   const [registrationError, setRegistrationError] = useState<string | null>(null);
   const [signedInName, setSignedInName] = useState("");
+  const [signedInRole, setSignedInRole] = useState<OrganizationRole | null>(null);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     const saved = typeof window !== "undefined" ? window.localStorage.getItem("blindspot_theme_mode") : null;
     return saved === "light" ? "light" : "dark";
@@ -111,7 +112,7 @@ function App() {
 
   useEffect(() => {
     void obterSessao().then((session) => {
-      setSignedInName(session?.displayName ?? "");
+      setSignedInName(session?.displayName ?? ""); setSignedInRole(session?.role ?? null);
       setAuthState(session ? "signed_in" : "signed_out");
     }).catch(() => setAuthState("signed_out"));
   }, []);
@@ -232,7 +233,7 @@ function App() {
 
   async function handleLogin(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault(); setLoginLoading(true); setLoginError(null);
-    try { const outcome = await entrar(loginEmail, loginPassword); if (outcome.state !== "authenticated") { setAccessView(outcome.state); return; } setSignedInName(outcome.displayName); setLoginPassword(""); setAuthState("signed_in"); } catch { setLoginError("Não foi possível entrar com essas credenciais."); } finally { setLoginLoading(false); }
+    try { const outcome = await entrar(loginEmail, loginPassword); if (outcome.state !== "authenticated") { setAccessView(outcome.state); return; } setSignedInName(outcome.displayName); setSignedInRole(outcome.role); setLoginPassword(""); setAuthState("signed_in"); } catch { setLoginError("Não foi possível entrar com essas credenciais."); } finally { setLoginLoading(false); }
   }
 
   async function handleRegistration(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -247,13 +248,13 @@ function App() {
 
   async function refreshApprovalStatus(): Promise<void> {
     setLoginLoading(true); setLoginError(null);
-    try { const outcome = await entrar(loginEmail, loginPassword); if (outcome.state !== "authenticated") { setAccessView(outcome.state); return; } setSignedInName(outcome.displayName); setLoginPassword(""); setAuthState("signed_in"); }
+    try { const outcome = await entrar(loginEmail, loginPassword); if (outcome.state !== "authenticated") { setAccessView(outcome.state); return; } setSignedInName(outcome.displayName); setSignedInRole(outcome.role); setLoginPassword(""); setAuthState("signed_in"); }
     catch { setAccessView("login"); setLoginError("Não foi possível atualizar agora. Entre novamente para tentar."); }
     finally { setLoginLoading(false); }
   }
 
   async function handleLogout(): Promise<void> {
-    try { await sair(); } finally { setSignedInName(""); setLoginPassword(""); setAuthState("signed_out"); }
+    try { await sair(); } finally { setSignedInName(""); setSignedInRole(null); setLoginPassword(""); setAuthState("signed_out"); }
   }
 
   const statusAnnouncement = loading
@@ -261,6 +262,9 @@ function App() {
     : catalogLoading
       ? "Consultando catálogo."
       : error ?? catalogError ?? "";
+
+  const memberInvitationToken = /^\/convites\/membros\/(MINV-[A-Za-z0-9_-]{40,96})$/.exec(window.location.pathname)?.[1] ?? null;
+  if (memberInvitationToken) return <MemberInvitationActivation token={memberInvitationToken} />;
 
   if (authState !== "signed_in") {
     return (
@@ -360,6 +364,7 @@ function App() {
             </span>
             <span className="sidebar-link-label">Historico</span>
           </button>
+          {signedInRole === "admin" ? <button type="button" className={`sidebar-link ${activeView === "team" ? "active" : ""}`} onClick={() => setActiveView("team")} aria-pressed={activeView === "team"} title="Equipe"><span className="sidebar-link-icon">♙</span><span className="sidebar-link-label">Equipe</span></button> : null}
           <button type="button" className="sidebar-link" onClick={() => setIsOnboardingOpen(true)} title="Ver orientação inicial">
             <span className="sidebar-link-icon">i</span>
             <span className="sidebar-link-label">Orientação</span>
@@ -484,6 +489,8 @@ function App() {
               {catalogEntry?.state === "found" ? <FichaDashboard title={`Ficha catalogada · versao ${catalogEntry.entry.latestVersion ?? "-"}`} ficha={catalogEntry.entry.response} showTraceability /> : null}
             </section>
           </section>
+        ) : activeView === "team" && signedInRole === "admin" ? (
+          <TeamPanel />
         ) : (
           <section className="history-layout">
             <section className="panel history-panel">
@@ -558,6 +565,21 @@ function App() {
       ) : null}
     </div>
   );
+}
+
+function TeamPanel() {
+  const [people, setPeople] = useState<{ members: OrganizationMember[]; invitations: OrganizationMemberInvitation[] } | null>(null);
+  const [email, setEmail] = useState(""); const [role, setRole] = useState<OrganizationRole>("viewer"); const [error, setError] = useState<string | null>(null); const [link, setLink] = useState<string | null>(null);
+  async function refresh() { try { setPeople(await obterEquipe()); } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível carregar a equipe."); } }
+  useEffect(() => { void refresh(); }, []);
+  async function invite(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setError(null); setLink(null); try { const result = await convidarMembro(email, role); setLink(`${window.location.origin}${result.activation_path}`); setEmail(""); await refresh(); } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível criar o convite."); } }
+  return <section className="panel"><h1>Equipe</h1><p>Convide pessoas, ajuste papéis e encerre acessos da sua organização.</p><form className="form-grid" onSubmit={invite}><label>E-mail corporativo<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label><label>Papel inicial<select value={role} onChange={(event) => setRole(event.target.value as OrganizationRole)}><option value="viewer">Visualizador</option><option value="analyst">Analista</option><option value="admin">Administrador</option></select></label><button className="primary-button" type="submit">Gerar convite</button></form>{link ? <div className="status-text" role="status"><strong>Copie agora o link de ativação:</strong><input readOnly value={link} aria-label="Link único de ativação" onFocus={(event) => event.currentTarget.select()} /></div> : null}{error ? <div className="error-box" role="alert">{error}</div> : null}<h2>Membros</h2>{people?.members.map((member) => <article key={member.id} className="history-item"><strong>{member.display_name}</strong><span>{member.email} · {member.state}</span><label>Papel<select value={member.role} disabled={member.state !== "active"} onChange={(event) => void alterarPapelMembro(member.id, event.target.value as OrganizationRole).then(refresh).catch((err: unknown) => setError(err instanceof Error ? err.message : "Não foi possível alterar o papel."))}><option value="viewer">Visualizador</option><option value="analyst">Analista</option><option value="admin">Administrador</option></select></label><button type="button" disabled={member.state !== "active"} onClick={() => void desativarMembro(member.id).then(refresh).catch((err: unknown) => setError(err instanceof Error ? err.message : "Não foi possível desativar o membro."))}>Desativar</button></article>) ?? <p className="status-text">Carregando equipe…</p>}<h2>Convites</h2>{people?.invitations.length ? people.invitations.map((invitation) => <article key={invitation.id} className="history-item"><strong>{invitation.email}</strong><span>{invitation.role} · {invitation.state}</span>{invitation.state === "issued" ? <button type="button" onClick={() => void revogarConviteMembro(invitation.id).then(refresh).catch((err: unknown) => setError(err instanceof Error ? err.message : "Não foi possível revogar o convite."))}>Revogar convite</button> : null}</article>) : <p className="status-text">Nenhum convite pendente.</p>}</section>;
+}
+
+function MemberInvitationActivation({ token }: { token: string }) {
+  const [displayName, setDisplayName] = useState(""); const [password, setPassword] = useState(""); const [state, setState] = useState<"form" | "loading" | "done">("form"); const [error, setError] = useState<string | null>(null);
+  async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setState("loading"); setError(null); try { await ativarConviteMembro(token, displayName, password); setState("done"); } catch (err) { setError(err instanceof Error ? err.message : "Convite indisponível."); setState("form"); } }
+  return <main className="dashboard-page login-page"><section className="panel login-panel"><img className="brand-logo" src={logoBlindspot} alt="BlindSpot" />{state === "done" ? <><h1>Conta ativada</h1><p>Seu acesso foi criado. Entre com seu e-mail e senha.</p><a className="primary-button" href="/">Ir para o login</a></> : <><h1>Ativar convite</h1><p>Defina seus dados de acesso para entrar na organização.</p><form className="form-grid" onSubmit={submit}><label>Nome<input value={displayName} onChange={(event) => setDisplayName(event.target.value)} minLength={2} maxLength={120} required /></label><label>Senha<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={12} maxLength={128} required /></label>{error ? <p role="alert">{error}</p> : null}<button className="primary-button" disabled={state === "loading"}>{state === "loading" ? "Ativando…" : "Ativar acesso"}</button></form></>}</section></main>;
 }
 
 function FichaDashboard({

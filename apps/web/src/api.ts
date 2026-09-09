@@ -4,7 +4,10 @@ import type {
   CatalogSearchResult,
   FichaTecnicaHistoryItem,
   FichaTecnicaResponse,
-  VehicleInput
+  VehicleInput,
+  OrganizationMember,
+  OrganizationMemberInvitation,
+  OrganizationRole
 } from "./types";
 
 const API_ENDPOINT = "/api/ficha-tecnica";
@@ -15,7 +18,7 @@ const API_LOGIN_ENDPOINT = "/api/auth/login";
 const API_LOGOUT_ENDPOINT = "/api/auth/logout";
 const API_SESSION_ENDPOINT = "/api/auth/session";
 
-export interface AuthSession { state: "authenticated"; email: string; displayName: string; expires_at?: string; }
+export interface AuthSession { state: "authenticated"; email: string; displayName: string; role: OrganizationRole; expires_at?: string; }
 export type LoginOutcome = AuthSession | { state: "pending_review" | "rejected" };
 export interface OrganizationRegistration { company_name: string; cnpj: string; contact_name: string; contact_email: string; password: string; password_confirmation: string; privacy_notice_version: string; }
 
@@ -106,6 +109,38 @@ export async function abrirFichaCatalogo(id: string, vehicle: VehicleInput): Pro
   const response = await fetch(`${API_CATALOG_ENDPOINT}/${encodeURIComponent(id)}?${params.toString()}`);
   if (!response.ok) throw await apiError(response, "Erro ao abrir ficha do catalogo");
   return (await response.json()) as CatalogEntryResult;
+}
+
+export async function obterEquipe(): Promise<{ members: OrganizationMember[]; invitations: OrganizationMemberInvitation[] }> {
+  const response = await fetch("/api/organizacoes/membros", { credentials: "same-origin" });
+  if (!response.ok) throw await apiError(response, "Erro ao consultar equipe");
+  return (await response.json()) as { members: OrganizationMember[]; invitations: OrganizationMemberInvitation[] };
+}
+
+export async function convidarMembro(email: string, role: OrganizationRole): Promise<{ invitation_id: string; activation_path: string; expires_at: string; state: "issued" }> {
+  const response = await fetch("/api/organizacoes/membros/convites", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ email, role }) });
+  if (!response.ok) throw await apiError(response, "Erro ao criar convite");
+  return (await response.json()) as { invitation_id: string; activation_path: string; expires_at: string; state: "issued" };
+}
+
+export async function revogarConviteMembro(id: string): Promise<void> {
+  const response = await fetch(`/api/organizacoes/membros/convites/${encodeURIComponent(id)}/revogar`, { method: "POST", credentials: "same-origin" });
+  if (!response.ok) throw await apiError(response, "Erro ao revogar convite");
+}
+
+export async function alterarPapelMembro(id: string, role: OrganizationRole): Promise<void> {
+  const response = await fetch(`/api/organizacoes/membros/${encodeURIComponent(id)}/papel`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ role }) });
+  if (!response.ok) throw await apiError(response, "Erro ao alterar papel");
+}
+
+export async function desativarMembro(id: string): Promise<void> {
+  const response = await fetch(`/api/organizacoes/membros/${encodeURIComponent(id)}/desativar`, { method: "POST", credentials: "same-origin" });
+  if (!response.ok) throw await apiError(response, "Erro ao desativar membro");
+}
+
+export async function ativarConviteMembro(token: string, displayName: string, password: string): Promise<void> {
+  const response = await fetch(`/api/convites/membros/${encodeURIComponent(token)}/ativar`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ display_name: displayName, password }) });
+  if (!response.ok) throw await apiError(response, "Erro ao ativar convite");
 }
 
 async function apiError(response: Response, fallback: string): Promise<Error> {

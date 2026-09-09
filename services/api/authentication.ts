@@ -40,9 +40,9 @@ export async function logout(token: string | undefined): Promise<void> {
   await db.update(authSessions).set({ revokedAt: new Date() }).where(eq(authSessions.tokenHash, sessionHash(token)));
 }
 
-export async function readCurrentSession(token: string | undefined): Promise<{ email: string; displayName: string }> {
+export async function readCurrentSession(token: string | undefined): Promise<{ email: string; displayName: string; role: OrganizationRole }> {
   const context = await readAuthenticationContext(token);
-  return { email: context.email, displayName: context.displayName };
+  return { email: context.email, displayName: context.displayName, role: context.role };
 }
 
 export async function readAuthenticationContext(token: string | undefined): Promise<AuthContext> {

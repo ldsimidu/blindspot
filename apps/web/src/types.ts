@@ -33,6 +33,10 @@ export interface ApiErrorResponse {
   details?: unknown;
 }
 
+export type OrganizationRole = "viewer" | "analyst" | "admin";
+export interface OrganizationMember { id: string; display_name: string; email: string; role: OrganizationRole; state: "active" | "inactive"; created_at: string; }
+export interface OrganizationMemberInvitation { id: string; email: string; role: OrganizationRole; state: "issued" | "revoked" | "used" | "expired"; expires_at: string; created_at: string; }
+
 export interface FichaTecnicaHistoryItem {
   id: string;
   finishedAt: string;

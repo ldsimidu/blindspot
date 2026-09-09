@@ -14,7 +14,8 @@ import { getPersistenceMode } from "./db/client";
 import { persistTechnicalSheet, readCatalogEntryExact, readLatestTechnicalSheet, readTechnicalSheetHistory, searchCatalog } from "./db/repository";
 import { confirmImportRun, createImportDryRun, hashImportPayload, readImportRun, type PreparedImportItem } from "./imports";
 import { login, logout, readAuthenticationContext, readCurrentSession, sessionCookieName, sessionCookieOptions, type AuthContext, type OrganizationRole } from "./authentication";
-import { recordAudit, type AuditAction } from "./audit";
+import { recordAudit, type AuditAction, type AuditResourceType } from "./audit";
+import { activateOrganizationMemberInvitation, changeOrganizationMemberRole, deactivateOrganizationMember, inviteOrganizationMember, listOrganizationPeople, revokeOrganizationMemberInvitation } from "./members";
 import { activateInitialAdmin, decideOrganizationRequest, issueInitialAdminInvitation, listPendingOrganizationRequests, registerOrganization, revokeInitialAdminInvitation, submitOrganizationRequest } from "./organizations";
 import { buildVehiclePayload, composeFinalPrompt, readBaseAgentPrompt, readOutputSchema } from "./prompt-builder";
 import { readFieldPolicy, readNormalizationPolicy, readQualityPolicy, readSourcePolicy } from "./runtime-assets";
@@ -127,6 +128,30 @@ app.post("/api/convites/:token/ativar", async (req: Request, res: Response, next
     const input = parseInvitationActivation(req.body);
     res.status(200).json(await activateInitialAdmin(parseInvitationToken(req.params.token), input.displayName, input.password));
   } catch (error) { next(error); }
+});
+
+app.get("/api/organizacoes/membros", requireRole("member.denied", "organization_member", "admin"), async (req: Request, res: Response, next: NextFunction) => {
+  try { res.status(200).json(await listOrganizationPeople(authorizationContext(req))); } catch (error) { next(error); }
+});
+
+app.post("/api/organizacoes/membros/convites", requireRole("member.denied", "member_invitation", "admin"), async (req: Request, res: Response, next: NextFunction) => {
+  try { const input = parseMemberInvitation(req.body); res.status(201).json(await inviteOrganizationMember(authorizationContext(req), input.email, input.role, requestIdOf(res))); } catch (error) { next(error); }
+});
+
+app.post("/api/organizacoes/membros/convites/:id/revogar", requireRole("member.denied", "member_invitation", "admin"), async (req: Request, res: Response, next: NextFunction) => {
+  try { res.status(200).json(await revokeOrganizationMemberInvitation(authorizationContext(req), parseCatalogId(req.params.id), requestIdOf(res))); } catch (error) { next(error); }
+});
+
+app.post("/api/organizacoes/membros/:id/papel", requireRole("member.denied", "organization_member", "admin"), async (req: Request, res: Response, next: NextFunction) => {
+  try { res.status(200).json(await changeOrganizationMemberRole(authorizationContext(req), parseCatalogId(req.params.id), parseOrganizationRole(req.body), requestIdOf(res))); } catch (error) { next(error); }
+});
+
+app.post("/api/organizacoes/membros/:id/desativar", requireRole("member.denied", "organization_member", "admin"), async (req: Request, res: Response, next: NextFunction) => {
+  try { res.status(200).json(await deactivateOrganizationMember(authorizationContext(req), parseCatalogId(req.params.id), requestIdOf(res))); } catch (error) { next(error); }
+});
+
+app.post("/api/convites/membros/:token/ativar", async (req: Request, res: Response, next: NextFunction) => {
+  try { const input = parseInvitationActivation(req.body); res.status(200).json(await activateOrganizationMemberInvitation(parseMemberInvitationToken(req.params.token), input.displayName, input.password, requestIdOf(res))); } catch (error) { next(error); }
 });
 
 app.get("/api/catalogo/fichas", requireAuthenticated, async (req: Request, res: Response, next: NextFunction) => {
@@ -318,7 +343,7 @@ async function requireAuthenticated(req: Request, _res: Response, next: NextFunc
   } catch (error) { next(error); }
 }
 
-function requireRole(auditAction: AuditAction, resourceType: "technical_sheet" | "import_run", ...allowedRoles: OrganizationRole[]) {
+function requireRole(auditAction: AuditAction, resourceType: AuditResourceType, ...allowedRoles: OrganizationRole[]) {
   return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
     try {
       (req as AuthorizedRequest).authContext = await readAuthenticationContext(readCookie(req, sessionCookieName()));
@@ -433,8 +458,11 @@ function parseOrganizationRegistration(body: unknown) {
 function requiredBoundedText(value: unknown, min: number, max: number, _field: string): string { if (typeof value !== "string") throw new HttpError(400, "Solicitacao invalida."); const normalized = value.normalize("NFKC").trim().replace(/\s+/g, " "); if (normalized.length < min || normalized.length > max || /[\u0000-\u001f\u007f]/.test(normalized)) throw new HttpError(400, "Solicitacao invalida."); return normalized; }
 function parseProtocol(value: string): string { if (!/^ORG-[A-Za-z0-9_-]{20,64}$/.test(value)) throw new HttpError(404, "Solicitacao indisponivel para decisao."); return value; }
 function parseInvitationToken(value: string): string { if (!/^INV-[A-Za-z0-9_-]{40,96}$/.test(value)) throw new HttpError(404, "Convite indisponivel."); return value; }
+function parseMemberInvitationToken(value: string): string { if (!/^MINV-[A-Za-z0-9_-]{40,96}$/.test(value)) throw new HttpError(404, "Convite indisponivel."); return value; }
 function parseInvitationActivation(body: unknown): { displayName: string; password: string } { if (!isObject(body)) throw new HttpError(400, "Ativacao indisponivel."); const displayName = requiredBoundedText(body.display_name, 2, 120, "display_name"); const password = typeof body.password === "string" ? body.password : ""; if (password.length < 12 || password.length > 128 || /[\u0000-\u001f\u007f]/.test(password)) throw new HttpError(400, "Ativacao indisponivel."); return { displayName, password }; }
-function sanitizeRequestPath(value: string): string { return value.replace(/(\/api\/convites\/)[^/?]+(\/ativar(?:\?.*)?$)/, "$1[redacted]$2").replace(/(\/api\/organizacoes\/solicitacoes\/)[^/?]+(\/decisao(?:\?.*)?$)/, "$1[redacted]$2"); }
+function parseMemberInvitation(body: unknown): { email: string; role: OrganizationRole } { if (!isObject(body)) throw new HttpError(400, "Convite indisponivel."); const email = requiredBoundedText(body.email, 5, 254, "email").toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new HttpError(400, "Convite indisponivel."); return { email, role: parseOrganizationRole(body) }; }
+function parseOrganizationRole(body: unknown): OrganizationRole { if (!isObject(body) || (body.role !== "viewer" && body.role !== "analyst" && body.role !== "admin")) throw new HttpError(400, "Papel indisponivel."); return body.role; }
+function sanitizeRequestPath(value: string): string { return value.replace(/(\/api\/convites\/)[^/?]+(\/ativar(?:\?.*)?$)/, "$1[redacted]$2").replace(/(\/api\/organizacoes\/solicitacoes\/)[^/?]+(\/decisao(?:\?.*)?$)/, "$1[redacted]$2").replace(/(\/api\/convites\/membros\/)[^/?]+(\/ativar(?:\?.*)?$)/, "$1[redacted]$2"); }
 function parseLogin(body: unknown): { email: string; password: string } { if (!isObject(body)) throw new HttpError(400, "Credenciais invalidas."); const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : ""; const password = typeof body.password === "string" ? body.password : ""; if (email.length < 5 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 1 || password.length > 128 || /[\u0000-\u001f\u007f]/.test(password)) throw new HttpError(400, "Credenciais invalidas."); return { email, password }; }
 function parsePositiveQuery(value: unknown, fallback: number, max: number): number { if (value === undefined) return fallback; if (typeof value !== "string" || !/^\d+$/.test(value)) throw new HttpError(400, "Consulta invalida."); const parsed = Number(value); if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > max) throw new HttpError(400, "Consulta invalida."); return parsed; }
 function readCookie(req: Request, name: string): string | undefined { const raw = req.header("cookie"); if (!raw) return undefined; const prefix = `${name}=`; for (const part of raw.split(";")) { const item = part.trim(); if (item.startsWith(prefix)) return item.slice(prefix.length); } return undefined; }

@@ -14,6 +14,8 @@ Origem: `services/api/index.ts`.
 - `POST /api/ficha-tecnica` — exige sessão `analyst|admin`; corpo conforme `VEHICLE_INPUT_SPEC.md`, registra ator/organização sanitizados na execução e evento de auditoria.
 - `GET /api/catalogo/fichas?q=&page=&page_size=` e `GET /api/catalogo/fichas/:id?...` — exigem qualquer sessão corporativa ativa; catálogo automotivo é recurso global compartilhado, sem seleção aproximada.
 - `POST /api/importacoes/dry-run`, `GET /api/importacoes/:id` e `POST /api/importacoes/:id/confirmar` — exigem `analyst|admin`, vinculam a execução à organização da sessão e filtram a leitura/confirmação pelo mesmo tenant.
+- `GET /api/organizacoes/membros`, `POST /api/organizacoes/membros/convites`, alteração de papel, desativação e revogação de convite — exigem `admin`, filtram todo ID pela organização da sessão e nunca permitem autoalteração ou remoção do último administrador ativo.
+- `POST /api/convites/membros/:token/ativar` — fluxo público de uso único para convite de membro: valida token HMAC de 72h e ativa conta/membro sem emitir sessão. O convite é entregue manualmente pelo administrador no MVP; a API só retorna o link na emissão.
 
 As rotas de catálogo exigem `PERSISTENCE_MODE=postgres`; elas não usam snapshots de arquivo como fallback. `loading` é estado da interface; `found`, `not_registered` e `incompatible` são estados explícitos de resposta.
 

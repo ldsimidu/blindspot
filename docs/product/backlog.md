@@ -210,11 +210,11 @@ Dependências: `qualidade → persistência → consulta/comparação`; `identid
 
 #### E04-01 — Administrar membros e revogar acesso
 
-- **Problema/pessoa/fluxo:** administrador lista somente sua equipe, convida, altera papel e desativa membro; desativação revoga sessão e preserva histórico conforme política.
+- **Problema/pessoa/fluxo:** administrador lista somente sua equipe, gera link único de convite, altera papel e desativa membro; desativação revoga sessão e preserva histórico conforme política. No MVP o administrador transmite o link por canal corporativo, sem provider de e-mail.
 - **Fora do escopo:** exclusão física, SCIM e sincronização automática.
 - **Tasks/subtasks:** painel, convite/ativação, alteração, desativação, revogação imediata de sessão e auditoria; testes de tenant/IDOR.
-- **Aceite, evidência e DoD:** admin não atua em outro tenant; membro desativado não mantém sessão; convite vencido falha; trilha sanitizada mostra ator/motivo; testes passam.
-- **Prioridade/dependência/risco/fonte:** Próximo; E01-02/E01-06; privilégio residual; Ford 4.1.1–4.1.4; RF09.
+- **Aceite, evidência e DoD:** admin não atua em outro tenant; membro desativado não mantém sessão; convite vencido falha; trilha sanitizada mostra ator/motivo; testes passam. **Estado comprovado: P1-014 implementado.**
+- **Prioridade/dependência/risco/fonte:** Concluído no P1-014; E01-02/E01-06; privilégio residual; Ford 4.1.1–4.1.4; RF09.
 
 #### E04-02 — Medir consumo reproduzível
 
