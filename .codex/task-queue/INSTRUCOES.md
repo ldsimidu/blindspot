@@ -5,7 +5,7 @@ Cada arquivo em `entrada/` é uma task independente. Mantenha pedido, estado e r
 ## Uso
 
 1. Copie `MODELO-TAREFA.md` para `entrada/` e renomeie para `P<prioridade>-<ordem>-<nome>.md`.
-2. Preencha pedido, critérios de aceite, restrições e o campo **Arquitetura**.
+2. Preencha pedido, critérios de aceite, restrições e o campo **Arquitetura**. A triagem automática é preenchida pelo agente no refinamento.
 3. Deixe o estado como `❌ Pendente`.
 4. Diga “tenho uma tarefa para você” ou indique o arquivo desejado.
 
@@ -14,6 +14,10 @@ O agente escolhe uma única task pendente por prioridade `P0` a `P3` e, em empat
 ## Architecture Gate
 
 Antes de mover a task para `🚧 Em execução`, o agente lê `.codex/project-delivery-kit/project-profile.md` e aplica o Architecture Gate.
+
+Durante o refinamento, o agente classifica a mudança. Se ela não for mecânica e isolada, produz automaticamente a arquitetura — não é necessário um pedido separado para “arquitetar”. A task permanece pendente até `APPROVED`.
+
+Toda arquitetura avalia segurança. Quando houver gatilho de segurança, consulte `project-security-assurance`; quando não houver, registre `Não aplicável` com justificativa. Isso não autoriza instalar nem executar ferramentas de cybersecurity.
 
 - `Não aplicável`: registrar por que a mudança é mecânica e isolada.
 - `APPROVED`: incluir link ou referência à arquitetura aprovada.
