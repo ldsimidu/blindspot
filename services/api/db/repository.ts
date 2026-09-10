@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { and, asc, count, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, ne, or, sql } from "drizzle-orm";
 import { createCatalogSlug, createDeterministicAliases, normalizeCatalogText } from "../catalog";
 import { getDatabase } from "./client";
 import { auditEvents, collectionRuns, schemaContracts, sources, technicalSheetSources, technicalSheetVersions, usageEvents, vehicleConfigurationAliases, vehicleConfigurations } from "./schema";
@@ -70,7 +70,7 @@ export async function readTechnicalSheetHistory(limit: number): Promise<FichaTec
   return rows.map((row) => ({ id: row.id, finishedAt: row.finishedAt.toISOString(), provider: asProvider(row.provider), model: row.model, vehicle: { marca: row.brand, modelo: row.modelName, versao: row.trim, ano_modelo: row.modelYear, mercado: row.market }, response: row.response, isValid: true }));
 }
 
-export async function searchCatalog(input: { query: string; page: number; pageSize: number }): Promise<CatalogSearchResult> {
+export async function searchCatalog(input: { query: string; page: number; pageSize: number; sort: "recent" | "alphabetical"; brand?: string; model?: string; modelYear?: number; market?: string }): Promise<CatalogSearchResult> {
   const db = requireCatalogDatabase();
   const query = normalizeCatalogText(input.query);
   const like = `%${query}%`;
@@ -86,11 +86,34 @@ export async function searchCatalog(input: { query: string; page: number; pageSi
   const latestVersion = sql<number | null>`(select ${technicalSheetVersions.versionNumber} from ${technicalSheetVersions} where ${technicalSheetVersions.vehicleConfigurationId} = ${vehicleConfigurations.id} order by ${technicalSheetVersions.versionNumber} desc limit 1)`;
   const latestAt = sql<Date | null>`(select ${technicalSheetVersions.createdAt} from ${technicalSheetVersions} where ${technicalSheetVersions.vehicleConfigurationId} = ${vehicleConfigurations.id} order by ${technicalSheetVersions.versionNumber} desc limit 1)`;
   const latestTechnicalSheetVersionId = sql<string | null>`(select ${technicalSheetVersions.id} from ${technicalSheetVersions} where ${technicalSheetVersions.vehicleConfigurationId} = ${vehicleConfigurations.id} order by ${technicalSheetVersions.versionNumber} desc, ${technicalSheetVersions.id} desc limit 1)`;
-  const where = match ? and(match) : undefined;
+  const filters = [
+    match,
+    input.brand ? sql`lower(${vehicleConfigurations.brand}) = lower(${input.brand})` : undefined,
+    input.model ? sql`lower(${vehicleConfigurations.model}) = lower(${input.model})` : undefined,
+    input.modelYear ? eq(vehicleConfigurations.modelYear, input.modelYear) : undefined,
+    input.market ? sql`lower(${vehicleConfigurations.market}) = lower(${input.market})` : undefined,
+    sql`exists (select 1 from ${technicalSheetVersions} where ${technicalSheetVersions.vehicleConfigurationId} = ${vehicleConfigurations.id})`
+  ].filter(Boolean);
+  const where = and(...filters);
   const [{ total }] = await db.select({ total: count() }).from(vehicleConfigurations).where(where);
-  const rows = await db.select({ id: vehicleConfigurations.id, slug: vehicleConfigurations.catalogSlug, brand: vehicleConfigurations.brand, model: vehicleConfigurations.model, trim: vehicleConfigurations.trim, modelYear: vehicleConfigurations.modelYear, market: vehicleConfigurations.market, latestVersion, latestAt, latestTechnicalSheetVersionId }).from(vehicleConfigurations).where(where).orderBy(asc(vehicleConfigurations.brand), asc(vehicleConfigurations.model), asc(vehicleConfigurations.trim), asc(vehicleConfigurations.modelYear), asc(vehicleConfigurations.market), asc(vehicleConfigurations.id)).limit(input.pageSize).offset((input.page - 1) * input.pageSize);
+  const alphabeticalOrder = [asc(vehicleConfigurations.brand), asc(vehicleConfigurations.model), asc(vehicleConfigurations.trim), asc(vehicleConfigurations.modelYear), asc(vehicleConfigurations.market), asc(vehicleConfigurations.id)];
+  const order = input.sort === "recent" ? [desc(latestAt), ...alphabeticalOrder] : alphabeticalOrder;
+  const rows = await db.select({ id: vehicleConfigurations.id, slug: vehicleConfigurations.catalogSlug, brand: vehicleConfigurations.brand, model: vehicleConfigurations.model, trim: vehicleConfigurations.trim, modelYear: vehicleConfigurations.modelYear, market: vehicleConfigurations.market, latestVersion, latestAt, latestTechnicalSheetVersionId }).from(vehicleConfigurations).where(where).orderBy(...order).limit(input.pageSize).offset((input.page - 1) * input.pageSize);
   const entries = rows.map((row) => toCatalogCandidate(row));
   return { state: entries.length > 0 ? "found" : "not_registered", page: input.page, pageSize: input.pageSize, total, entries };
+}
+
+export async function readCatalogRecommendations(id: string, vehicle: VehicleInput): Promise<{ state: "found"; entries: CatalogCandidate[] } | { state: "not_registered" } | { state: "incompatible" }> {
+  const db = requireCatalogDatabase();
+  const [stored] = await db.select({ id: vehicleConfigurations.id, brand: vehicleConfigurations.brand, model: vehicleConfigurations.model, trim: vehicleConfigurations.trim, modelYear: vehicleConfigurations.modelYear, market: vehicleConfigurations.market }).from(vehicleConfigurations).where(eq(vehicleConfigurations.id, id)).limit(1);
+  if (!stored) return { state: "not_registered" };
+  if (stored.brand !== vehicle.marca || stored.model !== vehicle.modelo || stored.trim !== vehicle.versao || stored.modelYear !== vehicle.ano_modelo || stored.market !== vehicle.mercado) return { state: "incompatible" };
+  const latestVersion = sql<number | null>`(select ${technicalSheetVersions.versionNumber} from ${technicalSheetVersions} where ${technicalSheetVersions.vehicleConfigurationId} = ${vehicleConfigurations.id} order by ${technicalSheetVersions.versionNumber} desc limit 1)`;
+  const latestAt = sql<Date | null>`(select ${technicalSheetVersions.createdAt} from ${technicalSheetVersions} where ${technicalSheetVersions.vehicleConfigurationId} = ${vehicleConfigurations.id} order by ${technicalSheetVersions.versionNumber} desc limit 1)`;
+  const latestTechnicalSheetVersionId = sql<string | null>`(select ${technicalSheetVersions.id} from ${technicalSheetVersions} where ${technicalSheetVersions.vehicleConfigurationId} = ${vehicleConfigurations.id} order by ${technicalSheetVersions.versionNumber} desc, ${technicalSheetVersions.id} desc limit 1)`;
+  const where = and(eq(vehicleConfigurations.brand, stored.brand), eq(vehicleConfigurations.model, stored.model), eq(vehicleConfigurations.modelYear, stored.modelYear), eq(vehicleConfigurations.market, stored.market), ne(vehicleConfigurations.id, stored.id), sql`exists (select 1 from ${technicalSheetVersions} where ${technicalSheetVersions.vehicleConfigurationId} = ${vehicleConfigurations.id})`);
+  const rows = await db.select({ id: vehicleConfigurations.id, slug: vehicleConfigurations.catalogSlug, brand: vehicleConfigurations.brand, model: vehicleConfigurations.model, trim: vehicleConfigurations.trim, modelYear: vehicleConfigurations.modelYear, market: vehicleConfigurations.market, latestVersion, latestAt, latestTechnicalSheetVersionId }).from(vehicleConfigurations).where(where).orderBy(desc(latestAt), asc(vehicleConfigurations.trim), asc(vehicleConfigurations.id)).limit(6);
+  return { state: "found", entries: rows.map((row) => toCatalogCandidate(row)) };
 }
 
 export async function readCatalogEntryExact(id: string, vehicle: VehicleInput): Promise<CatalogEntryResult> {

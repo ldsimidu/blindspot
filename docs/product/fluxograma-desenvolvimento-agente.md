@@ -109,6 +109,27 @@ flowchart LR
 
 O endpoint atual aceita corpo plano ou `{ "vehicle": { ... } }`. Campos obrigatórios: `marca`, `modelo`, `versao`, `ano_modelo` e `mercado`. Na experiência planejada, a busca mostra estados de **carregando**, **encontrado**, **não cadastrado**, **incompatível** ou **erro**; nunca devolve uma configuração aproximada em silêncio. O histórico local não deve ser confundido com persistência corporativa/versionada em banco, que ainda é planejada.
 
+### Descoberta no catálogo (P1-024 implementado)
+
+```mermaid
+flowchart LR
+  abrirCatalogo[Abrir Catálogo] --> recentes[Ver fichas recentes\ncom versão persistida]
+  recentes --> filtros{Aplicar texto ou filtros?}
+  filtros -- sim --> consultar[Marca, modelo, ano-modelo\ne/ou mercado]
+  filtros -- não --> candidatas[Selecionar candidata]
+  consultar --> resultado{Há ficha?}
+  resultado -- não --> ausencia[Explicar ausência\nsolicitar nova coleta]
+  resultado -- sim --> candidatas
+  candidatas --> exata[Confirmar identidade exata\ne abrir ficha]
+  exata --> relacionadas[Exibir até 6 relacionadas\nmesma marca/modelo/ano/mercado]
+  relacionadas --> papel{Analyst ou admin?}
+  papel -- não --> leitura[Somente leitura]
+  papel -- sim --> comparar[Adicionar à seleção local\nde comparação]
+  comparar --> validar[Servidor valida duas versões\ne compatibilidade]
+```
+
+Recentes e relacionadas não usam histórico de navegação, perfil, IA, telemetria, ranking ou inferência de motorização. A relação apenas facilita descoberta e não garante compatibilidade; ao comparar, o servidor ainda valida mercado, identidade e motorização.
+
 ## 3. Persistência, catálogo e versões (planejado)
 
 ```mermaid

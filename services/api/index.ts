@@ -11,7 +11,7 @@ import {
 } from "./logger";
 import { callLLM } from "./llm";
 import { getPersistenceMode } from "./db/client";
-import { persistTechnicalSheet, readCatalogEntryExact, readLatestTechnicalSheet, readTechnicalSheetHistory, searchCatalog } from "./db/repository";
+import { persistTechnicalSheet, readCatalogEntryExact, readCatalogRecommendations, readLatestTechnicalSheet, readTechnicalSheetHistory, searchCatalog } from "./db/repository";
 import { confirmImportRun, createImportDryRun, hashImportPayload, readImportRun, type PreparedImportItem } from "./imports";
 import { login, logout, readAuthenticationContext, readCurrentSession, sessionCookieName, sessionCookieOptions, type AuthContext, type OrganizationRole } from "./authentication";
 import { recordAudit, type AuditAction, type AuditResourceType } from "./audit";
@@ -204,6 +204,10 @@ app.get("/api/catalogo/fichas/:id", requireAuthenticated, async (req: Request, r
   } catch (error) {
     next(error);
   }
+});
+
+app.get("/api/catalogo/fichas/:id/recomendacoes", requireAuthenticated, async (req: Request, res: Response, next: NextFunction) => {
+  try { res.status(200).json(await readCatalogRecommendations(parseCatalogId(req.params.id), parseVehicleInput(req.query))); } catch (error) { next(error); }
 });
 
 app.post("/api/importacoes/dry-run", requireRole("import.denied", "import_run", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => {
@@ -454,15 +458,24 @@ function toYear(value: unknown): number {
   throw new HttpError(400, "Campo ano_modelo deve ser um inteiro entre 1900 e 2100.");
 }
 
-function parseCatalogSearchInput(query: Request["query"]): { query: string; page: number; pageSize: number } {
+function parseCatalogSearchInput(query: Request["query"]): { query: string; page: number; pageSize: number; sort: "recent" | "alphabetical"; brand?: string; model?: string; modelYear?: number; market?: string } {
   const rawQuery = query.q;
   if (rawQuery !== undefined && (typeof rawQuery !== "string" || rawQuery.length > 100 || /[\u0000-\u001f\u007f]/.test(rawQuery))) {
     throw new HttpError(400, "Parametro q invalido.");
   }
   const page = parsePositiveInteger(query.page, "page", 1, 10_000);
   const pageSize = parsePositiveInteger(query.page_size, "page_size", 20, 20);
-  return { query: rawQuery?.trim() ?? "", page, pageSize };
+  const brand = parseOptionalCatalogText(query.marca, "marca");
+  const model = parseOptionalCatalogText(query.modelo, "modelo");
+  const market = parseOptionalCatalogText(query.mercado, "mercado");
+  const modelYear = query.ano_modelo === undefined ? undefined : parsePositiveInteger(query.ano_modelo, "ano_modelo", 1, 2100);
+  if (modelYear !== undefined && modelYear < 1900) throw new HttpError(400, "Parametro ano_modelo invalido.");
+  const hasCriteria = Boolean((rawQuery?.trim() ?? "") || brand || model || market || modelYear);
+  const sort = query.sort === undefined ? (hasCriteria ? "alphabetical" : "recent") : query.sort === "recent" || query.sort === "alphabetical" ? query.sort : null;
+  if (!sort) throw new HttpError(400, "Parametro sort invalido.");
+  return { query: rawQuery?.trim() ?? "", page, pageSize, sort, brand, model, modelYear, market };
 }
+function parseOptionalCatalogText(value: unknown, name: string): string | undefined { if (value === undefined) return undefined; if (typeof value !== "string" || value.length > 100 || /[\u0000-\u001f\u007f]/.test(value)) throw new HttpError(400, `Parametro ${name} invalido.`); const normalized = value.normalize("NFKC").trim().replace(/\s+/g, " "); if (!normalized) return undefined; return normalized; }
 
 function parsePositiveInteger(value: unknown, name: string, fallback: number, max: number): number {
   if (value === undefined) return fallback;

@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { abrirFichaCatalogo, ativarConviteMembro, alterarPapelMembro, buscarCatalogo, cadastrarOrganizacao, convidarMembro, desativarMembro, entrar, gerarFichaTecnica, obterAlertasConsumo, obterConsumo, obterEquipe, obterHistoricoFichas, obterSessao, obterUltimaFichaTecnica, reconhecerAlertaConsumo, revogarConviteMembro, sair, salvarPoliticaConsumo } from "./api";
-import type { CatalogEntryResult, CatalogSearchResult, FichaTecnicaHistoryItem, FichaTecnicaResponse, OrganizationMember, OrganizationMemberInvitation, OrganizationRole, UsageAlertSettings, UsageSummary, VehicleInput } from "./types";
+import { abrirFichaCatalogo, ativarConviteMembro, alterarPapelMembro, buscarCatalogo, cadastrarOrganizacao, convidarMembro, desativarMembro, entrar, gerarFichaTecnica, obterAlertasConsumo, obterConsumo, obterEquipe, obterHistoricoFichas, obterRecomendacoesCatalogo, obterSessao, obterUltimaFichaTecnica, reconhecerAlertaConsumo, revogarConviteMembro, sair, salvarPoliticaConsumo } from "./api";
+import type { CatalogCandidate, CatalogEntryResult, CatalogSearchResult, FichaTecnicaHistoryItem, FichaTecnicaResponse, OrganizationMember, OrganizationMemberInvitation, OrganizationRole, UsageAlertSettings, UsageSummary, VehicleInput } from "./types";
 import logoBlindspot from "./assets/blindspot-mark.png";
 import { ComparisonPanel } from "./ComparisonPanel";
 
@@ -72,9 +72,12 @@ function App() {
   const [history, setHistory] = useState<FichaTecnicaHistoryItem[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const [catalogQuery, setCatalogQuery] = useState("");
+  const [catalogFilters, setCatalogFilters] = useState({ brand: "", model: "", modelYear: "", market: "" });
   const [catalogPage, setCatalogPage] = useState(1);
   const [catalogResult, setCatalogResult] = useState<CatalogSearchResult | null>(null);
   const [catalogEntry, setCatalogEntry] = useState<CatalogEntryResult | null>(null);
+  const [catalogRelated, setCatalogRelated] = useState<CatalogCandidate[]>([]);
+  const [comparisonSeed, setComparisonSeed] = useState<CatalogCandidate | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => window.localStorage.getItem("blindspot_onboarding_completed") !== "true");
@@ -205,7 +208,8 @@ function App() {
     setCatalogError(null);
     setCatalogEntry(null);
     try {
-      setCatalogResult(await buscarCatalogo(catalogQuery, page));
+      const hasCriteria = Boolean(catalogQuery.trim() || catalogFilters.brand.trim() || catalogFilters.model.trim() || catalogFilters.modelYear.trim() || catalogFilters.market.trim());
+      setCatalogResult(await buscarCatalogo({ query: catalogQuery, ...catalogFilters, page, sort: hasCriteria ? "alphabetical" : "recent" }));
       setCatalogPage(page);
     } catch (err) {
       setCatalogResult(null);
@@ -218,13 +222,25 @@ function App() {
   async function openCatalogEntry(id: string, vehicle: VehicleInput): Promise<void> {
     setCatalogLoading(true);
     setCatalogError(null);
+    setCatalogRelated([]);
     try {
-      setCatalogEntry(await abrirFichaCatalogo(id, vehicle));
+      const entry = await abrirFichaCatalogo(id, vehicle);
+      setCatalogEntry(entry);
+      if (entry.state === "found") {
+        const related = await obterRecomendacoesCatalogo(id, vehicle);
+        if (related.state === "found") setCatalogRelated(related.entries);
+      }
     } catch (err) {
       setCatalogError(err instanceof Error ? err.message : "Erro inesperado ao abrir ficha do catalogo.");
     } finally {
       setCatalogLoading(false);
     }
+  }
+
+  function addCatalogCandidateToComparison(candidate: CatalogCandidate): void {
+    if (!candidate.latestTechnicalSheetVersionId || (signedInRole !== "analyst" && signedInRole !== "admin")) return;
+    setComparisonSeed(candidate);
+    setActiveView("comparison");
   }
 
   function finishOnboarding(): void {
@@ -347,7 +363,7 @@ function App() {
           <button
             type="button"
             className={`sidebar-link ${activeView === "catalog" ? "active" : ""}`}
-            onClick={() => setActiveView("catalog")}
+            onClick={() => { setActiveView("catalog"); if (!catalogResult && !catalogLoading) void runCatalogSearch(1); }}
             aria-pressed={activeView === "catalog"}
             title="Catalogo"
           >
@@ -447,7 +463,7 @@ function App() {
           <section className="history-layout">
             <section className="panel history-panel">
               <h1 ref={viewTitleRef} tabIndex={-1}>Catalogo de fichas</h1>
-              <p>Pesquise candidatas e selecione a configuracao exata. A busca nunca abre um veiculo aproximado.</p>
+              <p>Comece pelas fichas recentes ou combine filtros. A seleção sempre confirma a configuração exata; não abrimos um veículo aproximado.</p>
               <form
                 className="form-grid"
                 onSubmit={(event) => {
@@ -459,23 +475,31 @@ function App() {
                   Marca, modelo ou versao
                   <input value={catalogQuery} maxLength={100} onChange={(event) => setCatalogQuery(event.target.value)} />
                 </label>
+                <label>Marca<input value={catalogFilters.brand} maxLength={100} onChange={(event) => setCatalogFilters((current) => ({ ...current, brand: event.target.value }))} /></label>
+                <label>Modelo<input value={catalogFilters.model} maxLength={100} onChange={(event) => setCatalogFilters((current) => ({ ...current, model: event.target.value }))} /></label>
+                <label>Ano-modelo<input value={catalogFilters.modelYear} inputMode="numeric" maxLength={4} onChange={(event) => setCatalogFilters((current) => ({ ...current, modelYear: event.target.value }))} /></label>
+                <label>Mercado<input value={catalogFilters.market} maxLength={100} onChange={(event) => setCatalogFilters((current) => ({ ...current, market: event.target.value }))} /></label>
                 <button className="primary-button" disabled={catalogLoading} type="submit">
-                  {catalogLoading ? "Consultando..." : "Buscar no catalogo"}
+                  {catalogLoading ? "Consultando..." : "Aplicar filtros"}
                 </button>
+                <button className="collapse-all-button" type="button" disabled={catalogLoading} onClick={() => { setCatalogQuery(""); setCatalogFilters({ brand: "", model: "", modelYear: "", market: "" }); setCatalogEntry(null); setCatalogRelated([]); setTimeout(() => void runCatalogSearch(1), 0); }}>Limpar filtros</button>
               </form>
               {catalogLoading ? <p className="status-text" role="status">Carregando catalogo...</p> : null}
               {catalogError ? <div className="error-box" role="alert">{catalogError}</div> : null}
-              {catalogResult?.state === "not_registered" ? <p className="status-text" role="status">Nao cadastrado. Solicite uma nova coleta sem usar uma ficha aproximada.</p> : null}
+              {catalogResult?.state === "not_registered" ? <p className="status-text" role="status">Nenhuma ficha cadastrada para estes critérios. Solicite uma nova coleta sem usar uma ficha aproximada.</p> : null}
               {catalogResult?.state === "found" ? (
                 <>
-                  <p className="status-text">{catalogResult.total} configuracao(oes) encontrada(s).</p>
+                  <p className="status-text">{catalogResult.total} configuração(ões) encontrada(s){catalogQuery.trim() || catalogFilters.brand.trim() || catalogFilters.model.trim() || catalogFilters.modelYear.trim() || catalogFilters.market.trim() ? " pelos filtros ativos." : ". Exibindo fichas recentes."}</p>
                   <div className="history-list">
                     {catalogResult.entries.map((entry) => (
-                      <button key={entry.id} type="button" className="history-item" onClick={() => void openCatalogEntry(entry.id, entry.vehicle)}>
+                      <article key={entry.id} className="history-item">
+                        <button type="button" className="history-item" onClick={() => void openCatalogEntry(entry.id, entry.vehicle)}>
                         <strong>{entry.vehicle.marca} {entry.vehicle.modelo} {entry.vehicle.versao} {entry.vehicle.ano_modelo}</strong>
                         <span>{entry.vehicle.mercado} · slug: {entry.slug || "pendente de atualizacao"}</span>
                         <span>Versao atual: {entry.latestVersion ?? "indisponivel"}</span>
-                      </button>
+                        </button>
+                        {(signedInRole === "analyst" || signedInRole === "admin") && entry.latestTechnicalSheetVersionId ? <button type="button" className="collapse-all-button" onClick={() => addCatalogCandidateToComparison(entry)}>Adicionar à comparação</button> : null}
+                      </article>
                     ))}
                   </div>
                   <div className="details-toolbar">
@@ -489,11 +513,15 @@ function App() {
               {!catalogEntry ? <p className="status-text">Selecione uma configuracao para confirmar a identidade e abrir a ficha.</p> : null}
               {catalogEntry?.state === "incompatible" ? <div className="error-box">Configuracao incompativel. Nenhuma ficha foi aberta.</div> : null}
               {catalogEntry?.state === "not_registered" ? <p className="status-text">A configuracao nao possui ficha catalogada.</p> : null}
-              {catalogEntry?.state === "found" ? <FichaDashboard title={`Ficha catalogada · versao ${catalogEntry.entry.latestVersion ?? "-"}`} ficha={catalogEntry.entry.response} showTraceability /> : null}
+              {catalogEntry?.state === "found" ? <>
+                <FichaDashboard title={`Ficha catalogada · versao ${catalogEntry.entry.latestVersion ?? "-"}`} ficha={catalogEntry.entry.response} showTraceability />
+                {(signedInRole === "analyst" || signedInRole === "admin") && catalogEntry.entry.latestTechnicalSheetVersionId ? <button type="button" className="primary-button" onClick={() => addCatalogCandidateToComparison(catalogEntry.entry)}>Adicionar ficha aberta à comparação</button> : null}
+                <section className="source-section"><h3>Fichas relacionadas</h3><p className="source-review-notice">Mesma marca, modelo, ano-modelo e mercado. Esta relação não avalia motorização nem garante compatibilidade para comparar.</p>{catalogRelated.length ? <div className="history-list">{catalogRelated.map((entry) => <article key={entry.id} className="history-item"><button type="button" className="history-item" onClick={() => void openCatalogEntry(entry.id, entry.vehicle)}><strong>{entry.vehicle.marca} {entry.vehicle.modelo} {entry.vehicle.versao}</strong><span>{entry.vehicle.ano_modelo} · {entry.vehicle.mercado} · versão {entry.latestVersion ?? "-"}</span></button>{(signedInRole === "analyst" || signedInRole === "admin") && entry.latestTechnicalSheetVersionId ? <button type="button" className="collapse-all-button" onClick={() => addCatalogCandidateToComparison(entry)}>Adicionar à comparação</button> : null}</article>)}</div> : <p className="status-text">Não há outras fichas relacionadas para esta identidade.</p>}</section>
+              </> : null}
             </section>
           </section>
         ) : activeView === "comparison" && (signedInRole === "analyst" || signedInRole === "admin") ? (
-          <ComparisonPanel />
+          <ComparisonPanel initialCandidate={comparisonSeed} onInitialCandidateConsumed={() => setComparisonSeed(null)} />
         ) : activeView === "team" && signedInRole === "admin" ? (
           <TeamPanel />
         ) : activeView === "usage" && signedInRole === "admin" ? (

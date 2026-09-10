@@ -1,6 +1,7 @@
 import type {
   ApiErrorResponse,
   CatalogEntryResult,
+  CatalogRecommendationsResult,
   CatalogSearchResult,
   FichaTecnicaHistoryItem,
   FichaTecnicaResponse,
@@ -100,9 +101,16 @@ export async function obterHistoricoFichas(limit = 2): Promise<FichaTecnicaHisto
   return (await response.json()) as FichaTecnicaHistoryItem[];
 }
 
-export async function buscarCatalogo(query: string, page = 1): Promise<CatalogSearchResult> {
-  const params = new URLSearchParams({ q: query, page: String(page), page_size: "20" });
-  const response = await fetch(`${API_CATALOG_ENDPOINT}?${params.toString()}`);
+export interface CatalogSearchOptions { query?: string; brand?: string; model?: string; modelYear?: string; market?: string; page?: number; sort?: "recent" | "alphabetical"; }
+export async function buscarCatalogo(options: CatalogSearchOptions = {}): Promise<CatalogSearchResult> {
+  const params = new URLSearchParams({ page: String(options.page ?? 1), page_size: "20" });
+  if (options.query?.trim()) params.set("q", options.query.trim());
+  if (options.brand?.trim()) params.set("marca", options.brand.trim());
+  if (options.model?.trim()) params.set("modelo", options.model.trim());
+  if (options.modelYear?.trim()) params.set("ano_modelo", options.modelYear.trim());
+  if (options.market?.trim()) params.set("mercado", options.market.trim());
+  if (options.sort) params.set("sort", options.sort);
+  const response = await fetch(`${API_CATALOG_ENDPOINT}?${params.toString()}`, { credentials: "same-origin" });
   if (!response.ok) throw await apiError(response, "Erro ao consultar catalogo");
   return (await response.json()) as CatalogSearchResult;
 }
@@ -112,6 +120,13 @@ export async function abrirFichaCatalogo(id: string, vehicle: VehicleInput): Pro
   const response = await fetch(`${API_CATALOG_ENDPOINT}/${encodeURIComponent(id)}?${params.toString()}`);
   if (!response.ok) throw await apiError(response, "Erro ao abrir ficha do catalogo");
   return (await response.json()) as CatalogEntryResult;
+}
+
+export async function obterRecomendacoesCatalogo(id: string, vehicle: VehicleInput): Promise<CatalogRecommendationsResult> {
+  const params = new URLSearchParams({ marca: vehicle.marca, modelo: vehicle.modelo, versao: vehicle.versao, ano_modelo: String(vehicle.ano_modelo), mercado: vehicle.mercado });
+  const response = await fetch(`${API_CATALOG_ENDPOINT}/${encodeURIComponent(id)}/recomendacoes?${params.toString()}`, { credentials: "same-origin" });
+  if (!response.ok) throw await apiError(response, "Erro ao consultar fichas relacionadas");
+  return (await response.json()) as CatalogRecommendationsResult;
 }
 
 export async function obterEquipe(): Promise<{ members: OrganizationMember[]; invitations: OrganizationMemberInvitation[] }> {

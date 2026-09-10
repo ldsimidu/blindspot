@@ -60,6 +60,11 @@ export type CatalogEntryResult =
   | { state: "not_registered" }
   | { state: "incompatible" };
 
+export type CatalogRecommendationsResult =
+  | { state: "found"; entries: CatalogCandidate[] }
+  | { state: "not_registered" }
+  | { state: "incompatible" };
+
 export type ImportItemState = "valid" | "duplicate" | "collision" | "invalid";
 export interface ImportDryRunItem { vehicle: VehicleInput; response: unknown; provider: "simulated" | "openrouter" | "claude"; }
 export interface ImportItemResult { index: number; state: ImportItemState; code: string | null; }
