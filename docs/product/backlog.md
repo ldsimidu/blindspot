@@ -184,7 +184,7 @@ Dependências: `qualidade → persistência → consulta/comparação`; `identid
 
 - **Problema/pessoa/fluxo:** analista usa cascata Marca→Modelo→Ano→Versão ou texto livre, seleciona ficha e lê categorias, fontes, data, versão, status e completude.
 - **Fora do escopo:** autocomplete realtime sem catálogo; histórico das 20 buscas sem decisão de privacidade.
-- **Tasks/subtasks:** filtros/autocomplete; histórico; motor/transmissão/desempenho/dimensões/capacidades/segurança/equipamentos; tooltip de score; loading/encontrado/não cadastrado/erro. **P1-024 implementa:** recentes sem termo, filtros por marca/modelo/ano-modelo/mercado e relacionadas determinísticas de mesma marca/modelo/ano/mercado; não cria perfil, favoritos, telemetria, IA ou ranking.
+- **Tasks/subtasks:** filtros/autocomplete; histórico; motor/transmissão/desempenho/dimensões/capacidades/segurança/equipamentos; tooltip de score; loading/encontrado/não cadastrado/erro. **P1-024/P1-025 implementam:** recentes sem termo, filtros por marca/modelo/ano-modelo/mercado e relacionadas determinísticas de mesma marca/modelo/ano/mercado; a mesma descoberta é reutilizada em Catálogo e Comparar; não cria perfil, favoritos, telemetria, IA ou ranking.
 - **Aceite, evidência e DoD:** busca incompatível não devolve veículo errado; fonte/status visíveis; vazio não tem fallback silencioso; testes de erro, ausência e conflito passam. Catálogo só devolve configurações com versão persistida; relacionada não é promessa de compatibilidade e a comparação continua validada no servidor. **Estado comprovado: P1-024 implementado, sujeito aos checks registrados na task.**
 - **Prioridade/dependência/risco/fonte:** Concluído no P1-024; E02-04/05; interpretação errada; Ford 3.2.1–3.2.7.
 

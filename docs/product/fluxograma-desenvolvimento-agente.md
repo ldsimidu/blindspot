@@ -128,7 +128,7 @@ flowchart LR
   comparar --> validar[Servidor valida duas versões\ne compatibilidade]
 ```
 
-Recentes e relacionadas não usam histórico de navegação, perfil, IA, telemetria, ranking ou inferência de motorização. A relação apenas facilita descoberta e não garante compatibilidade; ao comparar, o servidor ainda valida mercado, identidade e motorização.
+Recentes e relacionadas não usam histórico de navegação, perfil, IA, telemetria, ranking ou inferência de motorização. A mesma descoberta — recentes, texto, marca, modelo, ano-modelo, mercado, limpar e paginação — é reutilizada em Catálogo e Comparar. A relação apenas facilita descoberta e não garante compatibilidade; ao comparar, o servidor ainda valida mercado, identidade e motorização.
 
 ## 3. Persistência, catálogo e versões (planejado)
 

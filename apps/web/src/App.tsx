@@ -3,6 +3,7 @@ import { abrirFichaCatalogo, ativarConviteMembro, alterarPapelMembro, buscarCata
 import type { CatalogCandidate, CatalogEntryResult, CatalogSearchResult, FichaTecnicaHistoryItem, FichaTecnicaResponse, OrganizationMember, OrganizationMemberInvitation, OrganizationRole, UsageAlertSettings, UsageSummary, VehicleInput } from "./types";
 import logoBlindspot from "./assets/blindspot-mark.png";
 import { ComparisonPanel } from "./ComparisonPanel";
+import { FichaDiscovery } from "./FichaDiscovery";
 
 type AppView = "request" | "catalog" | "comparison" | "history" | "team" | "usage";
 type ThemeMode = "dark" | "light";
@@ -461,53 +462,10 @@ function App() {
           </>
         ) : activeView === "catalog" ? (
           <section className="history-layout">
-            <section className="panel history-panel">
+            <section>
               <h1 ref={viewTitleRef} tabIndex={-1}>Catalogo de fichas</h1>
               <p>Comece pelas fichas recentes ou combine filtros. A seleção sempre confirma a configuração exata; não abrimos um veículo aproximado.</p>
-              <form
-                className="form-grid"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  void runCatalogSearch(1);
-                }}
-              >
-                <label>
-                  Marca, modelo ou versao
-                  <input value={catalogQuery} maxLength={100} onChange={(event) => setCatalogQuery(event.target.value)} />
-                </label>
-                <label>Marca<input value={catalogFilters.brand} maxLength={100} onChange={(event) => setCatalogFilters((current) => ({ ...current, brand: event.target.value }))} /></label>
-                <label>Modelo<input value={catalogFilters.model} maxLength={100} onChange={(event) => setCatalogFilters((current) => ({ ...current, model: event.target.value }))} /></label>
-                <label>Ano-modelo<input value={catalogFilters.modelYear} inputMode="numeric" maxLength={4} onChange={(event) => setCatalogFilters((current) => ({ ...current, modelYear: event.target.value }))} /></label>
-                <label>Mercado<input value={catalogFilters.market} maxLength={100} onChange={(event) => setCatalogFilters((current) => ({ ...current, market: event.target.value }))} /></label>
-                <button className="primary-button" disabled={catalogLoading} type="submit">
-                  {catalogLoading ? "Consultando..." : "Aplicar filtros"}
-                </button>
-                <button className="collapse-all-button" type="button" disabled={catalogLoading} onClick={() => { setCatalogQuery(""); setCatalogFilters({ brand: "", model: "", modelYear: "", market: "" }); setCatalogEntry(null); setCatalogRelated([]); setTimeout(() => void runCatalogSearch(1), 0); }}>Limpar filtros</button>
-              </form>
-              {catalogLoading ? <p className="status-text" role="status">Carregando catalogo...</p> : null}
-              {catalogError ? <div className="error-box" role="alert">{catalogError}</div> : null}
-              {catalogResult?.state === "not_registered" ? <p className="status-text" role="status">Nenhuma ficha cadastrada para estes critérios. Solicite uma nova coleta sem usar uma ficha aproximada.</p> : null}
-              {catalogResult?.state === "found" ? (
-                <>
-                  <p className="status-text">{catalogResult.total} configuração(ões) encontrada(s){catalogQuery.trim() || catalogFilters.brand.trim() || catalogFilters.model.trim() || catalogFilters.modelYear.trim() || catalogFilters.market.trim() ? " pelos filtros ativos." : ". Exibindo fichas recentes."}</p>
-                  <div className="history-list">
-                    {catalogResult.entries.map((entry) => (
-                      <article key={entry.id} className="history-item">
-                        <button type="button" className="history-item" onClick={() => void openCatalogEntry(entry.id, entry.vehicle)}>
-                        <strong>{entry.vehicle.marca} {entry.vehicle.modelo} {entry.vehicle.versao} {entry.vehicle.ano_modelo}</strong>
-                        <span>{entry.vehicle.mercado} · slug: {entry.slug || "pendente de atualizacao"}</span>
-                        <span>Versao atual: {entry.latestVersion ?? "indisponivel"}</span>
-                        </button>
-                        {(signedInRole === "analyst" || signedInRole === "admin") && entry.latestTechnicalSheetVersionId ? <button type="button" className="collapse-all-button" onClick={() => addCatalogCandidateToComparison(entry)}>Adicionar à comparação</button> : null}
-                      </article>
-                    ))}
-                  </div>
-                  <div className="details-toolbar">
-                    <button type="button" className="collapse-all-button" disabled={catalogPage <= 1 || catalogLoading} onClick={() => void runCatalogSearch(catalogPage - 1)}>Pagina anterior</button>
-                    <button type="button" className="collapse-all-button" disabled={catalogLoading || catalogPage * catalogResult.pageSize >= catalogResult.total} onClick={() => void runCatalogSearch(catalogPage + 1)}>Proxima pagina</button>
-                  </div>
-                </>
-              ) : null}
+              <FichaDiscovery onSelect={(entry) => void openCatalogEntry(entry.id, entry.vehicle)} selectionLabel="Abrir ficha exata" />
             </section>
             <section className="panel history-detail">
               {!catalogEntry ? <p className="status-text">Selecione uma configuracao para confirmar a identidade e abrir a ficha.</p> : null}
