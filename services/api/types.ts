@@ -44,6 +44,7 @@ export interface CatalogCandidate {
   vehicle: VehicleInput;
   latestVersion: number | null;
   latestAt: string | null;
+  latestTechnicalSheetVersionId: string | null;
 }
 
 export interface CatalogSearchResult {

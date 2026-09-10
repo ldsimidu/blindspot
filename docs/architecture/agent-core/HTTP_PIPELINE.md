@@ -18,6 +18,7 @@ Origem: `services/api/index.ts`.
 - `POST /api/convites/membros/:token/ativar` — fluxo público de uso único para convite de membro: valida token HMAC de 72h e ativa conta/membro sem emitir sessão. O convite é entregue manualmente pelo administrador no MVP; a API só retorna o link na emissão.
 - `GET /api/organizacoes/consumo?period=YYYY-MM` — exige `admin` e agrega somente eventos da organização da sessão. Cada ficha persistida vale uma unidade; falhas valem zero. A resposta não é preço, cota, cobrança nem evento bruto.
 - `GET /api/organizacoes/consumo/alertas`, `POST /api/organizacoes/consumo/politica` e reconhecimento de alerta — exigem `admin`; política não possui limiar padrão, alertas são internos/deduplicados por organização, período e limiar e jamais enviam e-mail, webhook ou outro dado para fora do BlindSpot.
+- `POST /api/comparacoes`, `GET /api/comparacoes` e `GET /api/comparacoes/:id` — exigem `analyst|admin`; o cliente informa exatamente dois UUIDs de versões, enquanto o servidor resolve fichas, valida mercado/motorização/identidade, calcula diferenças sem vencedor automático e salva somente a análise no tenant da sessão. Uma análise de outro tenant responde 404 neutro.
 
 As rotas de catálogo exigem `PERSISTENCE_MODE=postgres`; elas não usam snapshots de arquivo como fallback. `loading` é estado da interface; `found`, `not_registered` e `incompatible` são estados explícitos de resposta.
 

@@ -2,8 +2,9 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { abrirFichaCatalogo, ativarConviteMembro, alterarPapelMembro, buscarCatalogo, cadastrarOrganizacao, convidarMembro, desativarMembro, entrar, gerarFichaTecnica, obterAlertasConsumo, obterConsumo, obterEquipe, obterHistoricoFichas, obterSessao, obterUltimaFichaTecnica, reconhecerAlertaConsumo, revogarConviteMembro, sair, salvarPoliticaConsumo } from "./api";
 import type { CatalogEntryResult, CatalogSearchResult, FichaTecnicaHistoryItem, FichaTecnicaResponse, OrganizationMember, OrganizationMemberInvitation, OrganizationRole, UsageAlertSettings, UsageSummary, VehicleInput } from "./types";
 import logoBlindspot from "./assets/blindspot-mark.png";
+import { ComparisonPanel } from "./ComparisonPanel";
 
-type AppView = "request" | "catalog" | "history" | "team" | "usage";
+type AppView = "request" | "catalog" | "comparison" | "history" | "team" | "usage";
 type ThemeMode = "dark" | "light";
 type AccessView = "login" | "registration" | "received" | "pending_review" | "rejected";
 
@@ -342,6 +343,7 @@ function App() {
             </span>
             <span className="sidebar-link-label">Requisitar ficha</span>
           </button>
+          {(signedInRole === "analyst" || signedInRole === "admin") ? <button type="button" className={`sidebar-link ${activeView === "comparison" ? "active" : ""}`} onClick={() => setActiveView("comparison")} aria-pressed={activeView === "comparison"} title="Comparar fichas"><span className="sidebar-link-icon">⇄</span><span className="sidebar-link-label">Comparar</span></button> : null}
           <button
             type="button"
             className={`sidebar-link ${activeView === "catalog" ? "active" : ""}`}
@@ -490,6 +492,8 @@ function App() {
               {catalogEntry?.state === "found" ? <FichaDashboard title={`Ficha catalogada · versao ${catalogEntry.entry.latestVersion ?? "-"}`} ficha={catalogEntry.entry.response} showTraceability /> : null}
             </section>
           </section>
+        ) : activeView === "comparison" && (signedInRole === "analyst" || signedInRole === "admin") ? (
+          <ComparisonPanel />
         ) : activeView === "team" && signedInRole === "admin" ? (
           <TeamPanel />
         ) : activeView === "usage" && signedInRole === "admin" ? (

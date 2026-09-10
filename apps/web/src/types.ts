@@ -56,6 +56,7 @@ export interface CatalogCandidate {
   vehicle: VehicleInput;
   latestVersion: number | null;
   latestAt: string | null;
+  latestTechnicalSheetVersionId: string | null;
 }
 
 export interface CatalogSearchResult {
@@ -70,3 +71,7 @@ export type CatalogEntryResult =
   | { state: "found"; entry: CatalogCandidate & { response: FichaTecnicaResponse } }
   | { state: "not_registered" }
   | { state: "incompatible" };
+
+export interface TechnicalComparison { contract_version: string; result_sha256: string; left: { technical_sheet_version_id: string; version_number: number; vehicle: VehicleInput; sources: Array<{ id: string; title: string; type: string }> }; right: { technical_sheet_version_id: string; version_number: number; vehicle: VehicleInput; sources: Array<{ id: string; title: string; type: string }> }; fields: Array<{ path: string; label: string; left: ComparisonCell | null; right: ComparisonCell | null; difference: "equal" | "different" | "missing_on_left" | "missing_on_right" | "conflicting" | "not_applicable" }>; }
+export interface ComparisonCell { value: unknown; unit: string | null; status: string; source_refs: string[]; observation: string | null; }
+export interface SavedComparison { id: string; created_at: string; comparison: TechnicalComparison; }

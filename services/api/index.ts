@@ -17,6 +17,7 @@ import { login, logout, readAuthenticationContext, readCurrentSession, sessionCo
 import { recordAudit, type AuditAction, type AuditResourceType } from "./audit";
 import { activateOrganizationMemberInvitation, changeOrganizationMemberRole, deactivateOrganizationMember, inviteOrganizationMember, listOrganizationPeople, revokeOrganizationMemberInvitation } from "./members";
 import { acknowledgeUsageAlert, evaluateUsagePolicy, parseUsagePeriod, readUsageAlerts, readUsageSummary, recordUsageFailure, updateUsagePolicy } from "./usage";
+import { createSavedComparison, listSavedComparisons, readSavedComparison } from "./comparisons";
 import { activateInitialAdmin, decideOrganizationRequest, issueInitialAdminInvitation, listPendingOrganizationRequests, registerOrganization, revokeInitialAdminInvitation, submitOrganizationRequest } from "./organizations";
 import { buildVehiclePayload, composeFinalPrompt, readBaseAgentPrompt, readOutputSchema } from "./prompt-builder";
 import { readFieldPolicy, readNormalizationPolicy, readQualityPolicy, readSourcePolicy } from "./runtime-assets";
@@ -169,6 +170,18 @@ app.post("/api/organizacoes/consumo/politica", requireRole("usage.denied", "usag
 
 app.post("/api/organizacoes/consumo/alertas/:id/reconhecer", requireRole("usage.denied", "usage", "admin"), async (req: Request, res: Response, next: NextFunction) => {
   try { res.status(200).json(await acknowledgeUsageAlert(authorizationContext(req), parseCatalogId(req.params.id), requestIdOf(res))); } catch (error) { next(error); }
+});
+
+app.post("/api/comparacoes", requireRole("comparison.denied", "saved_comparison", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => {
+  try { res.status(201).json(await createSavedComparison(authorizationContext(req), parseComparisonVersionIds(req.body), requestIdOf(res))); } catch (error) { next(error); }
+});
+
+app.get("/api/comparacoes", requireRole("comparison.denied", "saved_comparison", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => {
+  try { res.status(200).json(await listSavedComparisons(authorizationContext(req))); } catch (error) { next(error); }
+});
+
+app.get("/api/comparacoes/:id", requireRole("comparison.denied", "saved_comparison", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => {
+  try { res.status(200).json(await readSavedComparison(authorizationContext(req), parseCatalogId(req.params.id), requestIdOf(res))); } catch (error) { next(error); }
 });
 
 app.get("/api/catalogo/fichas", requireAuthenticated, async (req: Request, res: Response, next: NextFunction) => {
@@ -486,6 +499,7 @@ function parseMemberInvitationToken(value: string): string { if (!/^MINV-[A-Za-z
 function parseInvitationActivation(body: unknown): { displayName: string; password: string } { if (!isObject(body)) throw new HttpError(400, "Ativacao indisponivel."); const displayName = requiredBoundedText(body.display_name, 2, 120, "display_name"); const password = typeof body.password === "string" ? body.password : ""; if (password.length < 12 || password.length > 128 || /[\u0000-\u001f\u007f]/.test(password)) throw new HttpError(400, "Ativacao indisponivel."); return { displayName, password }; }
 function parseMemberInvitation(body: unknown): { email: string; role: OrganizationRole } { if (!isObject(body)) throw new HttpError(400, "Convite indisponivel."); const email = requiredBoundedText(body.email, 5, 254, "email").toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new HttpError(400, "Convite indisponivel."); return { email, role: parseOrganizationRole(body) }; }
 function parseUsagePolicy(body: unknown): { thresholdUnits: number; isActive: boolean } { if (!isObject(body) || typeof body.threshold_units !== "number" || !Number.isSafeInteger(body.threshold_units) || body.threshold_units < 1 || typeof body.is_active !== "boolean") throw new HttpError(400, "Politica de consumo invalida."); return { thresholdUnits: body.threshold_units, isActive: body.is_active }; }
+function parseComparisonVersionIds(body: unknown): [string, string] { if (!isObject(body) || !Array.isArray(body.technical_sheet_version_ids) || body.technical_sheet_version_ids.length !== 2 || body.technical_sheet_version_ids.some((id) => typeof id !== "string")) throw new HttpError(400, "Comparacao invalida."); const ids = body.technical_sheet_version_ids.map((id) => parseCatalogId(id)); if (ids[0] === ids[1]) throw new HttpError(400, "Comparacao invalida."); return [ids[0], ids[1]]; }
 function parseOrganizationRole(body: unknown): OrganizationRole { if (!isObject(body) || (body.role !== "viewer" && body.role !== "analyst" && body.role !== "admin")) throw new HttpError(400, "Papel indisponivel."); return body.role; }
 function sanitizeRequestPath(value: string): string { return value.replace(/(\/api\/convites\/)[^/?]+(\/ativar(?:\?.*)?$)/, "$1[redacted]$2").replace(/(\/api\/organizacoes\/solicitacoes\/)[^/?]+(\/decisao(?:\?.*)?$)/, "$1[redacted]$2").replace(/(\/api\/convites\/membros\/)[^/?]+(\/ativar(?:\?.*)?$)/, "$1[redacted]$2"); }
 function parseLogin(body: unknown): { email: string; password: string } { if (!isObject(body)) throw new HttpError(400, "Credenciais invalidas."); const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : ""; const password = typeof body.password === "string" ? body.password : ""; if (email.length < 5 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 1 || password.length > 128 || /[\u0000-\u001f\u007f]/.test(password)) throw new HttpError(400, "Credenciais invalidas."); return { email, password }; }

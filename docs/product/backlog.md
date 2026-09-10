@@ -190,11 +190,11 @@ Dependências: `qualidade → persistência → consulta/comparação`; `identid
 
 #### E03-03 — Comparar e salvar fichas compatíveis
 
-- **Problema/pessoa/fluxo:** analista seleciona 2 até limite aprovado de fichas versionadas; sistema valida compatibilidade e mostra tabela com campo/unidade/valor/status/fonte/diferença; pode salvar no tenant correto.
-- **Fora do escopo:** limite 5 e vencedor automático para maior potência/menor consumo; colaboração externa.
-- **Tasks/subtasks:** contrato, compatibilidade, filtro por categoria, destaques explicáveis, seleção incompleta, ownership/visibilidade/retensão do comparativo.
-- **Aceite, evidência e DoD:** não aplicável/ausência/conflito não tem vencedor; cada lado mostra versão/fonte; recurso de outro tenant é negado; testes de ficha inexistente/IDOR passam.
-- **Prioridade/dependência/risco/fonte:** Depois; E01/E02-04; benchmark enganoso/vazamento; Ford 3.3.1–3.3.2 e 3.3.5; RF07.
+- **Problema/pessoa/fluxo:** analista seleciona exatamente duas versões imutáveis; o servidor bloqueia mercado, identidade ou motorização incompatíveis e mostra campo/unidade/valor/status/fonte/diferença sem vencedor; pode salvar a análise no tenant correto.
+- **Fora do escopo:** mais de duas fichas, vencedor automático, exportação, compartilhamento, edição, exclusão e colaboração externa.
+- **Tasks/subtasks:** contrato puro `comparison-contract-v1`, compatibilidade conservadora, par canônico/idempotente, ownership/visibilidade por tenant e tabela lado a lado.
+- **Aceite, evidência e DoD:** não aplicável/ausência/conflito não tem vencedor; cada lado mostra versão/fonte; recurso de outro tenant é negado; migration `0012_saved_comparisons`, typecheck e build passam. **Estado comprovado: P1-017 implementado.**
+- **Prioridade/dependência/risco/fonte:** Concluído no P1-017; E01/E02-04; benchmark enganoso/vazamento; Ford 3.3.1–3.3.2 e 3.3.5; RF07.
 
 #### E03-04 — Exportar, compartilhar e reportar qualidade
 

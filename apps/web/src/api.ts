@@ -9,7 +9,8 @@ import type {
   OrganizationMemberInvitation,
   OrganizationRole,
   UsageSummary,
-  UsageAlertSettings
+  UsageAlertSettings,
+  SavedComparison
 } from "./types";
 
 const API_ENDPOINT = "/api/ficha-tecnica";
@@ -154,6 +155,9 @@ export async function obterConsumo(period: string): Promise<UsageSummary> {
 export async function obterAlertasConsumo(): Promise<UsageAlertSettings> { const response = await fetch("/api/organizacoes/consumo/alertas", { credentials: "same-origin" }); if (!response.ok) throw await apiError(response, "Erro ao consultar alertas"); return (await response.json()) as UsageAlertSettings; }
 export async function salvarPoliticaConsumo(thresholdUnits: number, isActive: boolean): Promise<void> { const response = await fetch("/api/organizacoes/consumo/politica", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ threshold_units: thresholdUnits, is_active: isActive }) }); if (!response.ok) throw await apiError(response, "Erro ao salvar política"); }
 export async function reconhecerAlertaConsumo(id: string): Promise<void> { const response = await fetch(`/api/organizacoes/consumo/alertas/${encodeURIComponent(id)}/reconhecer`, { method: "POST", credentials: "same-origin" }); if (!response.ok) throw await apiError(response, "Erro ao reconhecer alerta"); }
+export async function criarComparacao(ids: [string, string]): Promise<SavedComparison> { const response = await fetch("/api/comparacoes", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ technical_sheet_version_ids: ids }) }); if (!response.ok) throw await apiError(response, "Erro ao criar comparacao"); return (await response.json()) as SavedComparison; }
+export async function listarComparacoes(): Promise<{ comparisons: Array<{ id: string; created_at: string; left_version_id: string; right_version_id: string }> }> { const response = await fetch("/api/comparacoes", { credentials: "same-origin" }); if (!response.ok) throw await apiError(response, "Erro ao listar comparacoes"); return (await response.json()) as { comparisons: Array<{ id: string; created_at: string; left_version_id: string; right_version_id: string }> }; }
+export async function obterComparacao(id: string): Promise<SavedComparison> { const response = await fetch(`/api/comparacoes/${encodeURIComponent(id)}`, { credentials: "same-origin" }); if (!response.ok) throw await apiError(response, "Erro ao abrir comparacao"); return (await response.json()) as SavedComparison; }
 
 async function apiError(response: Response, fallback: string): Promise<Error> {
   const errorPayload = (await safeJson(response)) as ApiErrorResponse | null;

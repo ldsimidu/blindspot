@@ -247,10 +247,10 @@ O token tem o formato de transporte `INV-…`, 32 bytes aleatórios codificados 
 
 ```mermaid
 flowchart LR
-  selecionar[Selecionar fichas\nversão, mercado e motorização explícitos] --> compativel{Compatíveis?}
+  selecionar[Analyst/admin pesquisa catálogo\ne seleciona 2 versões imutáveis] --> compativel{Mercado, identidade e\nmotorização confirmada compatíveis?}
   compativel -- não --> explicar[Explicar a incompatibilidade\nsem comparar]
-  compativel -- sim --> campos[Comparar: valor, unidade,\nstatus, fonte e diferença]
-  campos --> salvar[Salvar análise\nowner, tenant e versões]
+  compativel -- sim --> campos[Comparar: valor, unidade,\nstatus, fonte e diferença descritiva]
+  campos --> salvar[Salvar análise privada\nowner, tenant e versões]
   salvar --> permissao{Autorizar exportação?\npapel + tenant + conteúdo}
   permissao -- não --> negar[Sem arquivo nem link]
   permissao -- sim --> gerar[Gerar PDF/Excel/JSON\ncom fontes e versão]
@@ -267,7 +267,7 @@ flowchart LR
   naoConfirmado --> historico
 ```
 
-Uma comparação não escolhe vencedora para valores ausentes ou conflitantes. Um reporte não altera a ficha por si só: ele cria uma pendência de revisão com evidência e versão identificáveis.
+**Implementado no P1-017:** a comparação recebe exatamente dois UUIDs de versões, é calculada no servidor por `comparison-contract-v1` e usa par canônico para não duplicar o mesmo par invertido. Mercado diferente, motorização ausente/divergente ou identidade de versão inconsistente bloqueiam o fluxo com código explicável. A análise salva referencia as versões imutáveis e só pode ser lida por `analyst`/`admin` da mesma organização; não há exportação, link, edição ou compartilhamento. Uma comparação não escolhe vencedora para valores ausentes ou conflitantes. Um reporte não altera a ficha por si só: ele cria uma pendência de revisão com evidência e versão identificáveis.
 
 ## 6. Consumo, alertas, saúde e incidentes
 

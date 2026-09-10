@@ -85,9 +85,10 @@ export async function searchCatalog(input: { query: string; page: number; pageSi
     : undefined;
   const latestVersion = sql<number | null>`(select ${technicalSheetVersions.versionNumber} from ${technicalSheetVersions} where ${technicalSheetVersions.vehicleConfigurationId} = ${vehicleConfigurations.id} order by ${technicalSheetVersions.versionNumber} desc limit 1)`;
   const latestAt = sql<Date | null>`(select ${technicalSheetVersions.createdAt} from ${technicalSheetVersions} where ${technicalSheetVersions.vehicleConfigurationId} = ${vehicleConfigurations.id} order by ${technicalSheetVersions.versionNumber} desc limit 1)`;
+  const latestTechnicalSheetVersionId = sql<string | null>`(select ${technicalSheetVersions.id} from ${technicalSheetVersions} where ${technicalSheetVersions.vehicleConfigurationId} = ${vehicleConfigurations.id} order by ${technicalSheetVersions.versionNumber} desc, ${technicalSheetVersions.id} desc limit 1)`;
   const where = match ? and(match) : undefined;
   const [{ total }] = await db.select({ total: count() }).from(vehicleConfigurations).where(where);
-  const rows = await db.select({ id: vehicleConfigurations.id, slug: vehicleConfigurations.catalogSlug, brand: vehicleConfigurations.brand, model: vehicleConfigurations.model, trim: vehicleConfigurations.trim, modelYear: vehicleConfigurations.modelYear, market: vehicleConfigurations.market, latestVersion, latestAt }).from(vehicleConfigurations).where(where).orderBy(asc(vehicleConfigurations.brand), asc(vehicleConfigurations.model), asc(vehicleConfigurations.trim), asc(vehicleConfigurations.modelYear), asc(vehicleConfigurations.market), asc(vehicleConfigurations.id)).limit(input.pageSize).offset((input.page - 1) * input.pageSize);
+  const rows = await db.select({ id: vehicleConfigurations.id, slug: vehicleConfigurations.catalogSlug, brand: vehicleConfigurations.brand, model: vehicleConfigurations.model, trim: vehicleConfigurations.trim, modelYear: vehicleConfigurations.modelYear, market: vehicleConfigurations.market, latestVersion, latestAt, latestTechnicalSheetVersionId }).from(vehicleConfigurations).where(where).orderBy(asc(vehicleConfigurations.brand), asc(vehicleConfigurations.model), asc(vehicleConfigurations.trim), asc(vehicleConfigurations.modelYear), asc(vehicleConfigurations.market), asc(vehicleConfigurations.id)).limit(input.pageSize).offset((input.page - 1) * input.pageSize);
   const entries = rows.map((row) => toCatalogCandidate(row));
   return { state: entries.length > 0 ? "found" : "not_registered", page: input.page, pageSize: input.pageSize, total, entries };
 }
@@ -108,8 +109,8 @@ function requireCatalogDatabase() {
   return db;
 }
 
-function toCatalogCandidate(row: { id: string; slug: string; brand: string; model: string; trim: string; modelYear: number; market: string; latestVersion: number | null; latestAt: Date | null }): CatalogCandidate {
-  return { id: row.id, slug: row.slug, vehicle: { marca: row.brand, modelo: row.model, versao: row.trim, ano_modelo: row.modelYear, mercado: row.market }, latestVersion: row.latestVersion, latestAt: row.latestAt?.toISOString() ?? null };
+function toCatalogCandidate(row: { id: string; slug: string; brand: string; model: string; trim: string; modelYear: number; market: string; latestVersion: number | null; latestAt: Date | null; latestTechnicalSheetVersionId?: string | null }): CatalogCandidate {
+  return { id: row.id, slug: row.slug, vehicle: { marca: row.brand, modelo: row.model, versao: row.trim, ano_modelo: row.modelYear, mercado: row.market }, latestVersion: row.latestVersion, latestAt: row.latestAt?.toISOString() ?? null, latestTechnicalSheetVersionId: row.latestTechnicalSheetVersionId ?? null };
 }
 
 function sha256(value: unknown): string { return createHash("sha256").update(JSON.stringify(value)).digest("hex"); }
