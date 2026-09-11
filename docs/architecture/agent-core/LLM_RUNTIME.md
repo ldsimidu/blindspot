@@ -70,6 +70,8 @@ Limiares opcionais: `OPENROUTER_ROUTER_MIN_GROUNDED_COVERAGE` (padrão 0,65) e `
 
 Os logs incluem budgets, modo de domínio, contagens de domínios, flags de busca/observação e decisões/métricas do roteador. Não incluem API key, headers ou conteúdo de `.env`. O contador reconhece a forma aninhada `url_citation.url_citation.url`, evitando classificar essas execuções como `sem-web-search`.
 
+Para uma execução que conclui com JSON válido, o evento sanitizado também inclui `result_summary`. Ele registra somente: completude declarada, contagem de estados dos campos por grupo do schema, quantidade de campos com referência de fonte, fontes finais por aderência e cardinalidades de uso de fontes (fontes finais efetivamente referenciadas, referências inválidas e concentração por grupo). Valores de variáveis, IDs de referência, URLs, hostnames, títulos, trechos de evidência, prompt e resposta bruta não entram nesse resumo. Assim, uma auditoria posterior pode comparar cobertura, proveniência e concentração de evidência mesmo quando o armazenamento de snapshots brutos estiver indisponível ou não for permitido pela modalidade de persistência.
+
 ## Architecture Gate — finalização OpenRouter/Gemini (2026-09-10)
 
 **Status: APPROVED.** A alteração atende operadores que recebem erro de limite de turnos em modelos Gemini que retornam apenas `tool_calls` antes do JSON final. O escopo é o passe OpenRouter e a telemetria sanitizada; não altera schema, prompt, política de fontes, persistência, endpoint, provider configurado ou o `.env` real.

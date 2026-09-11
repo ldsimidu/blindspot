@@ -805,6 +805,7 @@ async function callOpenRouterLLM(
                 bestMetrics,
                 routerConfig.unresolvedListLimit,
                 exPromptCompat ? undefined : researchCapabilityPolicy,
+                researchMode,
               )
             : buildOpenRouterConflictPrompt(
                 finalPrompt,
@@ -867,6 +868,7 @@ async function callOpenRouterLLM(
         bestMetrics,
         unresolvedListLimit,
         exPromptCompat ? undefined : researchCapabilityPolicy,
+        researchMode,
       );
       const secondPass = await runOpenRouterPass({
         prompt: refinePrompt,
@@ -3350,19 +3352,28 @@ export function buildOpenRouterRefinePrompt(
   metrics: RoutingMetrics,
   unresolvedListLimit: number,
   researchCapabilityPolicy?: ResearchCapabilityPolicy,
+  researchMode: OpenRouterResearchMode = "strict_evidence",
 ): string {
   const selectedPaths = [...new Set([...metrics.qualityIssuePaths, ...metrics.unresolvedPaths])].slice(0, unresolvedListLimit);
   const selectedBlock = selectedPaths.map((item) => `- ${item}`).join("\n");
   const capabilityBlock = buildResearchCapabilityBlock(selectedPaths, researchCapabilityPolicy);
+  const compatibleResearchGuidance = researchMode === "ex_prompt_compat";
 
   return [
     basePrompt,
     "",
     "### OPENROUTER_REFINAMENTO_OBJETIVO",
-    "Priorize cobertura comprovada e aderencia usando web search para lacunas e evidencias problematicas.",
-    "Pesquise marca, modelo, versao/motorizacao, ano-modelo e mercado exatos. Procure fichas, catalogos, manuais e PDFs de primeira parte; somente parceiros pre-aprovados podem complementar a evidencia final.",
+    compatibleResearchGuidance
+      ? "Priorize cobertura pesquisada e aderencia usando web search para lacunas e evidencias problematicas."
+      : "Priorize cobertura comprovada e aderencia usando web search para lacunas e evidencias problematicas.",
+    compatibleResearchGuidance
+      ? "Pesquise marca, modelo, versao/motorizacao, ano-modelo e mercado exatos. Priorize pagina, ficha, catalogo, manual e configurador de primeira parte quando observados; fontes externas observadas, HTTPS e rastreaveis podem complementar lacunas se nao forem explicitamente divergentes."
+      : "Pesquise marca, modelo, versao/motorizacao, ano-modelo e mercado exatos. Procure fichas, catalogos, manuais e PDFs de primeira parte; somente parceiros pre-aprovados podem complementar a evidencia final.",
     `Qualidade atual: grounded=${metrics.groundedCoverageRate.toFixed(4)}, criticalGrounded=${metrics.criticalGroundedCoverageRate.toFixed(4)}, ambiguas=${metrics.ambiguousSourceCount}, divergentes=${metrics.divergentSourceCount}.`,
     "Nao reutilize uma pagina de outro ano, mercado, versao ou motorizacao para confirmar o alvo.",
+    ...(compatibleResearchGuidance
+      ? ["Liste todas as fontes efetivamente usadas para sustentar campos; nao inclua fonte apenas para aumentar a quantidade."]
+      : []),
     "Se status for parcial, inclua obrigatoriamente obs_ref e observacoes.",
     "Retorne o JSON completo, sem campos extras e sem markdown.",
     "",

@@ -92,6 +92,7 @@ O modo efetivo deve entrar na telemetria sanitizada da execução. A UI pode apr
    - manter o guard de loop Gemini e a finalização sem ferramenta;
    - usar `tool_choice: required` até surgir fonte observada, depois `auto`;
    - se abaixo da meta, executar `refine` com os paths estruturais pendentes;
+   - no refine, repetir a prioridade por materiais de primeira parte quando observados, mas permitir fontes externas observadas e rastreáveis para lacunas; pedir apenas as fontes efetivamente usadas, sem meta artificial de quantidade;
    - não executar descoberta institucional, document hunter, leitor, parser de PDF ou fetch nesse caminho.
 3. Usar o score histórico para comparar **o payload inteiro** quick/refine: cobertura, preenchidas, não encontradas e conflitos. Não usar merge por evidência neste modo, pois ele altera a semântica do resultado do `ex_prompt`.
 4. Preservar os budgets rígidos já corrigidos no BlindSpot (`max_uses`, resultados totais e tool calls quando suportado). Equivalência de comportamento não significa remover teto de custo.

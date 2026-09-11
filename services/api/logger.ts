@@ -140,6 +140,7 @@ export async function logLLMExecution(entry: ClaudeExecutionEntry): Promise<stri
   const documentReader = sanitizeDocumentReader(entry.runtimeConfig);
   const openRouterPasses = sanitizeOpenRouterPassTelemetry(entry.runtimeConfig);
   const researchMode = sanitizeResearchMode(entry.runtimeConfig);
+  const resultSummary = sanitizeLLMResultSummary(entry.result);
   const event = {
     event: "llm_execution",
     at: entry.finishedAt,
@@ -154,7 +155,8 @@ export async function logLLMExecution(entry: ClaudeExecutionEntry): Promise<stri
     ...(researchDocumentDiscovery ? { research_document_discovery: researchDocumentDiscovery } : {}),
     ...(sourceTrustBootstrap ? { source_trust_bootstrap: sourceTrustBootstrap } : {}),
     ...(documentReader ? { document_reader: documentReader } : {}),
-    ...(openRouterPasses ? { openrouter_passes: openRouterPasses } : {})
+    ...(openRouterPasses ? { openrouter_passes: openRouterPasses } : {}),
+    ...(resultSummary ? { result_summary: resultSummary } : {})
   };
   await appendFile(LLM_EVENT_LOG_FILE, `${JSON.stringify(event)}\n`, "utf-8");
   return LLM_EVENT_LOG_FILE;
@@ -163,6 +165,192 @@ export async function logLLMExecution(entry: ClaudeExecutionEntry): Promise<stri
 export function sanitizeResearchMode(runtimeConfig: Record<string, unknown> | undefined): "ex_prompt_compat" | "strict_evidence" | null {
   const value = runtimeConfig?.researchMode;
   return value === "ex_prompt_compat" || value === "strict_evidence" ? value : null;
+}
+
+type FieldStatus = "confirmado" | "parcial" | "inferido_minimamente" | "nao_encontrado" | "nao_aplicavel" | "conflitante" | "informado_na_entrada";
+type SourceAdherence = "exata" | "compativel" | "ambigua" | "divergente" | "nao_verificada";
+type StatusCounts = Partial<Record<FieldStatus, number>>;
+type SourceUsageGroup = {
+  fields_with_source_ref: number;
+  referenced_source_count: number;
+  fields_with_single_source_ref: number;
+  fields_with_multiple_source_refs: number;
+};
+
+export type SanitizedLLMResultSummary = {
+  completeness: {
+    total_variaveis: number;
+    preenchidas: number;
+    informadas_na_entrada: number;
+    total_pesquisaveis: number;
+    nao_encontradas: number;
+    nao_aplicaveis: number;
+    conflitantes: number;
+  } | null;
+  field_statuses: StatusCounts;
+  fields_with_source_ref: number;
+  groups: Record<string, StatusCounts>;
+  sources: {
+    total: number;
+    by_adherence: Partial<Record<SourceAdherence, number>>;
+  };
+  source_usage: {
+    referenced_source_count: number;
+    invalid_field_reference_count: number;
+    groups: Record<string, SourceUsageGroup>;
+  };
+};
+
+/**
+ * Keeps audit telemetry useful without retaining LLM values, source URLs, titles,
+ * prompts, evidence excerpts, or any arbitrary provider-controlled strings.
+ */
+export function sanitizeLLMResultSummary(result: unknown): SanitizedLLMResultSummary | null {
+  const root = asRecord(result);
+  const technicalSheet = asRecord(root?.ficha_tecnica);
+  if (!technicalSheet) return null;
+
+  const rawSources = Array.isArray(root?.fontes_utilizadas) ? root.fontes_utilizadas.slice(0, 50) : [];
+  const publishedSourceIds = new Set<string>();
+  const byAdherence: Partial<Record<SourceAdherence, number>> = {};
+  for (const rawSource of rawSources) {
+    const source = asRecord(rawSource);
+    const sourceId = asSourceId(source?.id);
+    if (sourceId) publishedSourceIds.add(sourceId);
+    const adherence = asSourceAdherence(source?.avaliacao_aderencia && asRecord(source?.avaliacao_aderencia)?.status);
+    if (adherence) byAdherence[adherence] = (byAdherence[adherence] ?? 0) + 1;
+  }
+
+  const fieldStatuses: StatusCounts = {};
+  const groups: Record<string, StatusCounts> = {};
+  const sourceUsageGroups: Record<string, SourceUsageGroup> = {};
+  const referencedSourceIds = new Set<string>();
+  let fieldsWithSourceRef = 0;
+  let invalidFieldReferenceCount = 0;
+  let visited = 0;
+
+  const countStatus = (target: StatusCounts, status: FieldStatus) => {
+    target[status] = (target[status] ?? 0) + 1;
+  };
+  const visit = (value: unknown, group: string): void => {
+    if (visited >= 400 || value === null || value === undefined) return;
+    visited += 1;
+    if (Array.isArray(value)) {
+      for (const item of value.slice(0, 80)) visit(item, group);
+      return;
+    }
+    const item = asRecord(value);
+    if (!item) return;
+    const status = asFieldStatus(item.status);
+    if (status) {
+      countStatus(fieldStatuses, status);
+      const groupCounts = groups[group] ?? (groups[group] = {});
+      countStatus(groupCounts, status);
+      if (Object.hasOwn(item, "fonte_ref")) {
+        const sourceIds = sanitizeFieldSourceReferences(item.fonte_ref, publishedSourceIds);
+        if (!sourceIds) {
+          invalidFieldReferenceCount += 1;
+        } else {
+          fieldsWithSourceRef += 1;
+          const sourceUsage = sourceUsageGroups[group] ?? (sourceUsageGroups[group] = {
+            fields_with_source_ref: 0,
+            referenced_source_count: 0,
+            fields_with_single_source_ref: 0,
+            fields_with_multiple_source_refs: 0,
+          });
+          sourceUsage.fields_with_source_ref += 1;
+          if (sourceIds.length === 1) sourceUsage.fields_with_single_source_ref += 1;
+          else sourceUsage.fields_with_multiple_source_refs += 1;
+          for (const sourceId of sourceIds) referencedSourceIds.add(sourceId);
+        }
+      }
+      return;
+    }
+    for (const nested of Object.values(item)) visit(nested, group);
+  };
+
+  for (const [group, value] of Object.entries(technicalSheet).slice(0, 24)) {
+    if (!isSafeTelemetryKey(group)) continue;
+    visit(value, group);
+  }
+
+  for (const [group, sourceUsage] of Object.entries(sourceUsageGroups)) {
+    const groupSourceIds = new Set<string>();
+    collectReferencedSourceIds(technicalSheet[group], publishedSourceIds, groupSourceIds);
+    sourceUsage.referenced_source_count = groupSourceIds.size;
+  }
+
+  return {
+    completeness: sanitizeCompletenessSummary(root?.resumo_completude),
+    field_statuses: fieldStatuses,
+    fields_with_source_ref: fieldsWithSourceRef,
+    groups,
+    sources: { total: rawSources.length, by_adherence: byAdherence },
+    source_usage: {
+      referenced_source_count: referencedSourceIds.size,
+      invalid_field_reference_count: invalidFieldReferenceCount,
+      groups: sourceUsageGroups,
+    },
+  };
+}
+
+function sanitizeCompletenessSummary(value: unknown): SanitizedLLMResultSummary["completeness"] {
+  const source = asRecord(value);
+  if (!source) return null;
+  const keys = ["total_variaveis", "preenchidas", "informadas_na_entrada", "total_pesquisaveis", "nao_encontradas", "nao_aplicaveis", "conflitantes"] as const;
+  if (keys.some((key) => !isNonNegativeInteger(source[key]))) return null;
+  return {
+    total_variaveis: source.total_variaveis as number,
+    preenchidas: source.preenchidas as number,
+    informadas_na_entrada: source.informadas_na_entrada as number,
+    total_pesquisaveis: source.total_pesquisaveis as number,
+    nao_encontradas: source.nao_encontradas as number,
+    nao_aplicaveis: source.nao_aplicaveis as number,
+    conflitantes: source.conflitantes as number,
+  };
+}
+
+function asFieldStatus(value: unknown): FieldStatus | null {
+  return value === "confirmado" || value === "parcial" || value === "inferido_minimamente" ||
+    value === "nao_encontrado" || value === "nao_aplicavel" || value === "conflitante" ||
+    value === "informado_na_entrada" ? value : null;
+}
+
+function asSourceAdherence(value: unknown): SourceAdherence | null {
+  return value === "exata" || value === "compativel" || value === "ambigua" ||
+    value === "divergente" || value === "nao_verificada" ? value : null;
+}
+
+function isSafeTelemetryKey(value: string): boolean {
+  return /^[a-z][a-z0-9_]{0,79}$/.test(value);
+}
+
+function asSourceId(value: unknown): string | null {
+  return typeof value === "string" && /^F[0-9]+$/.test(value) ? value : null;
+}
+
+function sanitizeFieldSourceReferences(value: unknown, publishedSourceIds: ReadonlySet<string>): string[] | null {
+  if (!Array.isArray(value) || value.length === 0 || value.length > 50) return null;
+  const sourceIds = value.map(asSourceId);
+  if (sourceIds.some((sourceId) => !sourceId) || new Set(sourceIds).size !== sourceIds.length) return null;
+  return sourceIds.every((sourceId) => publishedSourceIds.has(sourceId!)) ? sourceIds as string[] : null;
+}
+
+function collectReferencedSourceIds(value: unknown, publishedSourceIds: ReadonlySet<string>, target: Set<string>, visited = { count: 0 }): void {
+  if (visited.count >= 400 || value === null || value === undefined) return;
+  visited.count += 1;
+  if (Array.isArray(value)) {
+    for (const item of value.slice(0, 80)) collectReferencedSourceIds(item, publishedSourceIds, target, visited);
+    return;
+  }
+  const item = asRecord(value);
+  if (!item) return;
+  if (asFieldStatus(item.status)) {
+    const sourceIds = sanitizeFieldSourceReferences(item.fonte_ref, publishedSourceIds);
+    if (sourceIds) for (const sourceId of sourceIds) target.add(sourceId);
+    return;
+  }
+  for (const nested of Object.values(item)) collectReferencedSourceIds(nested, publishedSourceIds, target, visited);
 }
 
 export function sanitizeDocumentReader(runtimeConfig: Record<string, unknown> | undefined): {
