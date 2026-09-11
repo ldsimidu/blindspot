@@ -33,6 +33,12 @@ Antes de implementar uma task de design material, aplicar o contrato canônico `
 
 `VISUAL_READY` não substitui o Architecture Gate técnico nem a aprovação humana. Após implementar, desktop, tablet/mobile e teclado precisam ter render comparável registrado antes de declarar a task visualmente concluída.
 
+## Movimento e componentes externos
+
+Magic UI, Velora UI, Spell UI, Cult UI, Skiper UI, Originkit, Cruip, Awwwards, Refero Styles e Inspora fazem parte da curadoria PEK, não do runtime aprovado. Antes de usar um padrão ou elemento animado, registrar evento, estado sem movimento, fonte, stack/dependências, licença, conta/rede, acessibilidade, `prefers-reduced-motion`, alternativa local e rollback conforme `core/motion-and-external-ui-curation-contract.md`.
+
+No BlindSpot, movimento só pode orientar troca de contexto, progresso local já confirmado ou feedback de interface. Ele não pode simular pesquisa, geração, aprovação ou confiança de fonte; loops, partículas, typing, brilho contínuo, 3D/tilt e efeitos de cursor não entram em ficha, cadastro, estados de espera ou dados técnicos sem uma exceção explicitamente aprovada.
+
 ## Regras de Domínio na Interface
 
 - `fonte_ref`, status, completude e conflito são informações decisórias; não podem aparecer apenas por cor, tooltip ou detalhe oculto.

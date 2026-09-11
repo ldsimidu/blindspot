@@ -20,6 +20,7 @@ Este diretório é a referência navegável para produto e planejamento. O contr
 | [Roadmap UX/UI de refatoração](ux-ui-roadmap-e-backlog.md) | Ordem de implementação, marcos e tasks PDK derivadas. |
 | [Design System](design-system.md) | Fonte de verdade da refatoração visual, dos tokens futuros, componentes e referências aprovadas. |
 | [Image System](image-system.md) | Linguagem visual, papéis, seleção, rastreabilidade e fallback de imagens/ilustrações. |
+| [Arquitetura visual P1-038](p1-038-arquitetura-visual-acesso-cadastro-espera.md) | Composição e experiência aprováveis para acesso, cadastro e espera antes da implementação. |
 | [Arquivo de decisões P0](archive/README.md) | Preflights e revisões de segurança preservados para auditoria, fora da navegação diária. |
 | [Contrato HTTP atual](../architecture/agent-core/HTTP_PIPELINE.md) | Rotas implementadas e pipeline da API. |
 | [Contrato de entrada](../architecture/agent-core/VEHICLE_INPUT_SPEC.md) | Payload de veículo aceito pela API. |

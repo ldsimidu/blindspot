@@ -85,6 +85,14 @@ As capturas entregues por Lucas em `C:\Users\lucas\Downloads\screencapture-local
 
 Antes de retomar esta task, aplicar `core/screen-design-architecture-contract.md` do PEK v0.5. A arquitetura visual deve registrar a leitura dessas evidências, das referências gerais e da tela atual, seguida de especificação de canvas, regiões, colunas, stepper, card de revisão, espera, breakpoints, estados e decisão `NO_IMAGE` ou `ImageIntent`. Só após `VISUAL_READY`, novo double-check e aprovação humana a implementação visual pode recomeçar. O código local atual é rascunho não aprovado e não deve ser tratado como design consolidado.
 
+### Arquitetura visual PEK v0.5 — 2026-09-11
+
+Especificação completa: [`docs/product/p1-038-arquitetura-visual-acesso-cadastro-espera.md`](../../../docs/product/p1-038-arquitetura-visual-acesso-cadastro-espera.md).
+
+`VISUAL_READY — aguardando aprovação humana.` A proposta usa composição editorial/tarefa 5/7 em desktop, cadastro em sete microetapas agrupadas em quatro macrofases e timeline de espera com fatos confirmados. A implementação inicial decide `NO_IMAGE`; qualquer fotografia automotiva depende da P1-043 e do Image Intent correspondente.
+
+Curadoria complementar: Magic UI, Velora UI, Spell UI, Cult UI, Skiper UI, Originkit, Cruip, Awwwards, Refero Styles e Inspora foram classificados na seção 10 da especificação. Para esta task, somente uma transição local reduzida entre etapas é proposta; nenhum pacote, template, conta, CLI, MCP ou código externo foi adotado.
+
 ## Resultado do agente
 
 - Estado: `❌ Pendente — reaberta por reprovação visual.`
@@ -95,4 +103,4 @@ Antes de retomar esta task, aplicar `core/screen-design-architecture-contract.md
 - Arquivos alterados: `apps/web/src/App.tsx`, `apps/web/src/styles.css` e esta task. Foram reutilizados `UiButton`, `UiField` e `UiStatus` da fundação P1-037.
 - Verificação executada: `npm run typecheck` passou; `npm run build` passou fora do sandbox após o Vite ter sido bloqueado apenas pela leitura da configuração local. Inspeção estática confirmou que não foi adicionado `localStorage`, URL, endpoint, log ou integração para dados de cadastro/credenciais.
 - Verificação pendente: arquitetura visual, double-check, aprovação humana, render desktop/tablet/mobile e teclado com dados fictícios em ambiente autorizado. Não foi submetido cadastro real nem usada credencial para não alterar dados durante a validação.
-- Próximo passo: produzir a arquitetura visual P1-038 conforme o PEK v0.5 e apresentá-la para aprovação antes de retomar o código.
+- Próximo passo: Lucas aprovar ou ajustar a arquitetura visual P1-038 antes de retomar o código.
