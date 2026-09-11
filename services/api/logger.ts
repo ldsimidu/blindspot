@@ -139,6 +139,7 @@ export async function logLLMExecution(entry: ClaudeExecutionEntry): Promise<stri
   const sourceTrustBootstrap = sanitizeSourceTrustBootstrap(entry.runtimeConfig);
   const documentReader = sanitizeDocumentReader(entry.runtimeConfig);
   const openRouterPasses = sanitizeOpenRouterPassTelemetry(entry.runtimeConfig);
+  const researchMode = sanitizeResearchMode(entry.runtimeConfig);
   const event = {
     event: "llm_execution",
     at: entry.finishedAt,
@@ -148,6 +149,7 @@ export async function logLLMExecution(entry: ClaudeExecutionEntry): Promise<stri
     duration_ms: safeDuration(entry.startedAt, entry.finishedAt),
     max_turns: entry.maxTurns,
     outcome: entry.error ? "error" : "success",
+    ...(researchMode ? { research_mode: researchMode } : {}),
     ...(brandPresenceDiscovery ? { brand_presence_discovery: brandPresenceDiscovery } : {}),
     ...(researchDocumentDiscovery ? { research_document_discovery: researchDocumentDiscovery } : {}),
     ...(sourceTrustBootstrap ? { source_trust_bootstrap: sourceTrustBootstrap } : {}),
@@ -156,6 +158,11 @@ export async function logLLMExecution(entry: ClaudeExecutionEntry): Promise<stri
   };
   await appendFile(LLM_EVENT_LOG_FILE, `${JSON.stringify(event)}\n`, "utf-8");
   return LLM_EVENT_LOG_FILE;
+}
+
+export function sanitizeResearchMode(runtimeConfig: Record<string, unknown> | undefined): "ex_prompt_compat" | "strict_evidence" | null {
+  const value = runtimeConfig?.researchMode;
+  return value === "ex_prompt_compat" || value === "strict_evidence" ? value : null;
 }
 
 export function sanitizeDocumentReader(runtimeConfig: Record<string, unknown> | undefined): {

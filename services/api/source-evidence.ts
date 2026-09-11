@@ -9,6 +9,11 @@ export type SourceAdherenceStatus =
   | "divergente"
   | "nao_verificada";
 
+export interface SourceEvidenceAssessmentOptions {
+  acceptedAdherenceStatuses?: SourceAdherenceStatus[];
+  retainIneligiblePublicSources?: boolean;
+}
+
 export type SourceAdherenceCriterion =
   | "compativel"
   | "divergente"
@@ -134,6 +139,7 @@ export function applySourceEvidenceAssessment(
   evidence: ObservedCitationEvidence[],
   vehicle: VehicleInput,
   policy: SourceEvidencePolicy,
+  options: SourceEvidenceAssessmentOptions = {},
 ): SourceEvidenceQualityMetrics {
   const root = asRecord(responsePayload);
   if (!root || !Array.isArray(root.fontes_utilizadas)) {
@@ -173,8 +179,12 @@ export function applySourceEvidenceAssessment(
     if (id) adherenceBySourceId.set(id, assessment.status as SourceAdherenceStatus);
   }
 
-  const metrics = auditTechnicalFields(root, adherenceBySourceId, policy);
-  isolateIneligiblePublicSources(root, adherenceBySourceId, policy);
+  const acceptedAdherenceStatuses = options.acceptedAdherenceStatuses ?? policy.acceptedAdherenceStatuses;
+  if (options.retainIneligiblePublicSources) {
+    removeExplicitlyDivergentReferences(root, adherenceBySourceId);
+  }
+  const metrics = auditTechnicalFields(root, adherenceBySourceId, policy, acceptedAdherenceStatuses);
+  isolateIneligiblePublicSources(root, adherenceBySourceId, acceptedAdherenceStatuses, options.retainIneligiblePublicSources ?? false);
   addEvidenceWarnings(root, metrics);
   recalculateBasicCompleteness(root);
   return metrics;
@@ -189,10 +199,12 @@ export function applySourceEvidenceAssessment(
 function isolateIneligiblePublicSources(
   root: Record<string, unknown>,
   adherenceBySourceId: Map<string, SourceAdherenceStatus>,
-  policy: SourceEvidencePolicy,
+  acceptedAdherenceStatuses: SourceAdherenceStatus[],
+  retainIneligiblePublicSources: boolean,
 ): void {
   if (!Array.isArray(root.fontes_utilizadas)) return;
-  const accepted = new Set<SourceAdherenceStatus>(policy.acceptedAdherenceStatuses);
+  if (retainIneligiblePublicSources) return;
+  const accepted = new Set<SourceAdherenceStatus>(acceptedAdherenceStatuses);
   const removedIds: string[] = [];
   root.fontes_utilizadas = root.fontes_utilizadas.filter((candidate) => {
     const source = asRecord(candidate);
@@ -412,6 +424,7 @@ function auditTechnicalFields(
   root: Record<string, unknown>,
   adherenceBySourceId: Map<string, SourceAdherenceStatus>,
   policy: SourceEvidencePolicy,
+  acceptedAdherenceStatuses: SourceAdherenceStatus[],
 ): SourceEvidenceQualityMetrics {
   const metrics = emptyQualityMetrics();
   for (const status of adherenceBySourceId.values()) {
@@ -422,7 +435,7 @@ function auditTechnicalFields(
     else metrics.unverifiedSourceCount += 1;
   }
 
-  const accepted = new Set<string>(policy.acceptedAdherenceStatuses);
+  const accepted = new Set<string>(acceptedAdherenceStatuses);
   walkFields(root.ficha_tecnica, "ficha_tecnica", (field, path) => {
     const refs = Array.isArray(field.fonte_ref)
       ? field.fonte_ref.filter((value): value is string => typeof value === "string")
@@ -449,6 +462,30 @@ function auditTechnicalFields(
   });
   metrics.qualityIssuePaths = [...new Set(metrics.qualityIssuePaths)];
   return metrics;
+}
+
+function removeExplicitlyDivergentReferences(
+  root: Record<string, unknown>,
+  adherenceBySourceId: Map<string, SourceAdherenceStatus>,
+): void {
+  walkFields(root.ficha_tecnica, "ficha_tecnica", (field) => {
+    if (!Array.isArray(field.fonte_ref)) return;
+    const remaining = field.fonte_ref.filter(
+      (ref): ref is string => typeof ref === "string" && adherenceBySourceId.get(ref) !== "divergente",
+    );
+    if (remaining.length > 0) {
+      field.fonte_ref = remaining;
+      return;
+    }
+    if (["confirmado", "parcial", "inferido_minimamente", "conflitante"].includes(String(field.status))) {
+      field.valor = null;
+      field.status = "nao_encontrado";
+      field.obs_ref = "NF1";
+      delete field.fonte_ref;
+      delete field.observacoes;
+      delete field.valor_original;
+    }
+  });
 }
 
 function downgradeField(field: Record<string, unknown>, reason: string): void {

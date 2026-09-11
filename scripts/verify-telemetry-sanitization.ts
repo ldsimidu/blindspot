@@ -1,9 +1,13 @@
-import { sanitizeBrandPresenceDiscovery, sanitizeDocumentReader, sanitizeOpenRouterPassTelemetry, sanitizeSchemaValidationIssues, sanitizeSourceTrustBootstrap, sanitizeTelemetryPath } from "../services/api/logger";
+import { sanitizeBrandPresenceDiscovery, sanitizeDocumentReader, sanitizeOpenRouterPassTelemetry, sanitizeResearchMode, sanitizeSchemaValidationIssues, sanitizeSourceTrustBootstrap, sanitizeTelemetryPath } from "../services/api/logger";
 import { formatAjvIssues } from "../services/api/validator";
 
 const value = sanitizeTelemetryPath("/api/convites/secret-token-12345678901234567890/ativar?token=do-not-log");
 if (value.includes("secret-token") || value.includes("?") || !value.includes("[redacted]")) {
   throw new Error("Telemetry path sanitization did not remove sensitive values.");
+}
+
+if (sanitizeResearchMode({ researchMode: "ex_prompt_compat" }) !== "ex_prompt_compat" || sanitizeResearchMode({ researchMode: "untrusted-mode" }) !== null) {
+  throw new Error("Research mode telemetry must be allowlisted.");
 }
 
 const bootstrap = sanitizeSourceTrustBootstrap({
