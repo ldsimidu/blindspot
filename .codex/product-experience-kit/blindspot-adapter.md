@@ -43,6 +43,12 @@ No BlindSpot, movimento só pode orientar troca de contexto, progresso local já
 
 Depois de uma arquitetura visual aprovada e antes de acabamento, animação, asset ou conclusão da task, renderizar a estrutura mínima no viewport da evidência atual e nos breakpoints definidos. Avaliar canvas, largura útil da tarefa, propósito de cada região, colisão/truncamento de labels e dados, hierarquia em cinco segundos e reorganização mobile. Uma reprovação é retorno obrigatório à arquitetura visual; typecheck, build ou componente reutilizado não a compensam.
 
+## Feedback humano e reabertura
+
+Feedback humano posterior acompanhado de captura, fluxo observado ou referência tem precedência sobre inferência visual anterior. Se ele apontar apenas acabamento localizado, a task corrige e recaptura o estado. Se apontar identidade de marca, propósito de tela, composição, agrupamento de campos, responsividade ou fluxo, a task volta para `❌ Pendente`, invalida `VISUAL_READY` e produz uma nova arquitetura visual antes de mudar CSS/JSX.
+
+No BlindSpot, isso inclui verificar explicitamente: a cor de marca não foi trocada pela cor de um status técnico; narrativa de aquisição não tomou o lugar de uma tarefa segura; campos que dependem de conferência mútua não foram separados por uma regra rígida de microetapa; e mídia/placeholder não comprime a tarefa nem afirma um veículo não comprovado.
+
 ## Regras de Domínio na Interface
 
 - `fonte_ref`, status, completude e conflito são informações decisórias; não podem aparecer apenas por cor, tooltip ou detalhe oculto.

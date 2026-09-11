@@ -41,6 +41,52 @@ O intake de dependência/componente externo precisa registrar finalidade, URL, v
 - **Ação por contexto:** pesquisar, comparar, exportar, reportar, gerir equipe e sair aparecem onde a decisão ocorre, com pré-requisitos e consequência explicados.
 - **Mobile preserva a tarefa:** não é apenas uma redução do desktop; a navegação, o contexto do veículo e ações críticas precisam continuar acessíveis.
 
+## Recalibração de identidade e acesso — 2026-09-11
+
+> Esta decisão substitui, para as próximas telas e para a reabertura da P1-038, qualquer leitura anterior que associe a linguagem do BlindSpot a verde, serifas editoriais ou ao painel de acesso como peça publicitária. Ela não altera retroativamente o runtime; torna a direção anterior um estado a migrar.
+
+### Identidade que deve aparecer no produto
+
+O BlindSpot é uma ferramenta contemporânea de inteligência automotiva. Sua âncora visual é **preto, branco e laranja**: preto/grafite para contraste e dados críticos, branco ou superfícies neutras para leitura e laranja para marca, ação, progresso de tarefa e foco. Verde continua reservado a significado semântico positivo — por exemplo, um dado confirmado — e não pode substituir a cor de marca em CTAs, stepper, foco ou elementos de navegação.
+
+O produto deve ser técnico e moderno, não vintage, editorial ou “premium clássico”. A interface usa tipografia sans-serif contemporânea, hierarquia direta e densidade controlada. Serifas só podem entrar em uma peça de campanha ou introdução explicitamente aprovada; não entram em login, cadastro, ficha, comparação, tabela, estado operacional ou painel administrativo.
+
+| Papel | Direção aprovada | Limite |
+| --- | --- | --- |
+| `brand.primary` / ação principal | laranja BlindSpot, com texto preto ou branco validado em contraste | não usar verde, azul ou gradiente como substituto de marca |
+| `surface.canvas` | preto/grafite profundo ou neutro muito claro conforme a jornada | o contraste do conteúdo não pode depender de transparência |
+| `surface.content` | branco, grafite ou vidro translúcido com fallback opaco | nunca reduzir legibilidade para parecer “glass” |
+| `text.interface` | sans-serif moderna (`Manrope`/fallback já definido) | sem títulos serifados em fluxo operacional |
+| `status.confirmed` | verde semântico, com texto e ícone/rótulo | não representa marca, etapa ativa ou CTA |
+
+### Material contemporâneo: Liquid Glass como princípio, não cópia
+
+O estudo de Liquid Glass confirma que o valor aproveitável é hierarquia por material, adaptabilidade e uso comedido de cor em controles — não reproduzir a estética Apple nem depender de blur para a tarefa. A aplicação web pode usar uma camada de **vidro operacional**: superfícies translúcidas controladas em navegação, painel flutuante, chip, modal ou overlay sobre uma imagem rica; campos de texto, tabelas, revisão de cadastro, alertas e evidência técnica permanecem superfícies estáveis e contrastadas.
+
+Toda aplicação desse material declara: fundo que aparece sob o vidro, fallback opaco, contraste, estado sem blur, custo de renderização, comportamento em `prefers-reduced-transparency` quando disponível e alternativa em mobile. O vidro não pode esconder `fonte_ref`, status, erro, senha ou CTA. A referência conceitual é a orientação oficial de [Liquid Glass da Apple](https://developer.apple.com/documentation/TechnologyOverviews/liquid-glass), que recomenda preservar foco no conteúdo e usar cor de modo criterioso; não há adoção de assets, SDK ou código Apple.
+
+### Arquitetura de acesso: introdução não é formulário
+
+Há três responsabilidades que não devem competir na mesma tela:
+
+1. **Tela de entrada/boas-vindas (opcional):** apresenta slogan, benefício e convite para entrar ou criar conta. É o único local para narrativa de marca ampla.
+2. **Login e cadastro:** resolvem uma tarefa segura. Em desktop, uma imagem ou placeholder ocupa aproximadamente 60% à esquerda e o painel de tarefa 40% à direita; o painel é claro, moderno e sem slogan publicitário. Em tablet/mobile, a imagem vira faixa/crop curto ou desaparece de modo declarado, sem reduzir o formulário.
+3. **Espera de aprovação:** comunica somente fatos confirmados, próxima ação real e suporte. Não reintroduz propaganda nem simula análise.
+
+O painel direito de acesso tem título de tarefa, instrução curta, campos, feedback e CTA. A imagem esquerda precisa de `Image Intent`, crop e fallback definidos no Image System; antes do asset aprovado, ela é um placeholder de composição declarado, não uma imagem improvisada. A troca entre login e cadastro é sempre possível por ação secundária clara.
+
+### Formulários, progresso e movimento vivo
+
+“Uma decisão por etapa” não significa “um campo por etapa”. Campos que a pessoa precisa conferir conjuntamente ficam juntos: **senha e confirmação de senha são uma mesma tela**, junto do aviso de privacidade quando o espaço e a leitura permanecerem claros. Empresa, identificação e contato podem continuar em etapas curtas quando isso reduz erro cognitivo.
+
+O BlindSpot deve parecer vivo por resposta, não por distração. O sistema prevê três camadas:
+
+- **interação:** hover, foco, pressionamento e validação respondem imediatamente;
+- **transição contextual:** ao avançar/voltar, painel de formulário, indicador de etapa e conteúdo trocam com movimento curto e coordenado;
+- **ambiente opcional:** apenas em entrada/boas-vindas ou sobre uma imagem, uma variação visual muito sutil pode existir se declarada na arquitetura, não competir com texto e parar em `prefers-reduced-motion`.
+
+Nenhuma animação pode fingir progresso de servidor, aprovação, pesquisa ou confiabilidade técnica. A tela em repouso deve continuar integralmente compreensível, com movimento reduzido e sem qualquer loop obrigatório para uso.
+
 ## Referências e princípios extraídos
 
 | Evidência | Princípio aproveitável | Limite obrigatório |

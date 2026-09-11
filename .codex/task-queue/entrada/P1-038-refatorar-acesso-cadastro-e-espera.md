@@ -6,7 +6,7 @@
 >
 > Origem ou referência: UX-BS-005; `docs/product/ux-ui-direcao-alvo-e-decisoes.md`
 >
-> Arquitetura: `TÉCNICA APPROVED; ARQUITETURA VISUAL A REFAZER pelo PEK v0.5 antes do código.`
+> Arquitetura: `TÉCNICA APPROVED; ARQUITETURA VISUAL V2 AGUARDA aprovação humana após evidência de 2026-09-11.`
 >
 > Triagem automática: `Material — autenticação e fluxo de dados pessoais`
 >
@@ -41,7 +41,7 @@ Refatorar as telas de login, cadastro corporativo e espera de aprovação para u
 
 ### Decisão e fluxo propostos
 
-Refatorar somente `apps/web/src/App.tsx` e estilos/primitive já locais, sem alterar endpoint, schema, cookie, banco, provedor ou contrato de autenticação. O cadastro passa por quatro etapas locais: (1) empresa, (2) responsável e e-mail corporativo, (3) credencial e aviso de privacidade, (4) revisão e envio. Avançar valida apenas a etapa atual; voltar preserva os valores no estado de memória. O envio continua único, somente na revisão.
+Refatorar somente `apps/web/src/App.tsx` e estilos/primitive já locais, sem alterar endpoint, schema, cookie, banco, provedor ou contrato de autenticação. O cadastro passa por sete microetapas locais agrupadas em quatro macrofases: empresa (nome, CNPJ), responsável (nome, e-mail corporativo), acesso (senha, confirmação/aviso de privacidade) e revisão/envio. Avançar valida somente a informação da microetapa atual; voltar preserva os valores em memória durante a jornada. O envio continua único, somente na revisão.
 
 Após `202`, descartar `password` e `password_confirmation` imediatamente do estado cliente. A tela de espera mostra uma timeline informativa de `Cadastro enviado` e `Em análise`; `Aprovado` e `Recusado` só aparecem se o resultado confirmado do login os informar. Não haverá estimativa, notificação, e-mail, consulta automática ou promessa de aprovação.
 
@@ -89,18 +89,18 @@ Antes de retomar esta task, aplicar `core/screen-design-architecture-contract.md
 
 Especificação completa: [`docs/product/p1-038-arquitetura-visual-acesso-cadastro-espera.md`](../../../docs/product/p1-038-arquitetura-visual-acesso-cadastro-espera.md).
 
-`VISUAL_READY — aguardando aprovação humana.` A proposta usa composição editorial/tarefa 5/7 em desktop, cadastro em sete microetapas agrupadas em quatro macrofases e timeline de espera com fatos confirmados. A implementação inicial decide `NO_IMAGE`; qualquer fotografia automotiva depende da P1-043 e do Image Intent correspondente.
+`REABERTA — a v1 visual foi reprovada por evidência humana em 2026-09-11.` A arquitetura v2 substitui a composição editorial/tarefa 5/7 por mídia/tarefa 60/40, reintroduz a identidade laranja/preto/branco, separa a narrativa de boas-vindas do formulário e agrupa senha/confirmação na mesma tela. A implementação visual só pode retomar após a aprovação explícita da v2 em `docs/product/p1-038-arquitetura-visual-acesso-cadastro-espera.md`.
 
 Curadoria complementar: Magic UI, Velora UI, Spell UI, Cult UI, Skiper UI, Originkit, Cruip, Awwwards, Refero Styles e Inspora foram classificados na seção 10 da especificação. Para esta task, somente uma transição local reduzida entre etapas é proposta; nenhum pacote, template, conta, CLI, MCP ou código externo foi adotado.
 
 ## Resultado do agente
 
-- Estado: `❌ Pendente — reaberta por reprovação visual.`
-- Arquitetura: `Técnica approved; visual a refazer pelo PEK v0.5 antes do código.`
+- Estado: `❌ Pendente — reaberta por reprovação humana da direção visual.`
+- Arquitetura: `Técnica approved; arquitetura visual v2 aguarda aprovação humana.`
 - Triagem automática: `Material — autenticação e dados pessoais`.
 - Segurança: `Aplicável — revisão obrigatória`.
-- Implementação: existe somente como rascunho local não aprovado. A estrutura funcional de etapas, descarte de credencial e estados confirmados poderá ser reaproveitada, mas não substitui a nova arquitetura visual.
+- Implementação: o CSS/JSX local da composição v1 tornou-se rascunho reprovado; não deve receber polimento incremental. A próxima implementação deve começar pela arquitetura v2 aprovada, preservando apenas contratos de autenticação, mensagens neutras e o único envio final.
 - Arquivos alterados: `apps/web/src/App.tsx`, `apps/web/src/styles.css` e esta task. Foram reutilizados `UiButton`, `UiField` e `UiStatus` da fundação P1-037.
-- Verificação executada: `npm run typecheck` passou; `npm run build` passou fora do sandbox após o Vite ter sido bloqueado apenas pela leitura da configuração local. Inspeção estática confirmou que não foi adicionado `localStorage`, URL, endpoint, log ou integração para dados de cadastro/credenciais.
-- Verificação pendente: arquitetura visual, double-check, aprovação humana, render desktop/tablet/mobile e teclado com dados fictícios em ambiente autorizado. Não foi submetido cadastro real nem usada credencial para não alterar dados durante a validação.
-- Próximo passo: Lucas aprovar ou ajustar a arquitetura visual P1-038 antes de retomar o código.
+- Verificação executada: as capturas de `C:\Users\lucas\Downloads\evidencia-cadastro\` e o feedback humano foram analisados. Elas comprovam legibilidade melhor que a versão antecedente, mas reprovam a direção visual como identidade de marca e como fluxo: verde dominante, serifa/editorial, slogan dentro da tarefa, ausência de mídia funcional, falta de transições e senha separada da confirmação.
+- Verificação pendente: aprovação humana da arquitetura v2; após isso, checkpoint de primeira renderização em desktop/tablet/mobile, teclado e estados reais/ficcionais sanitizados. Não foi submetido cadastro real nem usada credencial durante a análise.
+- Próximo passo: Lucas aprovar ou ajustar a arquitetura visual v2 antes de retomar código.

@@ -1,6 +1,8 @@
 # P1-038 — Arquitetura visual de acesso, cadastro e espera
 
-> Estado: `VISUAL_READY — aguardando aprovação humana para implementar.`
+> Estado: `REABERTA — a arquitetura v2 ao final deste documento aguarda revisão humana.`
+>
+> A arquitetura v1 abaixo é histórico de decisão e não é mais autorização de implementação. As capturas e o feedback humano em `C:\Users\lucas\Downloads\evidencia-cadastro\` identificaram divergência de identidade, função e agrupamento de campos. A aprovação técnica anterior preserva o contrato; a aprovação visual precisa ser refeita.
 >
 > Escopo: login, criação de conta corporativa, confirmação de recebimento, espera de aprovação, recusa e retorno ao login. Esta especificação sucede o rascunho local reprovado em 2026-09-11; não aprova aquele código nem altera contratos de autenticação.
 
@@ -197,3 +199,93 @@ O movimento desta jornada é **funcional e quase invisível**: ele confirma a tr
 ## 13. Checkpoint obrigatório após aprovação
 
 Antes de concluir P1-038, aplicar `core/first-render-composition-checkpoint.md` do PEK v0.7 após criar a estrutura mínima. A captura inicial deve cobrir login desktop/mobile, uma microetapa de cadastro, revisão e espera. Se houver card comprimido, região sem função, colisão de labels, valor quebrado, CTA sem contexto ou canvas vazio, a implementação retorna à seção 6 desta arquitetura antes de continuar.
+
+---
+
+## 14. Arquitetura visual v2 — reabertura por evidência humana
+
+### Evidência, leitura e decisão
+
+**Capturas observadas.** As dez capturas em `C:\Users\lucas\Downloads\evidencia-cadastro\` confirmam que a v1 resolveu largura, legibilidade e o stepper comprimido da versão anterior. Também confirmam problemas que não são cosméticos: a marca aparece verde onde deveria ser laranja/preto/branco; a serifa e o canvas bege comunicam editorial/vintage; o slogan ocupa uma região que deveria contextualizar o próprio acesso; senha e confirmação quebram uma única decisão em duas telas; e não há transição perceptível entre um passo e outro.
+
+**Referências específicas.** `evidence/ux-ui/references/login-cadastro/WhatsApp Image 2026-09-11 at 03.02.31.jpeg` ensina a divisão clara entre visual de contexto à esquerda e tarefa de acesso à direita. `...03.02.33.jpeg` confirma o mesmo princípio com fotografia imersiva e formulário direto. Elas não autorizam copiar idioma, fotografia, conteúdo, ícones sociais, recuperação de senha ou autenticação de terceiros inexistentes no BlindSpot.
+
+**Referências gerais.** As referências de sistema indicadas em `evidence/ux-ui/references/inspiracoes-gerais/references.txt` continuam governando o produto autenticado: navegação superior, dados do veículo como objeto principal e comparação X/Y. A página de acesso é uma exceção de jornada, não um mini-dashboard; ela precisa preparar o usuário para esse sistema contemporâneo, não competir com ele.
+
+**Decisão.** Substituir o padrão editorial 5/7 por uma família de acesso moderna, escura e visual: painel de mídia/placeholder à esquerda (60%) e painel seguro de tarefa à direita (40%). O slogan deixa login/cadastro e se torna conteúdo possível de uma futura rota de boas-vindas. A v2 não cria rota, endpoint, provider, persistência, prazo, notificação ou estado de servidor novo.
+
+### Pessoa usuária, objetivo e narrativa
+
+| Tela/estado | Objetivo da pessoa | Ação primária real | Informação necessária antes da ação |
+| --- | --- | --- | --- |
+| login | entrar com credencial corporativa | `Entrar` | e-mail corporativo e senha; nenhum marketing compete com a tarefa |
+| cadastro | enviar solicitação corporativa sem erro | `Continuar` ou `Enviar cadastro` na revisão | macrofase, campos do agrupamento atual, requisito local e consequência do envio |
+| espera | entender o limite de acesso e a alternativa disponível | `Voltar ao login` | cadastro recebido, análise ainda sem liberação e ausência de prazo prometido |
+| recusa | compreender indisponibilidade sem vazamento | `Voltar ao login` / suporte existente | fato confirmado, sem motivo interno |
+
+### Composição desktop e imagem
+
+**Canvas.** Plano escuro/preto de borda a borda (`brand.ink`) com superfície clara para o painel de tarefa. O contraste entre os dois lados expressa a marca e mantém leitura. O laranja é cor de ação, progresso, foco e pequenos acentos; não deve ser usado como ruído de fundo ou indicador de sucesso técnico.
+
+**Colunas.** No desktop a partir de 1080 px, o shell ocupa a viewport inteira e usa `60% media | 40% task`, sem card estreito central. A região esquerda recebe uma imagem automotiva abstrata/ambiental ou um placeholder de arte com sobreposição preta para garantir contraste. A direita recebe um painel branco com borda/raio de vidro moderado, no máximo 560 px de conteúdo interno, alinhado verticalmente ao centro e com respiro de 48–64 px.
+
+**Image Intent provisório.** Enquanto a P1-043 não aprovar asset e licença, usar `PLACEHOLDER_MEDIA_AUTH`: campo escuro com gradiente laranja-preto discreto, textura geométrica estática e camada de vidro apenas decorativa. O placeholder ocupa a mesma área/crop de uma imagem futura, não descreve veículo específico e possui `alt=""`. O asset definitivo deverá ter `purpose=auth-context`, crop desktop `3:4`/mobile `16:9`, variação escura, licença rastreável e fallback de placeholder.
+
+**Liquid Glass com limite.** O painel branco é opaco por padrão. Material de vidro pode existir como camada de navegação da página de boas-vindas, como uma placa de marca sobre a imagem ou no indicador de etapa; não envolve inputs, alertas, texto de erro, revisão ou timeline. Todo vidro conserva fallback opaco e contraste verificado.
+
+### Elementos por tela
+
+**Login.** O painel direito contém marca pequena, título de tarefa `Acesse sua conta`, instrução direta, e-mail, senha, alerta neutro, botão laranja em largura total e ação textual `Criar cadastro corporativo`. Não contém slogan, benefícios, fake social login ou promessa de acesso imediato. O link alterna a mesma região de tarefa para cadastro.
+
+**Cadastro.** A navegação lateral não é uma peça publicitária: sobre a mídia há somente wordmark e progresso compacto. A tarefa usa quatro macrofases, mas cinco telas de decisão:
+
+| Tela | Macrofase | Campos apresentados juntos | Motivo |
+| --- | --- | --- | --- |
+| 1 | Empresa | nome da empresa + CNPJ | identidade corporativa é uma decisão única; reduz idas sem reduzir legibilidade |
+| 2 | Responsável | nome + e-mail corporativo | a pessoa responsável é o mesmo contexto |
+| 3 | Acesso | senha + confirmação de senha + aviso de privacidade | a pessoa compara os dois valores e aceita o aviso no mesmo ato |
+| 4 | Revisão | empresa, CNPJ, responsável e e-mail; nunca senha | confirmação consciente antes do único envio real |
+| 5 | Enviado/em espera | não é formulário; timeline factual | separa claramente tarefa concluída de análise do servidor |
+
+O cabeçalho de tarefa mostra `Empresa · etapa 1 de 4`, título objetivo e ajuda curta. O stepper é uma sequência vertical ou horizontal conforme espaço, sempre com rótulo visível, `aria-current` e estado textual; seu preenchimento laranja avança apenas após validação local do agrupamento. A revisão reagrupa dados em dois blocos legíveis, sem valores em branco sobre superfícies de baixo contraste.
+
+**Espera e recusa.** Mantêm a mesma divisão mídia/tarefa para coerência, mas sem preencher a esquerda com slogan. O painel direito tem título factual, timeline vertical (enviado, em análise, próximo passo) e ações. Estado atual usa laranja de marca mais texto/ícone; sucesso de dado, quando aplicável, mantém verde exclusivamente semântico. A espera não usa animação contínua que sugira análise ativa do servidor.
+
+### Movimento e sensação de produto vivo
+
+| Evento | Resposta visual aprovada | Estado sem movimento | Limite |
+| --- | --- | --- | --- |
+| entrada do painel | fade + deslocamento de 12 px, 220 ms | painel aparece pronto | uma vez por entrada, não loop |
+| avançar/voltar cadastro | saída curta do grupo atual e entrada coordenada do próximo; stepper preenche junto | troca imediata com foco no título/campo | `opacity`/`transform`, 180–220 ms, sem animação por caractere |
+| hover/foco/pressão | elevação, borda e laranja respondem em 120–160 ms | estilo de foco alto contraste | não esconder informação em hover |
+| ambiente da mídia | brilho/gradiente muito lento e de baixa amplitude, se a implementação posterior provar contraste e desempenho | imagem/placeholder estático | somente decorativo, pausado em `prefers-reduced-motion`; nunca no painel de formulário |
+| timeline recebida | entrada única, de cima para baixo, depois estática | todos os marcos já visíveis | não representa duração, processamento ou aprovação |
+
+### Breakpoints, acessibilidade e estados
+
+| Viewport | Reorganização |
+| --- | --- |
+| desktop ≥ 1080 px | mídia 60% + painel 40%; mídia recebe placeholder/asset e progresso compacto |
+| tablet 680–1079 px | mídia vira faixa superior 16:9; painel branco abaixo com largura de leitura de até 640 px; o progresso fica acima do título |
+| mobile ≤ 679 px | mídia decorativa curta (ou removida quando roubar espaço); painel ocupa a largura; campos de cada agrupamento empilham; ação primária vem depois de campos e aviso; foco nunca é cortado |
+
+- Campos possuem label visível, ajuda/erro associado e área de toque mínima de 44 px.
+- Ao falhar validação, foco vai ao primeiro campo inválido; ao trocar etapa, ao título do novo agrupamento. O foco laranja é visível sobre painel claro e mídia escura.
+- `prefers-reduced-motion` remove transições e movimento ambiente; nenhuma compreensão depende de cor, blur ou animação.
+- Estados do servidor permanecem exatamente `authenticated`, `received`, `pending_review` e `rejected`; mensagens de erro seguem neutras e nenhum dado/senha vai para URL, `localStorage`, log ou evidência.
+
+### Critérios v2 de aceite e double-check
+
+1. Capturas sanitizadas em 1440×900, 834×1112 e 390×844 para login, cadastro de acesso (senha+confirmação), revisão com erro e espera.
+2. Em 1440 px, mídia representa 60% e tarefa 40%; o painel direito não assume aspecto editorial/vintage e nenhum slogan é exibido no login/cadastro.
+3. Laranja/preto/branco são inequivocamente a identidade de marca; verde aparece somente em significado semântico explícito.
+4. Tipografia de tela, formulário e dados é sans-serif moderna; não há serifas no fluxo operacional.
+5. Senha e confirmação convivem na mesma etapa, com aviso de privacidade associado sem truncamento.
+6. Em cada avanço/retorno, painel e stepper dão feedback coordenado; com movimento reduzido a tarefa continua igualmente clara.
+7. Placeholder ou imagem tem crop e fallback definidos, sem afirmar veículo/dado que o runtime não possui.
+
+**Double-check v2.** A reinterpretação atende o feedback sem transformar a referência em cópia: mantém a divisão imagem/tarefa, mas usa identidade BlindSpot e estados reais. A imagem recebeu decisão explícita e fallback; o slogan ganhou uma responsabilidade própria futura em vez de invadir a tarefa. A sensação de vida está vinculada a transição e interação, com ambiente opcional seguro, não a um loop que simule trabalho do servidor. O agrupamento de senha reduz fricção sem enfraquecer validação ou descarte de credenciais.
+
+### Decisão humana necessária
+
+`VISUAL_READY — arquitetura v2 pronta para revisão humana. Não implementar CSS/JSX, asset, animação ou componente novo até Lucas aprovar explicitamente esta v2.`
