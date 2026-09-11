@@ -243,6 +243,8 @@ Todo componente novo ou alterado declara no mínimo: objetivo, pessoa/fluxo, con
 
 ## Governança e adoção
 
+Uma task que altera materialmente uma tela consulta este Design System e aplica o contrato de arquitetura visual por tela do PEK pelo adapter local antes de código. A especificação descreve a composição e a experiência da tela; tokens e primitives isolados não provam que ela segue este sistema.
+
 1. P1-037 cria tokens e primitives em código, com inventário dos valores atuais e migração incremental.
 2. Cada task de tela reutiliza o componente adequado; exceção visual é registrada neste arquivo antes de virar padrão.
 3. O primeiro render de cada componente é comparado contra a intenção do Design System e contra os invariantes de domínio.

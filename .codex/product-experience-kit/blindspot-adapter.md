@@ -20,6 +20,19 @@ Ao usar `:pek --auto`, priorizar documentos de jornada/requisitos, screenshots/r
 
 Exploração interativa requer alvo e autorização explícitos. Ela é de observação: não envia solicitações que gerem dados, não salva, exclui, publica, altera configurações nem acessa áreas fora do escopo autorizado.
 
+## Gate de arquitetura visual por tela
+
+Antes de implementar uma task de design material, aplicar o contrato canônico `core/screen-design-architecture-contract.md`. A task deve registrar, além da arquitetura técnica:
+
+1. a tela/estado atuais, com evidência visual e problemas concretos observados;
+2. a referência específica da tela, as referências gerais em `evidence/ux-ui/references/inspiracoes-gerais/references.txt` e o princípio extraído de cada uma;
+3. como a tela respeita a arquitetura de informação, os estados confirmados e as regras decisórias do BlindSpot;
+4. uma especificação visual completa: canvas, largura, regiões, colunas, ordem de leitura, superfícies, tipografia, componentes, ações, breakpoints e estados;
+5. o uso de imagem via `docs/product/image-system.md`, ou decisão explícita `NO_IMAGE`;
+6. um double-check que reprova sobreposição de labels, largura incompatível com a tarefa, espaços vazios sem intenção, CTA isolado, dependência de cor ou divergência das referências.
+
+`VISUAL_READY` não substitui o Architecture Gate técnico nem a aprovação humana. Após implementar, desktop, tablet/mobile e teclado precisam ter render comparável registrado antes de declarar a task visualmente concluída.
+
 ## Regras de Domínio na Interface
 
 - `fonte_ref`, status, completude e conflito são informações decisórias; não podem aparecer apenas por cor, tooltip ou detalhe oculto.
