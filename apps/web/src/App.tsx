@@ -5,10 +5,20 @@ import logoBlindspot from "./assets/blindspot-mark.png";
 import { ComparisonPanel } from "./ComparisonPanel";
 import { FichaDiscovery } from "./FichaDiscovery";
 import { TechnicalFichaDiscovery } from "./TechnicalFichaDiscovery";
+import { UiButton, UiCard, UiField, UiStatus } from "./ui/primitives";
 
 type AppView = "request" | "catalog" | "comparison" | "history" | "team" | "usage";
 type ThemeMode = "dark" | "light";
 type AccessView = "login" | "registration" | "received" | "pending_review" | "rejected";
+
+const registrationFlow = [
+  { phase: "Empresa", label: "Dados da empresa" },
+  { phase: "Responsável", label: "Pessoa responsável" },
+  { phase: "Acesso", label: "Defina seu acesso" },
+  { phase: "Revisão", label: "Revise a solicitação" }
+] as const;
+
+const registrationPhases = ["Empresa", "Responsável", "Acesso", "Revisão"] as const;
 
 interface FormState {
   marca: string;
@@ -57,12 +67,14 @@ function App() {
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [accessView, setAccessView] = useState<AccessView>("login");
-  const [registration, setRegistration] = useState({ company_name: "", cnpj: "", contact_name: "", contact_email: "", password: "", password_confirmation: "", privacy_notice_version: "2026-09" });
+  const [registration, setRegistration] = useState({ company_name: "", cnpj: "", contact_name: "", contact_email: "", password: "", password_confirmation: "", privacy_notice_version: "" });
+  const [registrationStep, setRegistrationStep] = useState(1);
   const [registrationLoading, setRegistrationLoading] = useState(false);
   const [registrationError, setRegistrationError] = useState<string | null>(null);
   const [signedInName, setSignedInName] = useState("");
   const [signedInRole, setSignedInRole] = useState<OrganizationRole | null>(null);
   const [logoutState, setLogoutState] = useState<"idle" | "loading" | "error">("idle");
+  const accessHeadingRef = useRef<HTMLHeadingElement>(null);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     const saved = typeof window !== "undefined" ? window.localStorage.getItem("blindspot_theme_mode") : null;
     return saved === "light" ? "light" : "dark";
@@ -133,6 +145,10 @@ function App() {
   useEffect(() => {
     if (!isOnboardingOpen) viewTitleRef.current?.focus();
   }, [activeView, isOnboardingOpen]);
+
+  useEffect(() => {
+    if (authState !== "signed_in") accessHeadingRef.current?.focus();
+  }, [authState, accessView, registrationStep]);
 
   useEffect(() => {
     if (authState !== "signed_in") {
@@ -260,19 +276,47 @@ function App() {
 
   async function handleRegistration(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault(); setRegistrationError(null);
-    if (registration.password !== registration.password_confirmation) { setRegistrationError("As senhas precisam ser iguais."); return; }
-    if (!registration.privacy_notice_version) { setRegistrationError("Confirme a leitura do aviso de privacidade."); return; }
+    if (registrationStep !== registrationFlow.length) { advanceRegistration(); return; }
     setRegistrationLoading(true);
-    try { await cadastrarOrganizacao(registration); setLoginEmail(registration.contact_email); setLoginPassword(registration.password); setAccessView("received"); }
+    try {
+      await cadastrarOrganizacao(registration);
+      setLoginEmail(registration.contact_email);
+      setLoginPassword("");
+      setRegistration({ company_name: "", cnpj: "", contact_name: "", contact_email: "", password: "", password_confirmation: "", privacy_notice_version: "" });
+      setRegistrationStep(1);
+      setAccessView("received");
+    }
     catch { setRegistrationError("Não foi possível enviar o cadastro agora. Revise os dados e tente novamente."); }
     finally { setRegistrationLoading(false); }
   }
 
-  async function refreshApprovalStatus(): Promise<void> {
-    setLoginLoading(true); setLoginError(null);
-    try { const outcome = await entrar(loginEmail, loginPassword); if (outcome.state !== "authenticated") { setAccessView(outcome.state); return; } setSignedInName(outcome.displayName); setSignedInRole(outcome.role); setLoginPassword(""); setAuthState("signed_in"); }
-    catch { setAccessView("login"); setLoginError("Não foi possível atualizar agora. Entre novamente para tentar."); }
-    finally { setLoginLoading(false); }
+  function advanceRegistration(): void {
+    setRegistrationError(null);
+    const stepErrors: Record<number, string | null> = {
+      1: registration.company_name.trim().length >= 2 && registration.cnpj.trim().length > 0 ? null : "Informe o nome da empresa e o CNPJ para continuar.",
+      2: registration.contact_name.trim().length >= 2 && /^\S+@\S+\.\S+$/.test(registration.contact_email) ? null : "Informe o nome do responsável e um e-mail corporativo válido.",
+      3: registration.password.length >= 12 && registration.password === registration.password_confirmation && Boolean(registration.privacy_notice_version) ? null : "Use uma senha de ao menos 12 caracteres, confirme-a e leia o aviso de privacidade.",
+    };
+    const error = stepErrors[registrationStep];
+    if (error) { setRegistrationError(error); return; }
+    setRegistrationStep((current) => Math.min(current + 1, registrationFlow.length));
+  }
+
+  function returnToPreviousRegistrationStep(): void {
+    setRegistrationError(null);
+    if (registrationStep === 1) {
+      setRegistration((current) => ({ ...current, password: "", password_confirmation: "", privacy_notice_version: "" }));
+      setLoginPassword("");
+      setAccessView("login");
+      return;
+    }
+    setRegistrationStep((current) => current - 1);
+  }
+
+  function returnToLoginForStatus(): void {
+    setLoginPassword("");
+    setLoginError("Para verificar o status, entre novamente com seu e-mail e senha.");
+    setAccessView("login");
   }
 
   async function handleLogout(): Promise<void> {
@@ -303,34 +347,64 @@ function App() {
   if (memberInvitationToken) return <MemberInvitationActivation token={memberInvitationToken} />;
 
   if (authState !== "signed_in") {
+    const currentRegistrationStep = registrationFlow[registrationStep - 1];
+    const registrationPhaseIndex = registrationStep - 1;
+    const accessTitle = accessView === "registration"
+      ? currentRegistrationStep.label
+      : accessView === "rejected"
+        ? "Não foi possível aprovar sua empresa"
+        : accessView === "received" || accessView === "pending_review"
+          ? "Cadastro em análise"
+          : "Acesse sua conta";
+    const accessDescription = accessView === "registration"
+      ? "Preencha os dados desta etapa. A solicitação só é enviada na confirmação final."
+      : accessView === "rejected"
+        ? "Seu cadastro não foi aprovado neste momento. Fale com o suporte para receber orientações."
+        : accessView === "received" || accessView === "pending_review"
+          ? "Recebemos sua solicitação. A liberação de acesso depende da análise do BlindSpot."
+          : authState === "checking"
+            ? "Verificando sua sessão com segurança."
+            : "Entre com seu e-mail corporativo e senha.";
     return (
-      <main className="dashboard-page login-page">
-        <section className="panel login-panel" aria-busy={authState === "checking"}>
-          <img className="brand-logo" src={logoBlindspot} alt="BlindSpot" />
-          <h1>{accessView === "registration" ? "Criar cadastro corporativo" : accessView === "rejected" ? "Não foi possível aprovar sua empresa" : accessView === "received" || accessView === "pending_review" ? "Estamos verificando sua empresa" : "Acessar BlindSpot"}</h1>
-          {accessView === "registration" ? <p>Informe os dados corporativos. O acesso será liberado somente após a análise do BlindSpot.</p> : accessView === "rejected" ? <p>Seu cadastro não foi aprovado neste momento. Entre em contato com o suporte para orientações.</p> : accessView === "received" || accessView === "pending_review" ? <p>Recebemos seu cadastro e ele está em análise. Você ainda não tem acesso ao sistema.</p> : <p>{authState === "checking" ? "Verificando sessão…" : "Entre com seu e-mail corporativo e senha."}</p>}
-          {accessView === "registration" && <form onSubmit={handleRegistration} className="form-grid" aria-busy={registrationLoading}>
-            <label>Nome da empresa<input value={registration.company_name} onChange={(event) => setRegistration((current) => ({ ...current, company_name: event.target.value }))} minLength={2} maxLength={160} required /></label>
-            <label>CNPJ<input value={registration.cnpj} onChange={(event) => setRegistration((current) => ({ ...current, cnpj: event.target.value }))} inputMode="numeric" required /></label>
-            <label>Nome do responsável<input value={registration.contact_name} onChange={(event) => setRegistration((current) => ({ ...current, contact_name: event.target.value }))} minLength={2} maxLength={120} required /></label>
-            <label>E-mail corporativo<input type="email" autoComplete="email" value={registration.contact_email} onChange={(event) => setRegistration((current) => ({ ...current, contact_email: event.target.value }))} required /></label>
-            <label>Senha (mínimo de 12 caracteres)<input type="password" autoComplete="new-password" value={registration.password} onChange={(event) => setRegistration((current) => ({ ...current, password: event.target.value }))} minLength={12} maxLength={128} required /></label>
-            <label>Confirmar senha<input type="password" autoComplete="new-password" value={registration.password_confirmation} onChange={(event) => setRegistration((current) => ({ ...current, password_confirmation: event.target.value }))} minLength={12} maxLength={128} required /></label>
-            <label className="checkbox-label"><input type="checkbox" checked={Boolean(registration.privacy_notice_version)} onChange={(event) => setRegistration((current) => ({ ...current, privacy_notice_version: event.target.checked ? "2026-09" : "" }))} /> Li e aceito o aviso de privacidade.</label>
-            {registrationError && <p role="alert">{registrationError}</p>}
-            <button className="primary-button" type="submit" disabled={registrationLoading}>{registrationLoading ? "Enviando cadastro…" : "Enviar cadastro"}</button>
-            <button type="button" onClick={() => setAccessView("login")}>Voltar ao login</button>
-          </form>}
-          {(accessView === "received" || accessView === "pending_review") && <div className="access-actions"><p role="status" aria-live="polite">Status: em análise.</p><button className="primary-button" type="button" disabled={loginLoading} onClick={() => void refreshApprovalStatus()}>{loginLoading ? "Atualizando…" : "Atualizar status"}</button><button type="button" onClick={() => setAccessView("login")}>Voltar ao login</button><a href="mailto:suporte@blindspot.local">Falar com o suporte</a></div>}
-          {accessView === "rejected" && <div className="access-actions"><a href="mailto:suporte@blindspot.local">Falar com o suporte</a><button type="button" onClick={() => setAccessView("login")}>Voltar ao login</button></div>}
-          {accessView === "login" && authState === "signed_out" && <form onSubmit={handleLogin} className="form-grid">
-            <label>E-mail corporativo<input type="email" autoComplete="username" value={loginEmail} onChange={(event) => setLoginEmail(event.target.value)} required /></label>
-            <label>Senha<input type="password" autoComplete="current-password" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} required /></label>
-            {loginError && <p role="alert">{loginError}</p>}
-            <button type="submit" disabled={loginLoading}>{loginLoading ? "Entrando…" : "Entrar"}</button>
-            <button type="button" onClick={() => { setLoginError(null); setAccessView("registration"); }}>Cadastrar minha empresa</button>
-          </form>}
-        </section>
+      <main className="access-experience">
+        <div className="access-shell">
+          <div className="access-layout">
+            <aside className="access-editorial access-media" aria-label="Contexto visual do BlindSpot">
+              <div className="access-media-glow" aria-hidden="true" />
+              <div className="access-media-content">
+                <img className="access-media-logo" src={logoBlindspot} alt="BlindSpot" />
+                <p>INTELIGÊNCIA AUTOMOTIVA</p>
+              </div>
+              {accessView === "registration" && <ol className="access-phase-list" aria-label="Fases do cadastro">
+                {registrationPhases.map((phase, index) => <li key={phase} className={index === registrationPhaseIndex ? "is-current" : index < registrationPhaseIndex ? "is-complete" : ""} aria-current={index === registrationPhaseIndex ? "step" : undefined}><span>{index + 1}</span>{phase}</li>)}
+              </ol>}
+            </aside>
+            <UiCard as="section" className="access-task" raised aria-busy={authState === "checking" || registrationLoading}>
+              <p className="access-task-eyebrow">{accessView === "registration" ? `${currentRegistrationStep.phase} · etapa ${registrationStep} de ${registrationFlow.length}` : "Área segura"}</p>
+              <h1 ref={accessHeadingRef} tabIndex={-1}>{accessTitle}</h1>
+              <p className="access-task-description">{accessDescription}</p>
+              {authState === "checking" && <UiStatus tone="entry" label="Verificando sessão" />}
+              {accessView === "login" && authState === "signed_out" && <form onSubmit={handleLogin} className="access-form">
+                <UiField label="E-mail corporativo"><input type="email" autoComplete="username" value={loginEmail} onChange={(event) => setLoginEmail(event.target.value)} required /></UiField>
+                <UiField label="Senha"><input type="password" autoComplete="current-password" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} required /></UiField>
+                {loginError && <p className="access-error" role="alert">{loginError}</p>}
+                <UiButton className="access-primary" type="submit" isLoading={loginLoading} loadingLabel="Entrando…">Entrar</UiButton>
+                <button type="button" className="access-text-action" onClick={() => { setLoginError(null); setRegistrationStep(1); setAccessView("registration"); }}>Cadastrar minha empresa</button>
+              </form>}
+              {accessView === "registration" && <form onSubmit={handleRegistration} className="access-form registration-flow" aria-busy={registrationLoading}>
+                <div className="access-progress" role="progressbar" aria-label="Progresso do cadastro" aria-valuemin={1} aria-valuemax={registrationFlow.length} aria-valuenow={registrationStep}><span style={{ width: `${(registrationStep / registrationFlow.length) * 100}%` }} /></div>
+                {registrationStep === 1 && <div className="access-field-pair"><UiField label="Nome da empresa"><input value={registration.company_name} onChange={(event) => setRegistration((current) => ({ ...current, company_name: event.target.value }))} minLength={2} maxLength={160} autoComplete="organization" required /></UiField><UiField label="CNPJ" hint="Usado para identificar a organização."><input value={registration.cnpj} onChange={(event) => setRegistration((current) => ({ ...current, cnpj: event.target.value }))} inputMode="numeric" autoComplete="off" required /></UiField></div>}
+                {registrationStep === 2 && <div className="access-field-pair"><UiField label="Nome do responsável"><input value={registration.contact_name} onChange={(event) => setRegistration((current) => ({ ...current, contact_name: event.target.value }))} minLength={2} maxLength={120} autoComplete="name" required /></UiField><UiField label="E-mail corporativo"><input type="email" autoComplete="email" value={registration.contact_email} onChange={(event) => setRegistration((current) => ({ ...current, contact_email: event.target.value }))} required /></UiField></div>}
+                {registrationStep === 3 && <><div className="access-field-pair"><UiField label="Crie uma senha" hint="Mínimo de 12 caracteres."><input type="password" autoComplete="new-password" value={registration.password} onChange={(event) => setRegistration((current) => ({ ...current, password: event.target.value }))} minLength={12} maxLength={128} required /></UiField><UiField label="Confirme sua senha"><input type="password" autoComplete="new-password" value={registration.password_confirmation} onChange={(event) => setRegistration((current) => ({ ...current, password_confirmation: event.target.value }))} minLength={12} maxLength={128} required /></UiField></div><label className="access-checkbox"><input type="checkbox" checked={Boolean(registration.privacy_notice_version)} onChange={(event) => setRegistration((current) => ({ ...current, privacy_notice_version: event.target.checked ? "2026-09" : "" }))} /> Li o aviso de privacidade aplicável ao cadastro.</label></>}
+                {registrationStep === 4 && <section className="registration-review" aria-label="Revisão do cadastro"><UiStatus tone="entry" label="Pronto para enviar" /><p>Revise os dados. O cadastro será enviado para análise após esta confirmação.</p><dl><div><dt>Empresa</dt><dd>{registration.company_name}</dd></div><div><dt>CNPJ</dt><dd>{registration.cnpj}</dd></div><div><dt>Responsável</dt><dd>{registration.contact_name}</dd></div><div><dt>E-mail</dt><dd>{registration.contact_email}</dd></div></dl></section>}
+                {registrationError && <p className="access-error" role="alert">{registrationError}</p>}
+                <div className="access-actions"><UiButton tone="secondary" type="button" onClick={returnToPreviousRegistrationStep}>Voltar</UiButton><UiButton type="submit" isLoading={registrationLoading} loadingLabel="Enviando cadastro…">{registrationStep === registrationFlow.length ? "Enviar cadastro" : "Continuar"}</UiButton></div>
+              </form>}
+              {(accessView === "received" || accessView === "pending_review") && <section className="approval-wait" aria-label="Status do cadastro"><ol className="approval-timeline"><li className="is-complete"><strong>Cadastro enviado</strong><span>Recebemos sua solicitação.</span></li><li className="is-current"><strong>Em análise</strong><span>O acesso ainda não está liberado.</span></li><li><strong>Próximo passo</strong><span>Entre novamente para verificar o status quando necessário.</span></li></ol><div className="access-actions"><UiButton type="button" onClick={returnToLoginForStatus}>Voltar ao login</UiButton><a href="mailto:suporte@blindspot.local">Falar com o suporte</a></div></section>}
+              {accessView === "rejected" && <div className="access-actions"><UiButton tone="secondary" type="button" onClick={() => setAccessView("login")}>Voltar ao login</UiButton><a href="mailto:suporte@blindspot.local">Falar com o suporte</a></div>}
+            </UiCard>
+          </div>
+        </div>
       </main>
     );
   }

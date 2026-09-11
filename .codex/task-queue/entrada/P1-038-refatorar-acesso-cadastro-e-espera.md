@@ -1,4 +1,4 @@
-# ❌ Pendente — refatorar acesso, cadastro e espera
+# 🚧 Em execução — refatorar acesso, cadastro e espera
 
 > Prioridade: P1
 >
@@ -6,7 +6,7 @@
 >
 > Origem ou referência: UX-BS-005; `docs/product/ux-ui-direcao-alvo-e-decisoes.md`
 >
-> Arquitetura: `TÉCNICA APPROVED; ARQUITETURA VISUAL V2 AGUARDA aprovação humana após evidência de 2026-09-11.`
+> Arquitetura: `APPROVED — Lucas autorizou a arquitetura visual v2 em 2026-09-11.`
 >
 > Triagem automática: `Material — autenticação e fluxo de dados pessoais`
 >
@@ -89,18 +89,18 @@ Antes de retomar esta task, aplicar `core/screen-design-architecture-contract.md
 
 Especificação completa: [`docs/product/p1-038-arquitetura-visual-acesso-cadastro-espera.md`](../../../docs/product/p1-038-arquitetura-visual-acesso-cadastro-espera.md).
 
-`REABERTA — a v1 visual foi reprovada por evidência humana em 2026-09-11.` A arquitetura v2 substitui a composição editorial/tarefa 5/7 por mídia/tarefa 60/40, reintroduz a identidade laranja/preto/branco, separa a narrativa de boas-vindas do formulário e agrupa senha/confirmação na mesma tela. A implementação visual só pode retomar após a aprovação explícita da v2 em `docs/product/p1-038-arquitetura-visual-acesso-cadastro-espera.md`.
+`APPROVED — Lucas autorizou a arquitetura visual v2 em 2026-09-11.` A arquitetura v2 substitui a composição editorial/tarefa 5/7 por mídia/tarefa 60/40, reintroduz a identidade laranja/preto/branco, separa a narrativa de boas-vindas do formulário e agrupa senha/confirmação na mesma tela.
 
 Curadoria complementar: Magic UI, Velora UI, Spell UI, Cult UI, Skiper UI, Originkit, Cruip, Awwwards, Refero Styles e Inspora foram classificados na seção 10 da especificação. Para esta task, somente uma transição local reduzida entre etapas é proposta; nenhum pacote, template, conta, CLI, MCP ou código externo foi adotado.
 
 ## Resultado do agente
 
-- Estado: `❌ Pendente — reaberta por reprovação humana da direção visual.`
-- Arquitetura: `Técnica approved; arquitetura visual v2 aguarda aprovação humana.`
+- Estado: `🚧 Em execução — arquitetura visual v2 em implementação.`
+- Arquitetura: `APPROVED — Lucas autorizou a v2 em 2026-09-11.`
 - Triagem automática: `Material — autenticação e dados pessoais`.
 - Segurança: `Aplicável — revisão obrigatória`.
-- Implementação: o CSS/JSX local da composição v1 tornou-se rascunho reprovado; não deve receber polimento incremental. A próxima implementação deve começar pela arquitetura v2 aprovada, preservando apenas contratos de autenticação, mensagens neutras e o único envio final.
+- Implementação: a composição v1 foi substituída no acesso por mídia-placeholder/tarefa 60/40 em desktop e faixa de mídia/painel em compacto. A marca usa preto, branco e laranja; o slogan saiu do login/cadastro. O cadastro passou a quatro agrupamentos: empresa, responsável, acesso (senha, confirmação e aviso juntos) e revisão. As transições locais de progresso, interação e mídia respeitam `prefers-reduced-motion`; contratos de autenticação, mensagens neutras e o único envio final foram preservados.
 - Arquivos alterados: `apps/web/src/App.tsx`, `apps/web/src/styles.css` e esta task. Foram reutilizados `UiButton`, `UiField` e `UiStatus` da fundação P1-037.
-- Verificação executada: as capturas de `C:\Users\lucas\Downloads\evidencia-cadastro\` e o feedback humano foram analisados. Elas comprovam legibilidade melhor que a versão antecedente, mas reprovam a direção visual como identidade de marca e como fluxo: verde dominante, serifa/editorial, slogan dentro da tarefa, ausência de mídia funcional, falta de transições e senha separada da confirmação.
-- Verificação pendente: aprovação humana da arquitetura v2; após isso, checkpoint de primeira renderização em desktop/tablet/mobile, teclado e estados reais/ficcionais sanitizados. Não foi submetido cadastro real nem usada credencial durante a análise.
-- Próximo passo: Lucas aprovar ou ajustar a arquitetura visual v2 antes de retomar código.
+- Verificação executada: `npm run typecheck` e `npm run build` passaram. O checkpoint de primeira renderização compacta confirmou mídia escura com placeholder, painel de tarefa branco, CTA laranja, sem slogan e sem duplicidade de marca após o ajuste corretivo. A estrutura acessível confirma campos de login, CTA e troca para cadastro.
+- Verificação pendente: checkpoint desktop/tablet, cadastro com dados fictícios, revisão/espera, teclado e reduced motion em sessão de validação sem autenticação. A sessão existente não foi encerrada e nenhum cadastro real/credencial foi usado.
+- Próximo passo: concluir o checkpoint nos demais estados e viewports antes de marcar a task como concluída.
