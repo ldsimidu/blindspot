@@ -1,0 +1,30 @@
+{
+  "version": "1.0.0",
+  "description": "Politica local e deterministica para normalizacao de medidas tecnicas.",
+  "fields": [
+    {
+      "path": "motorizacao.cilindrada_l",
+      "canonicalUnit": "L",
+      "kind": "engine_displacement",
+      "acceptedUnits": ["L", "l", "cc", "cm3", "cm³"]
+    },
+    {
+      "path": "motorizacao.potencia_cv",
+      "canonicalUnit": "cv",
+      "kind": "power",
+      "acceptedUnits": ["cv", "kW", "kw", "hp"]
+    },
+    {
+      "path": "motorizacao.torque_nm",
+      "canonicalUnit": "Nm",
+      "kind": "torque",
+      "acceptedUnits": ["Nm", "nm", "kgfm", "kgf.m"]
+    },
+    {
+      "path": "motorizacao.consumo_valor",
+      "canonicalUnit": "km/l",
+      "kind": "fuel_consumption",
+      "acceptedUnits": ["km/l", "l/100 km", "L/100 km", "mpg_us", "mpg_uk"]
+    }
+  ]
+}

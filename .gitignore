@@ -4,4 +4,3 @@ var/
 .env
 .env.*
 !.env.example
-.codex/project-delivery-kit/

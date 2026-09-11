@@ -24,7 +24,7 @@
       "id": "F1",
       "url": "https://example.com/fonte-primaria",
       "titulo": "Fonte primaria mock",
-      "tipo": "site_oficial_montadora"
+      "tipo": "mock_local"
     }
   ],
   "ficha_tecnica": {

@@ -9,6 +9,12 @@ Use esta skill antes de alterar feature, fluxo, integração, contrato, dado, au
 
 Se o perfil do projeto estiver incompleto, trate regras técnicas, fontes de verdade e limites como desconhecidos. A arquitetura pode explicitar essa lacuna, mas não libera implementação até que o perfil seja configurado ou o decisor registre a exceção.
 
+## Segurança por padrão
+
+Comece toda arquitetura com uma avaliação de aplicabilidade de segurança. Se houver gatilho previsto em `.codex/project-delivery-kit/optional/project-security-assurance/contract.md`, leia e aplique a skill `project-security-assurance`; sem gatilho, registre `Não aplicável` com justificativa. A avaliação é proporcional e não instala ou executa ferramentas externas, scanners ou técnicas dual-use.
+
+Quando houver tratamento de dados pessoais, IA com dados de pessoas, terceiros, analytics, cookies, upload, logs, backups, transferência internacional, interface pública ou obrigação legal declarada, aplique também `project-compliance-assurance`. Registre fonte oficial, data de consulta, finalidade, responsável, dados e retenção; não assuma validade jurídica nem substitua validação pelo responsável competente.
+
 ## Arquitetura necessária
 
 Apresente decisão e escopo, pessoa usuária/operador e fluxo, informação e organização, impacto técnico, dados/confiabilidade, segurança/riscos e plano incremental com verificações. Diferencie fatos confirmados, propostas, hipóteses e decisões pendentes.

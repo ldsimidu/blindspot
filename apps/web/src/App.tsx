@@ -1,10 +1,14 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { gerarFichaTecnica, obterHistoricoFichas, obterUltimaFichaTecnica } from "./api";
-import type { FichaTecnicaHistoryItem, FichaTecnicaResponse, VehicleInput } from "./types";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { ApiRequestError, abrirFichaCatalogo, ativarConviteMembro, alterarPapelMembro, buscarCatalogo, cadastrarOrganizacao, convidarMembro, desativarMembro, entrar, exportarFicha, gerarFichaTecnica, obterAlertasConsumo, obterConsumo, obterEquipe, obterHistoricoFichas, obterRecomendacoesCatalogo, obterSessao, obterUltimaFichaTecnica, reconhecerAlertaConsumo, revogarConviteMembro, sair, salvarPoliticaConsumo } from "./api";
+import type { CatalogCandidate, CatalogEntryResult, CatalogSearchResult, FichaTecnicaHistoryItem, FichaTecnicaResponse, OrganizationMember, OrganizationMemberInvitation, OrganizationRole, UsageAlertSettings, UsageSummary, VehicleInput } from "./types";
 import logoBlindspot from "./assets/blindspot-mark.png";
+import { ComparisonPanel } from "./ComparisonPanel";
+import { FichaDiscovery } from "./FichaDiscovery";
+import { TechnicalFichaDiscovery } from "./TechnicalFichaDiscovery";
 
-type AppView = "request" | "history";
+type AppView = "request" | "catalog" | "comparison" | "history" | "team" | "usage";
 type ThemeMode = "dark" | "light";
+type AccessView = "login" | "registration" | "received" | "pending_review" | "rejected";
 
 interface FormState {
   marca: string;
@@ -17,12 +21,14 @@ interface FormState {
 interface CampoStatus {
   valor?: unknown;
   status?: string;
+  origem?: "entrada_usuario";
   fonte_ref?: string[];
   obs_ref?: string;
   observacoes?: string;
 }
 
 interface FichaRow {
+  key: string;
   label: string;
   value: string;
   status: string;
@@ -45,6 +51,17 @@ const initialFormState: FormState = {
 };
 
 function App() {
+  const [authState, setAuthState] = useState<"checking" | "signed_out" | "signed_in">("checking");
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [accessView, setAccessView] = useState<AccessView>("login");
+  const [registration, setRegistration] = useState({ company_name: "", cnpj: "", contact_name: "", contact_email: "", password: "", password_confirmation: "", privacy_notice_version: "2026-09" });
+  const [registrationLoading, setRegistrationLoading] = useState(false);
+  const [registrationError, setRegistrationError] = useState<string | null>(null);
+  const [signedInName, setSignedInName] = useState("");
+  const [signedInRole, setSignedInRole] = useState<OrganizationRole | null>(null);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     const saved = typeof window !== "undefined" ? window.localStorage.getItem("blindspot_theme_mode") : null;
     return saved === "light" ? "light" : "dark";
@@ -58,6 +75,18 @@ function App() {
   const [result, setResult] = useState<FichaTecnicaResponse | null>(null);
   const [history, setHistory] = useState<FichaTecnicaHistoryItem[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
+  const [catalogQuery, setCatalogQuery] = useState("");
+  const [catalogFilters, setCatalogFilters] = useState({ brand: "", model: "", modelYear: "", market: "" });
+  const [catalogPage, setCatalogPage] = useState(1);
+  const [catalogResult, setCatalogResult] = useState<CatalogSearchResult | null>(null);
+  const [catalogEntry, setCatalogEntry] = useState<CatalogEntryResult | null>(null);
+  const [catalogRelated, setCatalogRelated] = useState<CatalogCandidate[]>([]);
+  const [comparisonSeed, setComparisonSeed] = useState<CatalogCandidate | null>(null);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => window.localStorage.getItem("blindspot_onboarding_completed") !== "true");
+  const onboardingPrimaryActionRef = useRef<HTMLButtonElement>(null);
+  const viewTitleRef = useRef<HTMLHeadingElement>(null);
 
   const isFormValid = useMemo(() => {
     const hasRequiredText =
@@ -90,6 +119,25 @@ function App() {
   }, [themeMode]);
 
   useEffect(() => {
+    void obterSessao().then((session) => {
+      setSignedInName(session?.displayName ?? ""); setSignedInRole(session?.role ?? null);
+      setAuthState(session ? "signed_in" : "signed_out");
+    }).catch(() => setAuthState("signed_out"));
+  }, []);
+
+  useEffect(() => {
+    if (isOnboardingOpen) onboardingPrimaryActionRef.current?.focus();
+  }, [isOnboardingOpen]);
+
+  useEffect(() => {
+    if (!isOnboardingOpen) viewTitleRef.current?.focus();
+  }, [activeView, isOnboardingOpen]);
+
+  useEffect(() => {
+    if (authState !== "signed_in") {
+      setLoadingLatest(false);
+      return;
+    }
     let cancelled = false;
 
     async function loadInitialData() {
@@ -118,7 +166,7 @@ function App() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [authState]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -146,7 +194,7 @@ function App() {
       await refreshHistory();
       setActiveView("request");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Erro inesperado ao gerar ficha tecnica.";
+      const message = formatTechnicalSheetGenerationError(err);
       setError(message);
     } finally {
       setLoading(false);
@@ -159,13 +207,128 @@ function App() {
     setSelectedHistoryId(recentHistory[0]?.id ?? null);
   }
 
+  async function runCatalogSearch(page = 1): Promise<void> {
+    setCatalogLoading(true);
+    setCatalogError(null);
+    setCatalogEntry(null);
+    try {
+      const hasCriteria = Boolean(catalogQuery.trim() || catalogFilters.brand.trim() || catalogFilters.model.trim() || catalogFilters.modelYear.trim() || catalogFilters.market.trim());
+      setCatalogResult(await buscarCatalogo({ query: catalogQuery, ...catalogFilters, page, sort: hasCriteria ? "alphabetical" : "recent" }));
+      setCatalogPage(page);
+    } catch (err) {
+      setCatalogResult(null);
+      setCatalogError(err instanceof Error ? err.message : "Erro inesperado ao consultar catalogo.");
+    } finally {
+      setCatalogLoading(false);
+    }
+  }
+
+  async function openCatalogEntry(id: string, vehicle: VehicleInput): Promise<void> {
+    setCatalogLoading(true);
+    setCatalogError(null);
+    setCatalogRelated([]);
+    try {
+      const entry = await abrirFichaCatalogo(id, vehicle);
+      setCatalogEntry(entry);
+      if (entry.state === "found") {
+        const related = await obterRecomendacoesCatalogo(id, vehicle);
+        if (related.state === "found") setCatalogRelated(related.entries);
+      }
+    } catch (err) {
+      setCatalogError(err instanceof Error ? err.message : "Erro inesperado ao abrir ficha do catalogo.");
+    } finally {
+      setCatalogLoading(false);
+    }
+  }
+
+  function addCatalogCandidateToComparison(candidate: CatalogCandidate): void {
+    if (!candidate.latestTechnicalSheetVersionId || (signedInRole !== "analyst" && signedInRole !== "admin")) return;
+    setComparisonSeed(candidate);
+    setActiveView("comparison");
+  }
+
+  function finishOnboarding(): void {
+    window.localStorage.setItem("blindspot_onboarding_completed", "true");
+    setIsOnboardingOpen(false);
+  }
+
+  async function handleLogin(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault(); setLoginLoading(true); setLoginError(null);
+    try { const outcome = await entrar(loginEmail, loginPassword); if (outcome.state !== "authenticated") { setAccessView(outcome.state); return; } setSignedInName(outcome.displayName); setSignedInRole(outcome.role); setLoginPassword(""); setAuthState("signed_in"); } catch { setLoginError("Não foi possível entrar com essas credenciais."); } finally { setLoginLoading(false); }
+  }
+
+  async function handleRegistration(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault(); setRegistrationError(null);
+    if (registration.password !== registration.password_confirmation) { setRegistrationError("As senhas precisam ser iguais."); return; }
+    if (!registration.privacy_notice_version) { setRegistrationError("Confirme a leitura do aviso de privacidade."); return; }
+    setRegistrationLoading(true);
+    try { await cadastrarOrganizacao(registration); setLoginEmail(registration.contact_email); setLoginPassword(registration.password); setAccessView("received"); }
+    catch { setRegistrationError("Não foi possível enviar o cadastro agora. Revise os dados e tente novamente."); }
+    finally { setRegistrationLoading(false); }
+  }
+
+  async function refreshApprovalStatus(): Promise<void> {
+    setLoginLoading(true); setLoginError(null);
+    try { const outcome = await entrar(loginEmail, loginPassword); if (outcome.state !== "authenticated") { setAccessView(outcome.state); return; } setSignedInName(outcome.displayName); setSignedInRole(outcome.role); setLoginPassword(""); setAuthState("signed_in"); }
+    catch { setAccessView("login"); setLoginError("Não foi possível atualizar agora. Entre novamente para tentar."); }
+    finally { setLoginLoading(false); }
+  }
+
+  async function handleLogout(): Promise<void> {
+    try { await sair(); } finally { setSignedInName(""); setSignedInRole(null); setLoginPassword(""); setAuthState("signed_out"); }
+  }
+
+  const statusAnnouncement = loading
+    ? "Gerando ficha técnica."
+    : catalogLoading
+      ? "Consultando catálogo."
+      : error ?? catalogError ?? "";
+
+  const memberInvitationToken = /^\/convites\/membros\/(MINV-[A-Za-z0-9_-]{40,96})$/.exec(window.location.pathname)?.[1] ?? null;
+  if (memberInvitationToken) return <MemberInvitationActivation token={memberInvitationToken} />;
+
+  if (authState !== "signed_in") {
+    return (
+      <main className="dashboard-page login-page">
+        <section className="panel login-panel" aria-busy={authState === "checking"}>
+          <img className="brand-logo" src={logoBlindspot} alt="BlindSpot" />
+          <h1>{accessView === "registration" ? "Criar cadastro corporativo" : accessView === "rejected" ? "Não foi possível aprovar sua empresa" : accessView === "received" || accessView === "pending_review" ? "Estamos verificando sua empresa" : "Acessar BlindSpot"}</h1>
+          {accessView === "registration" ? <p>Informe os dados corporativos. O acesso será liberado somente após a análise do BlindSpot.</p> : accessView === "rejected" ? <p>Seu cadastro não foi aprovado neste momento. Entre em contato com o suporte para orientações.</p> : accessView === "received" || accessView === "pending_review" ? <p>Recebemos seu cadastro e ele está em análise. Você ainda não tem acesso ao sistema.</p> : <p>{authState === "checking" ? "Verificando sessão…" : "Entre com seu e-mail corporativo e senha."}</p>}
+          {accessView === "registration" && <form onSubmit={handleRegistration} className="form-grid" aria-busy={registrationLoading}>
+            <label>Nome da empresa<input value={registration.company_name} onChange={(event) => setRegistration((current) => ({ ...current, company_name: event.target.value }))} minLength={2} maxLength={160} required /></label>
+            <label>CNPJ<input value={registration.cnpj} onChange={(event) => setRegistration((current) => ({ ...current, cnpj: event.target.value }))} inputMode="numeric" required /></label>
+            <label>Nome do responsável<input value={registration.contact_name} onChange={(event) => setRegistration((current) => ({ ...current, contact_name: event.target.value }))} minLength={2} maxLength={120} required /></label>
+            <label>E-mail corporativo<input type="email" autoComplete="email" value={registration.contact_email} onChange={(event) => setRegistration((current) => ({ ...current, contact_email: event.target.value }))} required /></label>
+            <label>Senha (mínimo de 12 caracteres)<input type="password" autoComplete="new-password" value={registration.password} onChange={(event) => setRegistration((current) => ({ ...current, password: event.target.value }))} minLength={12} maxLength={128} required /></label>
+            <label>Confirmar senha<input type="password" autoComplete="new-password" value={registration.password_confirmation} onChange={(event) => setRegistration((current) => ({ ...current, password_confirmation: event.target.value }))} minLength={12} maxLength={128} required /></label>
+            <label className="checkbox-label"><input type="checkbox" checked={Boolean(registration.privacy_notice_version)} onChange={(event) => setRegistration((current) => ({ ...current, privacy_notice_version: event.target.checked ? "2026-09" : "" }))} /> Li e aceito o aviso de privacidade.</label>
+            {registrationError && <p role="alert">{registrationError}</p>}
+            <button className="primary-button" type="submit" disabled={registrationLoading}>{registrationLoading ? "Enviando cadastro…" : "Enviar cadastro"}</button>
+            <button type="button" onClick={() => setAccessView("login")}>Voltar ao login</button>
+          </form>}
+          {(accessView === "received" || accessView === "pending_review") && <div className="access-actions"><p role="status" aria-live="polite">Status: em análise.</p><button className="primary-button" type="button" disabled={loginLoading} onClick={() => void refreshApprovalStatus()}>{loginLoading ? "Atualizando…" : "Atualizar status"}</button><button type="button" onClick={() => setAccessView("login")}>Voltar ao login</button><a href="mailto:suporte@blindspot.local">Falar com o suporte</a></div>}
+          {accessView === "rejected" && <div className="access-actions"><a href="mailto:suporte@blindspot.local">Falar com o suporte</a><button type="button" onClick={() => setAccessView("login")}>Voltar ao login</button></div>}
+          {accessView === "login" && authState === "signed_out" && <form onSubmit={handleLogin} className="form-grid">
+            <label>E-mail corporativo<input type="email" autoComplete="username" value={loginEmail} onChange={(event) => setLoginEmail(event.target.value)} required /></label>
+            <label>Senha<input type="password" autoComplete="current-password" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} required /></label>
+            {loginError && <p role="alert">{loginError}</p>}
+            <button type="submit" disabled={loginLoading}>{loginLoading ? "Entrando…" : "Entrar"}</button>
+            <button type="button" onClick={() => { setLoginError(null); setAccessView("registration"); }}>Cadastrar minha empresa</button>
+          </form>}
+        </section>
+      </main>
+    );
+  }
+
   return (
-    <main className={`dashboard-page ${isSidebarCollapsed ? "sidebar-collapsed" : ""}`}>
-      <aside className="sidebar">
+    <div className={`dashboard-page ${isSidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+      <a className="skip-link" href="#main-content">Pular para o conteúdo principal</a>
+      <aside className="sidebar" aria-label="Navegação do BlindSpot">
         <div className="brand-header">
           <img className="brand-logo" src={logoBlindspot} alt="BlindSpot" />
           <span className="brand-wordmark">BLINDSPOT</span>
           <div className="brand-controls">
+            <button type="button" className="theme-toggle" onClick={() => void handleLogout()} title="Encerrar sessão" aria-label={`Encerrar sessão de ${signedInName || "usuário"}`}>↪</button>
             <button
               type="button"
               className="theme-toggle"
@@ -187,11 +350,12 @@ function App() {
           </div>
         </div>
 
-        <nav className="sidebar-nav">
+        <nav className="sidebar-nav" aria-label="Seções do produto">
           <button
             type="button"
             className={`sidebar-link ${activeView === "request" ? "active" : ""}`}
             onClick={() => setActiveView("request")}
+            aria-pressed={activeView === "request"}
             title="Requisitar ficha"
           >
             <span className="sidebar-link-icon">
@@ -199,10 +363,22 @@ function App() {
             </span>
             <span className="sidebar-link-label">Requisitar ficha</span>
           </button>
+          {(signedInRole === "analyst" || signedInRole === "admin") ? <button type="button" className={`sidebar-link ${activeView === "comparison" ? "active" : ""}`} onClick={() => setActiveView("comparison")} aria-pressed={activeView === "comparison"} title="Comparar fichas"><span className="sidebar-link-icon">⇄</span><span className="sidebar-link-label">Comparar</span></button> : null}
+          <button
+            type="button"
+            className={`sidebar-link ${activeView === "catalog" ? "active" : ""}`}
+            onClick={() => { setActiveView("catalog"); if (!catalogResult && !catalogLoading) void runCatalogSearch(1); }}
+            aria-pressed={activeView === "catalog"}
+            title="Catalogo"
+          >
+            <span className="sidebar-link-icon">⌕</span>
+            <span className="sidebar-link-label">Catalogo</span>
+          </button>
           <button
             type="button"
             className={`sidebar-link ${activeView === "history" ? "active" : ""}`}
             onClick={() => setActiveView("history")}
+            aria-pressed={activeView === "history"}
             title="Historico"
           >
             <span className="sidebar-link-icon">
@@ -210,14 +386,21 @@ function App() {
             </span>
             <span className="sidebar-link-label">Historico</span>
           </button>
+          {signedInRole === "admin" ? <button type="button" className={`sidebar-link ${activeView === "team" ? "active" : ""}`} onClick={() => setActiveView("team")} aria-pressed={activeView === "team"} title="Equipe"><span className="sidebar-link-icon">♙</span><span className="sidebar-link-label">Equipe</span></button> : null}
+          {signedInRole === "admin" ? <button type="button" className={`sidebar-link ${activeView === "usage" ? "active" : ""}`} onClick={() => setActiveView("usage")} aria-pressed={activeView === "usage"} title="Consumo"><span className="sidebar-link-icon">◴</span><span className="sidebar-link-label">Consumo</span></button> : null}
+          <button type="button" className="sidebar-link" onClick={() => setIsOnboardingOpen(true)} title="Ver orientação inicial">
+            <span className="sidebar-link-icon">i</span>
+            <span className="sidebar-link-label">Orientação</span>
+          </button>
         </nav>
       </aside>
 
-      <section className="dashboard-content">
+      <main id="main-content" className="dashboard-content" tabIndex={-1}>
+        <p className="sr-only" role="status" aria-live="polite">{statusAnnouncement}</p>
         {activeView === "request" ? (
           <>
             <section className="panel">
-              <h2>Nova requisicao</h2>
+              <h1 ref={viewTitleRef} tabIndex={-1}>Nova requisicao</h1>
               <p>Informe o veiculo para gerar a ficha tecnica validada por schema.</p>
 
               <form onSubmit={handleSubmit} className="form-grid">
@@ -274,16 +457,41 @@ function App() {
                 </button>
               </form>
 
-              {error ? <div className="error-box">{error}</div> : null}
-              {loadingLatest ? <p className="status-text">Carregando ultima resposta salva...</p> : null}
+              {error ? <div className="error-box" role="alert">{error}</div> : null}
+              {loadingLatest ? <p className="status-text" role="status">Carregando ultima resposta salva...</p> : null}
             </section>
 
             {result ? <FichaDashboard title="Ultima ficha validada" ficha={result} showTraceability={false} /> : null}
           </>
+        ) : activeView === "catalog" ? (
+          <section className="history-layout">
+            <section>
+              <h1 ref={viewTitleRef} tabIndex={-1}>Catalogo de fichas</h1>
+              <p>Comece pelas fichas recentes ou combine filtros. A seleção sempre confirma a configuração exata; não abrimos um veículo aproximado.</p>
+              <TechnicalFichaDiscovery onSelect={(entry) => void openCatalogEntry(entry.id, entry.vehicle)} />
+              <FichaDiscovery onSelect={(entry) => void openCatalogEntry(entry.id, entry.vehicle)} selectionLabel="Abrir ficha exata" />
+            </section>
+            <section className="panel history-detail">
+              {!catalogEntry ? <p className="status-text">Selecione uma configuracao para confirmar a identidade e abrir a ficha.</p> : null}
+              {catalogEntry?.state === "incompatible" ? <div className="error-box">Configuracao incompativel. Nenhuma ficha foi aberta.</div> : null}
+              {catalogEntry?.state === "not_registered" ? <p className="status-text">A configuracao nao possui ficha catalogada.</p> : null}
+              {catalogEntry?.state === "found" ? <>
+                <FichaDashboard title={`Ficha catalogada · versao ${catalogEntry.entry.latestVersion ?? "-"}`} ficha={catalogEntry.entry.response} showTraceability />
+                {(signedInRole === "analyst" || signedInRole === "admin") && catalogEntry.entry.latestTechnicalSheetVersionId ? <><button type="button" className="primary-button" onClick={() => addCatalogCandidateToComparison(catalogEntry.entry)}>Adicionar ficha aberta à comparação</button><button type="button" className="collapse-all-button" onClick={() => void exportarFicha(catalogEntry.entry.latestTechnicalSheetVersionId!, "csv")}>Exportar CSV</button><button type="button" className="collapse-all-button" onClick={() => void exportarFicha(catalogEntry.entry.latestTechnicalSheetVersionId!, "json")}>Exportar JSON</button></> : null}
+                <section className="source-section"><h3>Fichas relacionadas</h3><p className="source-review-notice">Mesma marca, modelo, ano-modelo e mercado. Esta relação não avalia motorização nem garante compatibilidade para comparar.</p>{catalogRelated.length ? <div className="history-list">{catalogRelated.map((entry) => <article key={entry.id} className="history-item"><button type="button" className="history-item" onClick={() => void openCatalogEntry(entry.id, entry.vehicle)}><strong>{entry.vehicle.marca} {entry.vehicle.modelo} {entry.vehicle.versao}</strong><span>{entry.vehicle.ano_modelo} · {entry.vehicle.mercado} · versão {entry.latestVersion ?? "-"}</span></button>{(signedInRole === "analyst" || signedInRole === "admin") && entry.latestTechnicalSheetVersionId ? <button type="button" className="collapse-all-button" onClick={() => addCatalogCandidateToComparison(entry)}>Adicionar à comparação</button> : null}</article>)}</div> : <p className="status-text">Não há outras fichas relacionadas para esta identidade.</p>}</section>
+              </> : null}
+            </section>
+          </section>
+        ) : activeView === "comparison" && (signedInRole === "analyst" || signedInRole === "admin") ? (
+          <ComparisonPanel initialCandidate={comparisonSeed} onInitialCandidateConsumed={() => setComparisonSeed(null)} />
+        ) : activeView === "team" && signedInRole === "admin" ? (
+          <TeamPanel />
+        ) : activeView === "usage" && signedInRole === "admin" ? (
+          <UsagePanel />
         ) : (
           <section className="history-layout">
             <section className="panel history-panel">
-              <h2>Historico de respostas</h2>
+              <h1 ref={viewTitleRef} tabIndex={-1}>Historico de respostas</h1>
               <p>Selecione um bloco para abrir a resposta no formato de ficha tecnica.</p>
 
               {history.length === 0 ? (
@@ -337,9 +545,62 @@ function App() {
             </section>
           </section>
         )}
-      </section>
-    </main>
+      </main>
+      {isOnboardingOpen ? (
+        <div className="onboarding-backdrop" role="presentation">
+          <section className="onboarding-dialog" role="dialog" aria-modal="true" aria-labelledby="onboarding-title" aria-describedby="onboarding-description">
+            <p className="eyebrow">Primeiro acesso</p>
+            <h2 id="onboarding-title">Conheça o ambiente de consulta</h2>
+            <p id="onboarding-description">Use Requisição para gerar uma ficha, Histórico para reler respostas salvas e Catálogo para procurar fichas persistidas quando o PostgreSQL estiver disponível.</p>
+            <p className="status-text">Este protótipo ainda não possui login, organização ou permissões. Controles visuais não substituem autorização no servidor.</p>
+            <div className="onboarding-actions">
+              <button ref={onboardingPrimaryActionRef} type="button" className="primary-button" onClick={finishOnboarding}>Começar consulta</button>
+              <button type="button" className="collapse-all-button" onClick={finishOnboarding}>Pular orientação</button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+    </div>
   );
+}
+
+function formatTechnicalSheetGenerationError(error: unknown): string {
+  if (!(error instanceof ApiRequestError)) {
+    return error instanceof Error ? error.message : "Erro inesperado ao gerar ficha tecnica.";
+  }
+  if (!isObject(error.details) || error.details.code !== "schema_validation_failed" || !Array.isArray(error.details.schemaIssues)) {
+    return error.message;
+  }
+  const issues = error.details.schemaIssues.slice(0, 5).flatMap((item) => {
+    if (!isObject(item) || typeof item.path !== "string" || typeof item.keyword !== "string") return [];
+    return [`${item.path} (${item.keyword})`];
+  });
+  return issues.length > 0
+    ? `${error.message} Verifique: ${issues.join(", ")}.`
+    : error.message;
+}
+
+function TeamPanel() {
+  const [people, setPeople] = useState<{ members: OrganizationMember[]; invitations: OrganizationMemberInvitation[] } | null>(null);
+  const [email, setEmail] = useState(""); const [role, setRole] = useState<OrganizationRole>("viewer"); const [error, setError] = useState<string | null>(null); const [link, setLink] = useState<string | null>(null);
+  async function refresh() { try { setPeople(await obterEquipe()); } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível carregar a equipe."); } }
+  useEffect(() => { void refresh(); }, []);
+  async function invite(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setError(null); setLink(null); try { const result = await convidarMembro(email, role); setLink(`${window.location.origin}${result.activation_path}`); setEmail(""); await refresh(); } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível criar o convite."); } }
+  return <section className="panel"><h1>Equipe</h1><p>Convide pessoas, ajuste papéis e encerre acessos da sua organização.</p><form className="form-grid" onSubmit={invite}><label>E-mail corporativo<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label><label>Papel inicial<select value={role} onChange={(event) => setRole(event.target.value as OrganizationRole)}><option value="viewer">Visualizador</option><option value="analyst">Analista</option><option value="admin">Administrador</option></select></label><button className="primary-button" type="submit">Gerar convite</button></form>{link ? <div className="status-text" role="status"><strong>Copie agora o link de ativação:</strong><input readOnly value={link} aria-label="Link único de ativação" onFocus={(event) => event.currentTarget.select()} /></div> : null}{error ? <div className="error-box" role="alert">{error}</div> : null}<h2>Membros</h2>{people?.members.map((member) => <article key={member.id} className="history-item"><strong>{member.display_name}</strong><span>{member.email} · {member.state}</span><label>Papel<select value={member.role} disabled={member.state !== "active"} onChange={(event) => void alterarPapelMembro(member.id, event.target.value as OrganizationRole).then(refresh).catch((err: unknown) => setError(err instanceof Error ? err.message : "Não foi possível alterar o papel."))}><option value="viewer">Visualizador</option><option value="analyst">Analista</option><option value="admin">Administrador</option></select></label><button type="button" disabled={member.state !== "active"} onClick={() => void desativarMembro(member.id).then(refresh).catch((err: unknown) => setError(err instanceof Error ? err.message : "Não foi possível desativar o membro."))}>Desativar</button></article>) ?? <p className="status-text">Carregando equipe…</p>}<h2>Convites</h2>{people?.invitations.length ? people.invitations.map((invitation) => <article key={invitation.id} className="history-item"><strong>{invitation.email}</strong><span>{invitation.role} · {invitation.state}</span>{invitation.state === "issued" ? <button type="button" onClick={() => void revogarConviteMembro(invitation.id).then(refresh).catch((err: unknown) => setError(err instanceof Error ? err.message : "Não foi possível revogar o convite."))}>Revogar convite</button> : null}</article>) : <p className="status-text">Nenhum convite pendente.</p>}</section>;
+}
+
+function UsagePanel() {
+  const currentPeriod = new Date().toISOString().slice(0, 7); const [period, setPeriod] = useState(currentPeriod); const [summary, setSummary] = useState<UsageSummary | null>(null); const [settings, setSettings] = useState<UsageAlertSettings | null>(null); const [threshold, setThreshold] = useState("1"); const [isActive, setIsActive] = useState(false); const [error, setError] = useState<string | null>(null);
+  async function load() { try { setError(null); const [nextSummary, nextSettings] = await Promise.all([obterConsumo(period), obterAlertasConsumo()]); setSummary(nextSummary); setSettings(nextSettings); if (nextSettings.policy) { setThreshold(String(nextSettings.policy.threshold_units)); setIsActive(nextSettings.policy.is_active); } } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível consultar o consumo."); } }
+  async function savePolicy(event: FormEvent<HTMLFormElement>) { event.preventDefault(); try { await salvarPoliticaConsumo(Number(threshold), isActive); await load(); } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível salvar a política."); } }
+  useEffect(() => { void load(); }, []);
+  return <section className="panel"><h1>Consumo</h1><p>Visão técnica mensal da sua organização. Não representa preço, cobrança ou limite.</p><form className="form-grid" onSubmit={(event) => { event.preventDefault(); void load(); }}><label>Período<input type="month" value={period} onChange={(event) => setPeriod(event.target.value)} required /></label><button className="primary-button" type="submit">Consultar</button></form>{error ? <div className="error-box" role="alert">{error}</div> : null}{summary ? <><p className="status-text">{summary.definition}</p><div className="history-list"><article className="history-item"><strong>{summary.successful_units} unidade(s)</strong><span>Fichas técnicas persistidas com sucesso</span></article><article className="history-item"><strong>{summary.failed_attempts} falha(s)</strong><span>Tentativas que não geraram unidades</span></article></div><h2>Alertas internos</h2><form className="form-grid" onSubmit={savePolicy}><label>Limiar mensal<input type="number" min={1} value={threshold} onChange={(event) => setThreshold(event.target.value)} required /></label><label className="checkbox-label"><input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} /> Ativar alerta interno</label><button className="primary-button" type="submit">Salvar política</button></form><p className="status-text">Sem e-mail ou cobrança. A política atual {settings?.policy?.is_active ? `está ativa no limiar de ${settings.policy.threshold_units} unidade(s).` : "está desativada."}</p>{settings?.alerts.length ? settings.alerts.map((alert) => <article key={alert.id} className="history-item"><strong>Limiar atingido em {alert.period}</strong><span>{alert.total_units} unidade(s) quando o limiar era {alert.threshold_units}</span>{alert.acknowledged_at ? <span>Reconhecido</span> : <button type="button" onClick={() => void reconhecerAlertaConsumo(alert.id).then(load).catch((err: unknown) => setError(err instanceof Error ? err.message : "Não foi possível reconhecer o alerta."))}>Reconhecer alerta</button>}</article>) : <p className="status-text">Nenhum alerta interno no momento.</p>}<h2>Detalhamento do período {summary.period}</h2>{summary.breakdown.length ? summary.breakdown.map((item) => <article key={`${item.action}-${item.outcome}`} className="history-item"><strong>{item.action === "technical_sheet_persisted" ? "Ficha persistida" : "Persistência não concluída"}</strong><span>{item.events} evento(s) · {item.units} unidade(s) · {item.outcome === "succeeded" ? "sucesso" : "falha"}</span></article>) : <p className="status-text">Não há eventos de consumo neste período.</p>}</> : <p className="status-text">Carregando consumo…</p>}</section>;
+}
+
+function MemberInvitationActivation({ token }: { token: string }) {
+  const [displayName, setDisplayName] = useState(""); const [password, setPassword] = useState(""); const [state, setState] = useState<"form" | "loading" | "done">("form"); const [error, setError] = useState<string | null>(null);
+  async function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setState("loading"); setError(null); try { await ativarConviteMembro(token, displayName, password); setState("done"); } catch (err) { setError(err instanceof Error ? err.message : "Convite indisponível."); setState("form"); } }
+  return <main className="dashboard-page login-page"><section className="panel login-panel"><img className="brand-logo" src={logoBlindspot} alt="BlindSpot" />{state === "done" ? <><h1>Conta ativada</h1><p>Seu acesso foi criado. Entre com seu e-mail e senha.</p><a className="primary-button" href="/">Ir para o login</a></> : <><h1>Ativar convite</h1><p>Defina seus dados de acesso para entrar na organização.</p><form className="form-grid" onSubmit={submit}><label>Nome<input value={displayName} onChange={(event) => setDisplayName(event.target.value)} minLength={2} maxLength={120} required /></label><label>Senha<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} minLength={12} maxLength={128} required /></label>{error ? <p role="alert">{error}</p> : null}<button className="primary-button" disabled={state === "loading"}>{state === "loading" ? "Ativando…" : "Ativar acesso"}</button></form></>}</section></main>;
 }
 
 function FichaDashboard({
@@ -355,12 +616,20 @@ function FichaDashboard({
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const allCollapsed = sections.length > 0 && sections.every((section) => collapsedSections[section.key]);
   const fontesMap = useMemo(() => {
-    const map = new Map<string, { titulo: string; url: string; tipo: string }>();
+    const map = new Map<string, {
+      titulo: string;
+      url: string;
+      tipo: string;
+      avaliacao_politica: FichaTecnicaResponse["fontes_utilizadas"][number]["avaliacao_politica"];
+      avaliacao_aderencia: FichaTecnicaResponse["fontes_utilizadas"][number]["avaliacao_aderencia"];
+    }>();
     ficha.fontes_utilizadas.forEach((fonte) => {
       map.set(fonte.id, {
         titulo: fonte.titulo,
         url: fonte.url,
-        tipo: fonte.tipo
+        tipo: fonte.tipo,
+        avaliacao_politica: fonte.avaliacao_politica,
+        avaliacao_aderencia: fonte.avaliacao_aderencia
       });
     });
     return map;
@@ -375,7 +644,7 @@ function FichaDashboard({
   const zeroCem = extractCampoStatusByPath(ficha.ficha_tecnica, "performance_offroad.aceleracao_0_100_s");
   const completude = formatCompleteness(
     ficha.resumo_completude.preenchidas,
-    ficha.resumo_completude.total_variaveis
+    ficha.resumo_completude.total_pesquisaveis ?? ficha.resumo_completude.total_variaveis
   );
 
   function toggleSection(sectionKey: string): void {
@@ -449,9 +718,10 @@ function FichaDashboard({
             <div className="hero-meta-grid">
               <MetricCard label="Fontes" value={String(ficha.fontes_utilizadas.length)} />
               <MetricCard
-                label="Completude"
-                value={`${String(ficha.resumo_completude.preenchidas ?? "-")} / ${String(ficha.resumo_completude.total_variaveis ?? "-")}`}
+                label="Cobertura pesquisada"
+                value={`${String(ficha.resumo_completude.preenchidas ?? "-")} / ${String(ficha.resumo_completude.total_pesquisaveis ?? ficha.resumo_completude.total_variaveis ?? "-")}`}
               />
+              <MetricCard label="Informados no pedido" value={String(ficha.resumo_completude.informadas_na_entrada ?? "-")} />
               <MetricCard
                 label="Nao aplicaveis"
                 value={String(ficha.resumo_completude.nao_aplicaveis ?? "-")}
@@ -470,18 +740,52 @@ function FichaDashboard({
           {showTraceability ? (
             <section className="source-section">
               <h3>Fontes utilizadas</h3>
-              <div className="source-grid">
-                {ficha.fontes_utilizadas.map((fonte) => (
+              <p className="source-review-notice">
+                Fonte externa nao e automaticamente incorreta, e fonte oficial nao garante aderencia ao ano ou versao. Revise as duas sinalizacoes e o titulo observado durante a geracao.
+              </p>
+              {ficha.fontes_utilizadas.length === 0 ? (
+                <p className="source-review-notice">
+                  Nenhuma fonte com aderencia suficiente permaneceu nesta ficha. Dados sem evidencia valida foram marcados como nao encontrados.
+                </p>
+              ) : (
+                <div className="source-grid">
+                  {ficha.fontes_utilizadas.map((fonte) => (
                   <article key={fonte.id} className="source-card">
                     <strong>{fonte.id}</strong>
                     <span>{fonte.titulo}</span>
                     <span>{fonte.tipo}</span>
-                    <a href={fonte.url} target="_blank" rel="noreferrer">
-                      Abrir fonte
-                    </a>
+                    <span className={`source-assessment source-assessment-${fonte.avaliacao_politica?.status ?? "historical"}`}>
+                      Politica: {formatSourceAssessment(fonte.avaliacao_politica?.status)}
+                    </span>
+                    <span className={`source-assessment source-adherence-${fonte.avaliacao_aderencia?.status ?? "historical"}`}>
+                      Aderencia: {formatSourceAdherence(fonte.avaliacao_aderencia?.status)}
+                    </span>
+                    {fonte.avaliacao_politica?.motivos?.map((motivo, motivoIndex) => (
+                      <span key={`${motivo}-${motivoIndex}`} className="source-assessment-reason">{formatSourceAssessmentReason(motivo)}</span>
+                    ))}
+                    {fonte.avaliacao_aderencia?.motivos.map((motivo, motivoIndex) => (
+                      <span key={`${motivo}-${motivoIndex}`} className="source-assessment-reason">{formatSourceAdherenceReason(motivo)}</span>
+                    ))}
+                    {fonte.evidencia_busca?.observada ? (
+                      <div className="source-observed-evidence">
+                        <span>Titulo observado: {fonte.evidencia_busca.titulo_observado}</span>
+                        <span>Observada em: {formatObservedAt(fonte.evidencia_busca.observada_em)}</span>
+                        <span>Paginas dinamicas podem mudar depois da geracao.</span>
+                      </div>
+                    ) : (
+                      <span className="source-link-unavailable">Sem evidencia observada suficiente nesta execucao</span>
+                    )}
+                    {isSafeHttpsUrl(fonte.url) ? (
+                      <a href={fonte.url} target="_blank" rel="noreferrer">
+                        Abrir fonte
+                      </a>
+                    ) : (
+                      <span className="source-link-unavailable">Link indisponivel por seguranca</span>
+                    )}
                   </article>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </section>
           ) : null}
 
@@ -506,18 +810,18 @@ function FichaDashboard({
                   {!isCollapsed ? (
                     <div className="spec-table">
                       {section.rows.map((row) => (
-                        <div className="spec-row" key={`${section.key}-${row.label}`}>
+                        <div className="spec-row" key={`${section.key}-${row.key}`}>
                           <span className="spec-label">{row.label}</span>
                           <span className="spec-value">{row.value}</span>
                           <div className="spec-meta">
                             <span className={`status-pill status-${row.status}`}>{formatStatusLabel(row.status)}</span>
                             {showTraceability && row.fonteRefs.length > 0 ? (
                               <div className="fonte-tags">
-                                {row.fonteRefs.map((fonteId) => {
+                                {row.fonteRefs.map((fonteId, fonteIndex) => {
                                   const fonte = fontesMap.get(fonteId);
-                                  const title = fonte ? `${fonte.titulo} (${fonte.tipo})` : "Fonte sem cadastro";
+                                  const title = fonte ? `${fonte.titulo} (${fonte.tipo}) - aderencia ${formatSourceAdherence(fonte.avaliacao_aderencia?.status)}` : "Fonte sem cadastro";
                                   return (
-                                    <span key={`${row.label}-${fonteId}`} className="fonte-chip" title={title}>
+                                    <span key={`${row.key}-${fonteId}-${fonteIndex}`} className="fonte-chip" title={title}>
                                       {fonteId}
                                     </span>
                                   );
@@ -526,8 +830,8 @@ function FichaDashboard({
                             ) : null}
                             {showTraceability && row.comments.length > 0 ? (
                               <div className="row-comments">
-                                {row.comments.map((comment) => (
-                                  <span key={`${row.label}-${comment}`} className="comment-chip">
+                                {row.comments.map((comment, commentIndex) => (
+                                  <span key={`${row.key}-${commentIndex}`} className="comment-chip">
                                     {comment}
                                   </span>
                                 ))}
@@ -616,6 +920,7 @@ function buildRows(groupValue: Record<string, unknown>): FichaRow[] {
   for (const [key, value] of Object.entries(groupValue)) {
     if (isCampoStatus(value)) {
       rows.push({
+        key,
         label: formatLabel(key),
         value: formatCampoValue(value),
         status: value.status ?? "confirmado",
@@ -626,13 +931,14 @@ function buildRows(groupValue: Record<string, unknown>): FichaRow[] {
     }
 
     if (Array.isArray(value)) {
-      for (const item of value) {
+      for (const [itemIndex, item] of value.entries()) {
         if (!isObject(item) || typeof item.nome !== "string") {
           continue;
         }
 
         const detalhe = isCampoStatus(item.detalhe) ? item.detalhe : null;
         rows.push({
+          key: `${key}-${itemIndex}`,
           label: item.nome,
           value: detalhe ? formatCampoValue(detalhe) : "Sem detalhe",
           status: detalhe?.status ?? "confirmado",
@@ -697,12 +1003,77 @@ function formatSimpleValue(value: unknown): string {
   return String(value);
 }
 
+function formatSourceAssessment(status: string | undefined): string {
+  const labels: Record<string, string> = {
+    na_lista_aprovada: "Na lista aprovada",
+    fora_da_lista_aprovada: "Fora da lista aprovada",
+    nao_rastreavel_com_seguranca: "Nao rastreavel com seguranca",
+    sem_politica_para_mercado: "Sem politica local para este mercado",
+    fonte_simulada_local: "Fonte simulada local"
+  };
+  return status ? (labels[status] ?? "Avaliacao indisponivel") : "Sem avaliacao historica";
+}
+
+function formatSourceAssessmentReason(reason: string): string {
+  const labels: Record<string, string> = {
+    host_oficial_nao_listado_para_marca_mercado: "Host oficial nao listado para marca e mercado",
+    host_parceiro_nao_listado: "Host parceiro nao listado",
+    tipo_declarado_nao_classificado: "Tipo declarado nao classificado",
+    mercado_sem_politica_local: "Mercado ainda sem politica local",
+    url_nao_https_ou_invalida: "URL nao permite link seguro"
+  };
+  return labels[reason] ?? "Motivo de classificacao indisponivel";
+}
+
+function formatSourceAdherence(status: string | undefined): string {
+  const labels: Record<string, string> = {
+    exata: "Exata",
+    compativel: "Compativel",
+    ambigua: "Ambigua",
+    divergente: "Divergente",
+    nao_verificada: "Nao verificada"
+  };
+  return status ? (labels[status] ?? "Indisponivel") : "Sem avaliacao historica";
+}
+
+function formatSourceAdherenceReason(reason: string): string {
+  if (reason.startsWith("ano_modelo_divergente:")) return `Ano-modelo divergente: ${reason.split(":")[1]}`;
+  const labels: Record<string, string> = {
+    url_nao_observada_no_provider: "URL nao observada pelo provider",
+    url_nao_https_ou_insegura: "URL observada sem transporte HTTPS seguro",
+    marca_ou_modelo_nao_comprovado: "Marca ou modelo nao comprovado",
+    versao_ou_motorizacao_nao_comprovada: "Versao ou motorizacao nao comprovada",
+    ano_modelo_nao_comprovado: "Ano-modelo nao comprovado",
+    mercado_divergente: "Mercado divergente",
+    mercado_nao_comprovado: "Mercado nao comprovado"
+  };
+  return labels[reason] ?? reason;
+}
+
+function formatObservedAt(value: string | undefined): string {
+  if (!value) return "instante indisponivel";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString("pt-BR");
+}
+
+function isSafeHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function formatLabel(value: string): string {
   const base = value.replace(/_/g, " ").trim();
   return base.charAt(0).toUpperCase() + base.slice(1);
 }
 
 function formatStatusLabel(status: string): string {
+  if (status === "informado_na_entrada") {
+    return "Informado no pedido";
+  }
+
   if (status === "nao_aplicavel") {
     return "Nao aplicavel";
   }

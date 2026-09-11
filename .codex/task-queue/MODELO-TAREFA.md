@@ -7,6 +7,10 @@
 > Origem ou referência: opcional — issue, conversa, tela, arquivo ou fonte
 >
 > Arquitetura: `A avaliar`
+>
+> Triagem automática: `Pendente`
+>
+> Segurança: `A avaliar`
 
 ## Pedido
 
@@ -29,6 +33,8 @@ _Preenchido pelo agente. Não apague o pedido original._
 
 - Estado: `❌ Pendente`
 - Arquitetura: `A avaliar`
+- Triagem automática: `Pendente` — classificar a mudança durante o refinamento.
+- Segurança: `A avaliar` — registrar aplicabilidade e, quando houver gatilho, a revisão proporcional.
 - Implementação: ainda não iniciada.
 - Arquivos alterados: nenhum.
 - Verificação: não executada.

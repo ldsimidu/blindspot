@@ -1,0 +1,42 @@
+{
+  "version": "2026-09-08.2",
+  "identityFields": ["marca", "modelo", "versao", "ano_modelo", "mercado"],
+  "officialSourceTypes": [
+    "site_oficial_montadora",
+    "catalogo_ou_ficha_tecnica_oficial",
+    "manual_do_proprietario_oficial",
+    "configurador_oficial",
+    "pagina_oficial_de_servicos_da_marca"
+  ],
+  "partnerSourceTypes": [
+    "documento_regulatorio_ou_homologatorio",
+    "imprensa_automotiva_reconhecida",
+    "fonte_parceira"
+  ],
+  "markets": [
+    {
+      "brand": "Ford",
+      "market": "Brasil",
+      "officialDomains": ["ford.com.br", "fordservicecontent.com", "www.guia360ford.com.br"]
+    }
+  ],
+  "partnerDomains": [
+    "jato.com",
+    "spglobal.com",
+    "marklines.com",
+    "latinncap.com",
+    "euroncap.com",
+    "iihs.org",
+    "nhtsa.gov",
+    "fueleconomy.gov",
+    "gov.br",
+    "quatrorodas.abril.com.br",
+    "motor1.uol.com.br",
+    "insideevs.uol.com.br",
+    "automotivebusiness.com.br"
+  ],
+  "simulated": {
+    "allowedHosts": ["example.com"],
+    "allowedSourceTypes": ["mock_local"]
+  }
+}

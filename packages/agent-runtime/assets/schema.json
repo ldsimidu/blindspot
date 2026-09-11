@@ -106,7 +106,7 @@
     },
     "fontes_utilizadas": {
       "type": "array",
-      "minItems": 1,
+      "minItems": 0,
       "items": {
         "$ref": "#/$defs/fonte"
       }
@@ -1095,6 +1095,14 @@
           "type": "integer",
           "minimum": 0
         },
+        "informadas_na_entrada": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_pesquisaveis": {
+          "type": "integer",
+          "minimum": 0
+        },
         "nao_encontradas": {
           "type": "integer",
           "minimum": 0
@@ -1104,6 +1112,34 @@
           "minimum": 0
         },
         "conflitantes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "campos_estruturais_completados": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total_caminhos": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "caminhos_presentes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "campos_status_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "campos_status_resolvidos": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "colecoes_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "colecoes_presentes": {
           "type": "integer",
           "minimum": 0
         }
@@ -1118,6 +1154,14 @@
     "fonte_ref": {
       "type": "array",
       "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/fonte_id"
+      }
+    },
+    "fonte_ref_conflito": {
+      "type": "array",
+      "minItems": 2,
       "uniqueItems": true,
       "items": {
         "$ref": "#/$defs/fonte_id"
@@ -1155,8 +1199,105 @@
         "tipo": {
           "type": "string",
           "minLength": 1
+        },
+        "avaliacao_politica": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "versao"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "na_lista_aprovada",
+                "fora_da_lista_aprovada",
+                "nao_rastreavel_com_seguranca",
+                "sem_politica_para_mercado",
+                "fonte_simulada_local"
+              ]
+            },
+            "versao": {
+              "type": "string",
+              "minLength": 1
+            },
+            "motivos": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "avaliacao_aderencia": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "criterios",
+            "motivos",
+            "versao"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "exata",
+                "compativel",
+                "ambigua",
+                "divergente",
+                "nao_verificada"
+              ]
+            },
+            "criterios": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "marca_modelo",
+                "versao_motorizacao",
+                "ano_modelo",
+                "mercado"
+              ],
+              "properties": {
+                "marca_modelo": { "$ref": "#/$defs/criterio_aderencia" },
+                "versao_motorizacao": { "$ref": "#/$defs/criterio_aderencia" },
+                "ano_modelo": { "$ref": "#/$defs/criterio_aderencia" },
+                "mercado": { "$ref": "#/$defs/criterio_aderencia" }
+              }
+            },
+            "motivos": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 }
+            },
+            "versao": { "type": "string", "minLength": 1 },
+            "avaliada_em": { "type": "string", "format": "date-time" }
+          }
+        },
+        "evidencia_busca": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["observada"],
+          "properties": {
+            "observada": { "type": "boolean" },
+            "titulo_observado": { "type": "string", "minLength": 1, "maxLength": 300 },
+            "observada_em": { "type": "string", "format": "date-time" },
+            "conteudo_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+            "provider": { "enum": ["openrouter", "claude"] },
+            "modelo": { "type": "string", "minLength": 1 },
+            "passe": { "type": "string", "minLength": 1 }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "observada": { "const": true } }, "required": ["observada"] },
+              "then": { "required": ["titulo_observado", "observada_em", "conteudo_sha256", "provider", "modelo", "passe"] }
+            }
+          ]
         }
       }
+    },
+    "criterio_aderencia": {
+      "type": "string",
+      "enum": ["compativel", "divergente", "nao_verificado"]
     },
     "valor_base": {
       "oneOf": [
@@ -1199,6 +1340,9 @@
         "valor": {
           "$ref": "#/$defs/valor_base"
         },
+        "valor_original": {
+          "$ref": "#/$defs/valor_base"
+        },
         "status": {
           "const": "confirmado"
         },
@@ -1217,6 +1361,9 @@
       ],
       "properties": {
         "valor": {
+          "$ref": "#/$defs/valor_base"
+        },
+        "valor_original": {
           "$ref": "#/$defs/valor_base"
         },
         "status": {
@@ -1262,7 +1409,7 @@
           "const": "conflitante"
         },
         "fonte_ref": {
-          "$ref": "#/$defs/fonte_ref"
+          "$ref": "#/$defs/fonte_ref_conflito"
         },
         "obs_ref": {
           "$ref": "#/$defs/obs_ref"
@@ -1333,6 +1480,9 @@
         "valor": {
           "$ref": "#/$defs/valor_base"
         },
+        "valor_original": {
+          "$ref": "#/$defs/valor_base"
+        },
         "status": {
           "const": "inferido_minimamente"
         },
@@ -1360,6 +1510,26 @@
         }
       ]
     },
+    "campo_informado_na_entrada": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "valor",
+        "status",
+        "origem"
+      ],
+      "properties": {
+        "valor": {
+          "$ref": "#/$defs/valor_base"
+        },
+        "status": {
+          "const": "informado_na_entrada"
+        },
+        "origem": {
+          "const": "entrada_usuario"
+        }
+      }
+    },
     "campo_status": {
       "oneOf": [
         {
@@ -1379,6 +1549,9 @@
         },
         {
           "$ref": "#/$defs/campo_inferido_minimamente"
+        },
+        {
+          "$ref": "#/$defs/campo_informado_na_entrada"
         }
       ]
     },

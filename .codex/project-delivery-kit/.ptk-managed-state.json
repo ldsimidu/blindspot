@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "packageVersion": "1.13.0",
+  "status": "complete",
+  "files": [
+    {
+      "id": "manifest",
+      "hash": "09E9BFDF3E29F53FF1AD9499E65CFBC95FED5E2882BD8991AD25606C7421816F"
+    },
+    {
+      "id": "handoff-contract",
+      "hash": "1A7F1D87E11260CF67BCEF7091AC1F68CBC01BC123FCF4F51CFE9DF05AB61C0C"
+    },
+    {
+      "id": "handoff-template",
+      "hash": "A179ABCFA111E4482EA0E426B11B92E37C41C7313EA7AEF7C6C2C99C228FCF50"
+    },
+    {
+      "id": "verification-contract",
+      "hash": "D174BDBEB21970567AE1C92FC89917B21DE67B8A7B077E4A06A2C4EFD7F18B9F"
+    },
+    {
+      "id": "queue-instructions",
+      "hash": "D02A2D88232796CEB0E7ABBA874E07B544A4DD11B068F45B1B11B33BAE11A715"
+    },
+    {
+      "id": "task-template",
+      "hash": "8761C4C589829AC3C1740415F34DB5799293E318AE30C6F341D8E5EB180D807D"
+    },
+    {
+      "id": "queue-gitkeep",
+      "hash": "01BA4719C80B6FE911B091A7C05124B64EEECE964E09C058EF8F9805DACA546B"
+    },
+    {
+      "id": "architecture-skill",
+      "hash": "EA437ABBB86B202A337740374D87994E931DA1EAB45D6EFF5587C083E23146EE"
+    },
+    {
+      "id": "task-queue-skill",
+      "hash": "FBBEF3D71F402468EE106E2AB314E2D39A966DC07FA8A53944AC0AB9E54309B1"
+    },
+    {
+      "id": "security-contract",
+      "hash": "792D739D645BB8CB99ECBB7E546FFA0ABA57704D1C6F916DA3177C0A60AFA50D"
+    },
+    {
+      "id": "security-skill",
+      "hash": "25AC78AEF0A9E681E507F9570AE6F88E9C69FC8877CD08D50BD7187381F41A40"
+    },
+    {
+      "id": "compliance-contract",
+      "hash": "63A62CF921A0CA53110090EA537E25E28F80904BF69EBCFF4663AF8A65842042"
+    },
+    {
+      "id": "compliance-skill",
+      "hash": "7C65312B383009F110D47DA4FF9CEB782F11FD1962DDBA7ED9B234FDABCAC8DC"
+    }
+  ]
+}

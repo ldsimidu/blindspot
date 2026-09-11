@@ -1,0 +1,14 @@
+{
+  "version": "1.0.0",
+  "conflict": {
+    "status": "conflitante",
+    "minimumSources": 2,
+    "requiresNullValue": true,
+    "requiredObservation": "CF1",
+    "automaticWinner": "forbidden"
+  },
+  "review": {
+    "humanDecision": "deferred_until_authenticated_rbac",
+    "allowedFutureDecisions": ["approve", "reprocess", "not_confirmed"]
+  }
+}
