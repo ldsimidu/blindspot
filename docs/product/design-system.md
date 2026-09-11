@@ -17,6 +17,21 @@ Precedência para decisões visuais:
 
 Quando o comportamento funcional, o schema, a API ou a regra de segurança entrarem em conflito com uma decisão visual, prevalecem os contratos do BlindSpot. `fonte_ref`, status, completude, conflito e elegibilidade de ação nunca podem ser escondidos para reproduzir uma referência.
 
+Este é o documento de consulta obrigatória antes de criar ou alterar uma tela, layout, componente visual, estado, ícone, asset ou microinteração. O [Image System](image-system.md) é obrigatório quando a decisão envolve fotografia, ilustração, render, textura, avatar ou provider de imagem.
+
+## Regra de adoção e fontes PEK
+
+Antes de criar um padrão local, a task verifica este documento, a jornada, os contratos de domínio e o catálogo PEK. Ferramentas/referências do PEK são apoio, não dependências aprovadas.
+
+| Fonte PEK | Papel permitido | Estado no BlindSpot |
+|---|---|---|
+| `Magic UI`, `Velora UI`, `Spell UI` | candidato para microinteração ou componente React específico | não adotado; exige intake, licença, versão, acessibilidade e decisão humana |
+| `Skiper UI`, `Cult UI`, `Originkit` | candidato a avaliar | não adotar sem verificar conta, licença e compatibilidade |
+| `Landingfolio`, `Awwwards`, `Inspora`, `Refero Styles`, `Cruip` | referência de princípio | extração de hierarquia, densidade e ritmo; nunca cópia de UI/asset/código |
+| Pexels, Unsplash, Pixabay, Openverse | fontes candidatas de imagery | regidas pelo Image System; nenhuma API/provider integrada hoje |
+
+O intake de dependência/componente externo precisa registrar finalidade, URL, versão/commit, licença, dependências, impacto, tráfego de dados, acessibilidade, alternativa local, rollback e decisão humana. Uma referência visual não satisfaz esse intake.
+
 ## Direção visual alvo
 
 - **Veículo como objeto central:** a ficha começa por identidade, imagem ou representação permitida, contexto e métricas essenciais; o detalhe técnico vem por densidade progressiva.
@@ -67,7 +82,83 @@ Regras:
 - ícone isolado recebe nome acessível; tooltip não contém informação essencial;
 - movimentos respeitam `prefers-reduced-motion`.
 
+### Inventário de implementação — P1-037
+
+| Camada | Estado | Fonte executável |
+|---|---|---|
+| Tokens semânticos | Implementada | `apps/web/src/design-system.css`: cor, tipografia, espaço, raio, borda, elevação, z-index, movimento e breakpoints documentados |
+| Aliases da interface atual | Migrados | `apps/web/src/styles.css`: `--bg-*`, `--text-*`, `--border-*` e `--accent-*` agora apontam para tokens semânticos, sem reescrever telas |
+| Primitives React | Implementadas | `apps/web/src/ui/primitives.tsx`: botão, card, campo, status e estados loading/empty/error |
+| Foco e movimento reduzido | Implementados | `design-system.css`: `:focus-visible` e `prefers-reduced-motion` globais |
+| Migração de tela | Pendente | P1-038 a P1-042 devem consumir primitives sem alterar contratos de domínio |
+
+Valores literais ainda encontrados em regras de componentes legados de `styles.css` são inventário de transição, não autorização para novos valores arbitrários. Eles serão substituídos pela primitive/token correspondente quando a tela dona for migrada; P1-037 não muda seu layout ou comportamento visual deliberadamente.
+
 ## Fundamentos de design
+
+### Linguagem e composição alvo
+
+O BlindSpot deve parecer uma ferramenta de inteligência automotiva séria, calma e contemporânea — não um portal de locação, painel de telemetria ou vitrine de venda. A identidade é construída por superfície, informação e ritmo de leitura:
+
+- **Canvas:** marfim/areia muito claro em telas futuras; superfícies próximas, não branco puro contra cinza frio.
+- **Contraste:** texto grafite profundo; metadados em cinza azulado discreto; bordas quentes e sutis.
+- **Marca:** laranja-terra usado para ação primária, foco de fluxo e detalhes de marca; nunca como preenchimento dominante da página.
+- **Profundidade:** borda e variação de superfície primeiro; sombra curta e difusa apenas para overlay, menu, diálogo ou card que realmente se eleva.
+- **Densidade:** uma área principal por viewport; informação de qualidade compacta, detalhe sob demanda e whitespace com função.
+- **Hierarquia:** identidade do veículo > estado/qualidade > decisão primária > resumo > detalhe técnico > metadados.
+
+Esses são tokens-alvo de intenção, ainda não uma alteração global das telas existentes. A camada implementada preserva o tema atual como compatibilidade até uma task de shell/tela migrar visualmente a experiência.
+
+| Grupo alvo | Papel visual | Direção de valor para futura adoção |
+|---|---|---|
+| `color.background.canvas` | área externa | marfim/areia claro, sem gradiente dramático |
+| `color.surface.default` | conteúdo principal | branco quente, contraste sutil com canvas |
+| `color.surface.raised` | painel auxiliar/menu | um degrau acima da superfície, sem brilho |
+| `color.text.primary` | leitura crítica | grafite profundo, contraste AA/AAA conforme tamanho |
+| `color.action.primary` | ação principal | laranja-terra controlado, com texto legível |
+| `color.status.*` | qualidade de evidência | semântica estável, texto/ícone obrigatório e nunca usada como marca |
+
+#### Referência de tokens-alvo
+
+Estes valores definem a direção visual a ser adotada pelas próximas telas após validação de contraste no render. Eles não substituem imediatamente os valores de compatibilidade do runtime atual.
+
+| Token alvo | Valor de referência | Uso |
+|---|---:|---|
+| `color.background.canvas` | `#F5F0E7` | plano de fundo principal quente-neutro |
+| `color.background.subtle` | `#FAF7F1` | áreas de respiro e agrupamentos leves |
+| `color.surface.default` | `#FFFDF9` | superfícies de leitura e formulário |
+| `color.surface.raised` | `#FFFFFF` | menu, diálogo e card que exige elevação |
+| `color.text.primary` | `#1F2630` | títulos, dados e ação crítica |
+| `color.text.secondary` | `#526171` | descrição, campo auxiliar e label secundário |
+| `color.text.muted` | `#738093` | metadado não decisório |
+| `color.border.subtle` | `#E7DED2` | separação de superfícies |
+| `color.border.strong` | `#CEC1B1` | seleção, agrupamento ou divisão relevante |
+| `color.action.primary` | `#CC5A2A` | CTA principal e marca pontual |
+| `color.action.primary-hover` | `#A9451D` | hover/active de CTA |
+| `color.action.primary-soft` | `#FCE7DC` | seleção/realce não crítico |
+| `color.focus.ring` | `#B84D22` | foco visível em fundo claro |
+| `color.status.confirmed` | `#236B4E` | dado confirmado, sempre com rótulo |
+| `color.status.partial` | `#9A5C17` | dado parcial/ressalva, sempre com rótulo |
+| `color.status.conflict` | `#A43836` | conflito/bloqueio, sempre com rótulo |
+| `color.status.not-found` | `#5B6673` | ausência de dado, sempre com rótulo |
+| `color.status.not-applicable` | `#4D5393` | inaplicabilidade, sempre com rótulo |
+| `color.status.inferred` | `#6A4AA1` | inferência mínima, sempre com rótulo |
+
+**Tipografia-alvo:** `Manrope` para interface, dados e formulários; `Raleway` permanece restrita ao wordmark até a task de identidade decidir sua continuidade. Se `Manrope` for adotada no runtime, ela deve ser hospedada ou carregada segundo decisão de dependência/performance, com fallback `Inter, "Segoe UI", sans-serif` e sem bloquear renderização.
+
+**Escala-alvo:** texto `12/14/16/20/24/32/40/56px`; espaço `4/8/12/16/20/24/32/40/48/64px`; radius `8/12/16/24px`; área de toque mínima `42px`; sombra somente em `raised`, `overlay` e `modal`. A tarefa que migrar os tokens para estes valores mede contraste e revisa os três viewports antes de promovê-los ao runtime.
+
+### Grid, largura e densidade
+
+| Contexto | Grid/limite | Regra de densidade |
+|---|---|---|
+| Workspace desktop | 12 colunas, conteúdo de leitura com máximo de 1280px | hero/contexto ocupa 4–6 colunas; detalhe ocupa o restante |
+| Catálogo desktop | filtro 3 colunas, resultados 6, rail 3 quando houver contexto | rail desaparece/empilha antes de comprimir resultado abaixo de leitura útil |
+| Comparação desktop | duas colunas equivalentes com atributo âncora | não usar coluna lateral persistente competindo com X/Y |
+| Tablet | 8 colunas | filtros/rails viram drawer ou faixa horizontal, não terceira coluna estreita |
+| Mobile | 4 colunas e margens mínimas de 16px | preservar ação e identidade; conteúdo secundário vira seção/drawer, não miniaturização |
+
+Nenhuma tela nova deve abrir com três painéis estreitos e uma área vazia. O container só existe se carregar uma responsabilidade de leitura, ação ou contexto.
 
 ### Cor e significado
 
@@ -121,6 +212,25 @@ Usar uma escala de espaçamento compartilhada (`space.1` a `space.10`) e raios/e
 | `RegistrationStepper` / `ApprovalTimeline` | progresso de cadastro e aprovação | atual, concluído, pendente, recusado, erro de consulta |
 | `EmptyState`, `ErrorState`, `LoadingState` | comunicar ausência/falha/espera | mensagem, causa segura, ação disponível e próxima etapa |
 
+### Contrato de cada componente
+
+Todo componente novo ou alterado declara no mínimo: objetivo, pessoa/fluxo, conteúdo obrigatório, variantes, estados, ação primária/secundária, responsividade, semântica/teclado, tokens consumidos, dados de domínio visíveis, evidência visual e owner da task. Componente sem esse contrato é local e não pode ser promovido à biblioteca.
+
+| Primitive implementada | Uso permitido agora | Fora do escopo |
+|---|---|---|
+| `UiButton` | ação primária/secundária/perigosa, loading e disabled | decidir autorização ou esconder pré-requisito de servidor |
+| `UiCard` | superfície agrupadora com elevação explícita | criar card apenas para preencher espaço |
+| `UiField` | label, hint/erro e associação acessível do controle | validar ou persistir dado de negócio |
+| `UiStatus` | texto + cor para estado de qualidade | converter estado técnico em decoração ou única fonte de verdade |
+| `UiLoadingState`, `UiEmptyState`, `UiErrorState` | mensagens e próxima ação por estado | mascarar indisponibilidade, conflito ou ausência |
+
+### Ícones e assets
+
+- Ícone vem acompanhado de texto quando for ação primária; ícone isolado tem nome acessível e tooltip complementar.
+- Ícones de navegação usam traço/volume coerentes, 20–24px e área de toque mínima de 42px.
+- Não introduzir biblioteca de ícones ou componente externo sem intake PEK e task aprovada.
+- Fotografia, render e ilustração seguem o [Image System](image-system.md); screenshots são evidência, não arte de produto.
+
 ## Regras de acessibilidade e conteúdo
 
 - Todo controle tem nome acessível; ícone isolado não é ação sem rótulo alternativo.
@@ -138,6 +248,23 @@ Usar uma escala de espaçamento compartilhada (`space.1` a `space.10`) e raios/e
 3. O primeiro render de cada componente é comparado contra a intenção do Design System e contra os invariantes de domínio.
 4. Uma mudança de contrato visual compartilhado exige atualização deste documento, evidência visual e teste proporcional.
 5. Este arquivo não é prova de implementação: a task concluída e a evidência de runtime são a fonte de estado entregue.
+
+### Checkpoints obrigatórios por tela
+
+| Momento | Evidência mínima |
+|---|---|
+| Antes de desenhar | jornada, decisão UX, estados, componentes/tokens e necessidade de imagem |
+| Antes de implementar | Architecture Gate aplicável, contrato de domínio preservado e intake de dependência/asset quando houver |
+| Durante implementação | render por viewport, teclado/foco, estado vazio/erro/loading e revisão de densidade |
+| Antes de concluir | antes/depois no mesmo fluxo, build/typecheck e achados remanescentes registrados |
+
+## Changelog de governança
+
+| Data | Alteração | Estado |
+|---|---|---|
+| 2026-09-11 | P1-037 implementou tokens semânticos e primitives sem migrar telas | Implementado |
+| 2026-09-11 | Design System passou a ser a especificação central de linguagem, componentes, grid, adoção PEK e checkpoints | Aprovado para documentação |
+| 2026-09-11 | Image System complementar formalizado | Aprovado para documentação |
 
 ## Componentes prioritários da refatoração
 

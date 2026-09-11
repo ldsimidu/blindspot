@@ -1,52 +1,34 @@
 @import url("https://fonts.googleapis.com/css2?family=Raleway:wght@600;700;800&display=swap");
 
 :root {
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  --bg-page: #0f0f10;
-  --bg-page-grad-1: #2a2a2d;
-  --bg-page-grad-2: #131315;
-  --bg-page-grad-3: #0b0b0c;
-  --bg-sidebar-grad-top: #171719;
-  --bg-sidebar-grad-bottom: #0f0f10;
-  --bg-panel: #17171a;
-  --bg-card: #101013;
-  --bg-card-soft: #11131a;
-  --text-primary: #f3f4f6;
-  --text-secondary: #c8cdd6;
-  --text-muted: #aeb7c6;
-  --border-primary: #323238;
-  --border-soft: #2f3441;
-  --accent: #f97316;
-  --accent-strong: #ea580c;
-  --accent-soft: #ffb780;
-  --brand-contrast: #0f0f10;
-  --logout-border: #9a3412;
+  font-family: var(--font-family-body);
+  --bg-page: var(--color-background-canvas);
+  --bg-page-grad-1: var(--color-background-canvas-accent);
+  --bg-page-grad-2: var(--color-background-canvas-depth);
+  --bg-page-grad-3: var(--color-background-canvas-strong);
+  --bg-sidebar-grad-top: var(--color-surface-navigation);
+  --bg-sidebar-grad-bottom: var(--color-surface-navigation-end);
+  --bg-panel: var(--color-surface-default);
+  --bg-card: var(--color-surface-raised);
+  --bg-card-soft: var(--color-surface-subtle);
+  --text-primary: var(--color-text-primary);
+  --text-secondary: var(--color-text-secondary);
+  --text-muted: var(--color-text-muted);
+  --border-primary: var(--color-border-default);
+  --border-soft: var(--color-border-subtle);
+  --accent: var(--color-action-primary);
+  --accent-strong: var(--color-action-primary-strong);
+  --accent-soft: var(--color-action-primary-soft);
+  --brand-contrast: var(--color-action-on-primary);
+  --logout-border: var(--color-action-primary-strong);
   --logout-background: #4a1d0a;
-  --logout-text: #ffedd5;
+  --logout-text: var(--color-feedback-warning);
 }
 
 body.theme-light {
-  --bg-page: #eef2f7;
-  --bg-page-grad-1: #f8fafc;
-  --bg-page-grad-2: #edf2f7;
-  --bg-page-grad-3: #dbe3ee;
-  --bg-sidebar-grad-top: #ffffff;
-  --bg-sidebar-grad-bottom: #f5f7fb;
-  --bg-panel: #ffffff;
-  --bg-card: #f5f7fb;
-  --bg-card-soft: #edf2f8;
-  --text-primary: #101217;
-  --text-secondary: #3f4a5d;
-  --text-muted: #66758e;
-  --border-primary: #d5dcea;
-  --border-soft: #dbe4f1;
-  --accent: #ea580c;
-  --accent-strong: #c2410c;
-  --accent-soft: #9a3412;
-  --brand-contrast: #ffffff;
-  --logout-border: #c2410c;
+  --logout-border: var(--color-action-primary-strong);
   --logout-background: #fff7ed;
-  --logout-text: #9a3412;
+  --logout-text: var(--color-action-primary-soft);
 }
 
 * {
@@ -102,7 +84,7 @@ body {
 }
 
 .brand-wordmark {
-  font-family: "Raleway", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  font-family: var(--font-family-display);
   font-size: 1.22rem;
   letter-spacing: 0.08em;
   color: var(--text-primary);
@@ -215,7 +197,7 @@ body {
 
 .logout-status {
   margin: 8px 0 0;
-  color: #fecaca;
+  color: var(--color-feedback-danger);
   font-size: 0.8rem;
   line-height: 1.4;
 }
@@ -852,9 +834,9 @@ a:focus-visible,
 }
 
 .fonte-chip {
-  border: 1px solid #9a3412;
+  border: 1px solid var(--color-action-primary-strong);
   background: #3a1f13;
-  color: #ffd7b7;
+  color: var(--color-feedback-warning);
   border-radius: 999px;
   padding: 2px 7px;
   font-size: 0.68rem;
@@ -878,38 +860,38 @@ a:focus-visible,
 }
 
 .status-confirmado {
-  background: #164e2e;
-  color: #bbf7d0;
+  background: var(--color-status-confirmed-bg);
+  color: var(--color-status-confirmed-text);
 }
 
 .status-informado_na_entrada {
-  background: #1e3a5f;
-  color: #bfdbfe;
+  background: var(--color-status-entry-bg);
+  color: var(--color-status-entry-text);
 }
 
 .status-parcial {
-  background: #78350f;
-  color: #fed7aa;
+  background: var(--color-status-partial-bg);
+  color: var(--color-status-partial-text);
 }
 
 .status-conflitante {
-  background: #7f1d1d;
-  color: #fecaca;
+  background: var(--color-status-conflict-bg);
+  color: var(--color-status-conflict-text);
 }
 
 .status-nao_encontrado {
-  background: #374151;
-  color: #d1d5db;
+  background: var(--color-status-not-found-bg);
+  color: var(--color-status-not-found-text);
 }
 
 .status-nao_aplicavel {
-  background: #312e81;
-  color: #c7d2fe;
+  background: var(--color-status-not-applicable-bg);
+  color: var(--color-status-not-applicable-text);
 }
 
 .status-inferido_minimamente {
-  background: #4c1d95;
-  color: #e9d5ff;
+  background: var(--color-status-inferred-bg);
+  color: var(--color-status-inferred-text);
 }
 
 .history-layout {

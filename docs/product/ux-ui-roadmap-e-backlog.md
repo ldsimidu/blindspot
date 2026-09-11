@@ -7,6 +7,7 @@
 | Fase | Resultado | Tasks derivadas | Dependências e gates |
 |---|---|---|---|
 | 0. Fundação | tokens semânticos, primitives e contrato de estados | P1-037 | não alterar regra funcional; validar contraste, foco e responsividade |
+| 0.5. Imagens | Image System, curadoria e futura abstração de providers | P1-043 | provider, licença, credencial, metadados e destino de dados exigem gate próprio |
 | 1. Entrada | login, cadastro por etapas e espera compreensíveis | P1-038 | autenticação e dados pessoais: security + compliance obrigatórias |
 | 2. Casca do produto | navegação superior, sessão e responsividade da estrutura | P1-039 | preservar rotas, papel e logout já existente; não alterar autorização |
 | 3. Leitura da ficha | workspace do veículo e detalhe progressivo | P1-040 | preservar schema, fontes, qualidade e ações elegíveis |
