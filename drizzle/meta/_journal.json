@@ -92,6 +92,34 @@
       "when": 1789000800000,
       "tag": "0012_saved_comparisons",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1789128000000,
+      "tag": "0013_technical_sheet_search_facets",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1789131600000,
+      "tag": "0014_source_trust_anchors",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1789135200000,
+      "tag": "0015_curated_research_documents",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1789138800000,
+      "tag": "0016_remove_curated_research_documents",
+      "breakpoints": true
     }
   ]
 }

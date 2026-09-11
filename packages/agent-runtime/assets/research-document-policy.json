@@ -1,0 +1,40 @@
+{
+  "version": "1.4.0",
+  "brand_presence_discovery": {
+    "enabled": true,
+    "max_tokens": 1200,
+    "max_search_calls": 1,
+    "max_results": 5,
+    "max_total_results": 5,
+    "max_candidate_hosts": 3
+  },
+  "official_document_discovery": {
+    "enabled": true,
+    "max_search_calls": 2,
+    "max_results": 8,
+    "max_total_results": 12,
+    "source_material_order": ["ficha_tecnica", "catalogo_ou_brochura", "manual_ou_documento_tecnico", "configurador_ou_guia_comercial"],
+    "required_capabilities": ["especificacao_tecnica", "configuracao_visual", "experiencia_e_conectividade", "seguranca_e_servico"]
+  },
+  "document_hunter": {
+    "enabled": false,
+    "search_modes": ["landing_links", "year_archive"],
+    "require_first_party_anchor_for_fallback": true
+  },
+  "document_reader": {
+    "enabled": true,
+    "max_documents": 2,
+    "provider_parser_enabled": true,
+    "provider_parser_engine": "cloudflare-ai",
+    "provider_parser_max_documents": 1,
+    "provider_parser_max_tokens": 32,
+    "fail_when_official_pdf_unreadable": false,
+    "timeout_ms": 12000,
+    "max_redirects": 2,
+    "max_bytes_per_document": 8388608,
+    "max_pages_per_document": 20,
+    "max_text_chars_per_document": 24000,
+    "max_text_chars_total": 40000,
+    "allowed_content_types": ["application/pdf", "text/html", "application/xhtml+xml"]
+  }
+}

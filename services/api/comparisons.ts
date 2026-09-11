@@ -5,11 +5,12 @@ import { getDatabase } from "./db/client";
 import { auditEvents, savedComparisons, technicalSheetVersions, vehicleConfigurations } from "./db/schema";
 import { HttpError, type FichaTecnicaResponse, type VehicleInput } from "./types";
 
-const CONTRACT_VERSION = "comparison-contract-v1";
+const CONTRACT_VERSION = "comparison-contract-v2";
 
 export interface ComparisonField { path: string; label: string; left: ComparisonCell | null; right: ComparisonCell | null; difference: "equal" | "different" | "missing_on_left" | "missing_on_right" | "conflicting" | "not_applicable"; }
 export interface ComparisonCell { value: unknown; unit: string | null; status: string; source_refs: string[]; observation: string | null; }
-export interface TechnicalComparison { contract_version: string; result_sha256: string; left: ComparisonVersion; right: ComparisonVersion; fields: ComparisonField[]; }
+export interface ComparisonWarning { code: "market_mismatch" | "motorization_mismatch" | "motorization_not_confirmed"; message: string; }
+export interface TechnicalComparison { contract_version: string; result_sha256: string; compatibility_warnings: ComparisonWarning[]; left: ComparisonVersion; right: ComparisonVersion; fields: ComparisonField[]; }
 export interface ComparisonVersion { technical_sheet_version_id: string; version_number: number; vehicle: VehicleInput; sources: Array<{ id: string; title: string; type: string }>; }
 
 interface StoredVersion { id: string; versionNumber: number; vehicle: VehicleInput; payload: FichaTecnicaResponse; }
@@ -45,10 +46,10 @@ export async function createTechnicalComparison(leftId: string, rightId: string)
   const versions = await readVersions([leftId, rightId]);
   const left = versions.find((version) => version.id === leftId); const right = versions.find((version) => version.id === rightId);
   if (!left || !right) throw new HttpError(404, "Versao de ficha indisponivel.");
-  const reasons = compatibilityReasons(left, right);
-  if (reasons.length) throw new HttpError(422, "Fichas incompativeis para comparacao.", { codes: reasons });
+  if (!sameVehicle(left.vehicle, left.payload.veiculo_alvo) || !sameVehicle(right.vehicle, right.payload.veiculo_alvo)) throw new HttpError(422, "A identidade de uma versao nao corresponde ao veiculo persistido.", { codes: ["version_identity_inconsistent"] });
+  const compatibility_warnings = compatibilityWarnings(left, right);
   const fields = compareFields(left.payload.ficha_tecnica, right.payload.ficha_tecnica);
-  const base = { contract_version: CONTRACT_VERSION, left: toComparisonVersion(left), right: toComparisonVersion(right), fields };
+  const base = { contract_version: CONTRACT_VERSION, compatibility_warnings, left: toComparisonVersion(left), right: toComparisonVersion(right), fields };
   return { ...base, result_sha256: sha256(base) };
 }
 
@@ -58,14 +59,13 @@ async function readVersions(ids: string[]): Promise<StoredVersion[]> {
   return rows.map((row) => ({ id: row.id, versionNumber: row.versionNumber, vehicle: { marca: row.brand, modelo: row.model, versao: row.trim, ano_modelo: row.modelYear, mercado: row.market }, payload: row.payload as FichaTecnicaResponse }));
 }
 
-function compatibilityReasons(left: StoredVersion, right: StoredVersion): string[] {
-  const reasons: string[] = [];
-  if (!sameVehicle(left.vehicle, left.payload.veiculo_alvo) || !sameVehicle(right.vehicle, right.payload.veiculo_alvo)) reasons.push("version_identity_inconsistent");
-  if (left.vehicle.mercado !== right.vehicle.mercado) reasons.push("market_mismatch");
+function compatibilityWarnings(left: StoredVersion, right: StoredVersion): ComparisonWarning[] {
+  const warnings: ComparisonWarning[] = [];
+  if (left.vehicle.mercado !== right.vehicle.mercado) warnings.push({ code: "market_mismatch", message: `Mercados diferentes: esquerda ${left.vehicle.mercado}; direita ${right.vehicle.mercado}.` });
   const leftMotor = confirmedMotor(left.payload); const rightMotor = confirmedMotor(right.payload);
-  if (!leftMotor || !rightMotor) reasons.push("motorization_not_confirmed");
-  else if (leftMotor !== rightMotor) reasons.push("motorization_mismatch");
-  return reasons;
+  if (!leftMotor || !rightMotor) warnings.push({ code: "motorization_not_confirmed", message: "A motorizacao nao esta confirmada em pelo menos uma ficha." });
+  else if (leftMotor !== rightMotor) warnings.push({ code: "motorization_mismatch", message: "Motorizacao diferente entre as versoes selecionadas." });
+  return warnings;
 }
 
 function confirmedMotor(payload: FichaTecnicaResponse): string | null { const technicalSheet = asRecord(payload.ficha_tecnica); const motor = technicalSheet ? asRecord(technicalSheet.motorizacao) : null; if (!motor || motor.status !== "confirmado" || typeof motor.valor !== "string" || !motor.valor.trim()) return null; return motor.valor.normalize("NFKC").trim().toLowerCase(); }

@@ -5,13 +5,16 @@ import {
   createRequestId,
   logHttpRequest,
   logServerError,
+  logValidationFailure,
   readRecentLLMResponses,
   readLatestLLMResponseSnapshot,
   saveLLMResponseSnapshot
 } from "./logger";
 import { callLLM } from "./llm";
 import { getPersistenceMode } from "./db/client";
-import { persistTechnicalSheet, readCatalogEntryExact, readCatalogRecommendations, readLatestTechnicalSheet, readTechnicalSheetHistory, searchCatalog } from "./db/repository";
+import { readLearnedSourceTrustAnchors, recordSourceTrustCandidates } from "./db/source-trust-repository";
+import { checkReadiness } from "./readiness";
+import { persistTechnicalSheet, readCatalogEntryExact, readCatalogRecommendations, readLatestTechnicalSheet, readTechnicalSheetExport, readTechnicalSheetHistory, searchCatalog, searchTechnicalCatalog } from "./db/repository";
 import { confirmImportRun, createImportDryRun, hashImportPayload, readImportRun, type PreparedImportItem } from "./imports";
 import { login, logout, readAuthenticationContext, readCurrentSession, sessionCookieName, sessionCookieOptions, type AuthContext, type OrganizationRole } from "./authentication";
 import { recordAudit, type AuditAction, type AuditResourceType } from "./audit";
@@ -20,8 +23,8 @@ import { acknowledgeUsageAlert, evaluateUsagePolicy, parseUsagePeriod, readUsage
 import { createSavedComparison, listSavedComparisons, readSavedComparison } from "./comparisons";
 import { activateInitialAdmin, decideOrganizationRequest, issueInitialAdminInvitation, listPendingOrganizationRequests, registerOrganization, revokeInitialAdminInvitation, submitOrganizationRequest } from "./organizations";
 import { buildVehiclePayload, composeFinalPrompt, readBaseAgentPrompt, readOutputSchema } from "./prompt-builder";
-import { readFieldPolicy, readNormalizationPolicy, readQualityPolicy, readSourcePolicy } from "./runtime-assets";
-import { FichaTecnicaHistoryItem, HttpError, VehicleInput } from "./types";
+import { readFieldPolicy, readNormalizationPolicy, readQualityPolicy, readResearchCapabilityPolicy, readResearchDocumentPolicy, readSourceEvidencePolicy, readSourcePolicy, readSourceTrustBootstrapPolicy, readTechnicalSearchFacetPolicy, type TechnicalSearchFacetPolicy } from "./runtime-assets";
+import { FichaTecnicaHistoryItem, HttpError, ValidationError, VehicleInput } from "./types";
 import { validateResponse } from "./validator";
 
 const app = express();
@@ -43,10 +46,9 @@ app.use((req, res, next) => {
     void logHttpRequest({
       requestId,
       method: req.method,
-      path: sanitizeRequestPath(req.originalUrl),
+      path: sanitizeRequestPath(req.path),
       statusCode: res.statusCode,
       durationMs,
-      ip: req.ip ?? "unknown",
       at: startedAt
     });
   });
@@ -56,6 +58,11 @@ app.use((req, res, next) => {
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true });
+});
+
+app.get("/api/readiness", async (_req, res) => {
+  const readiness = await checkReadiness();
+  res.status(readiness.status === "ready" ? 200 : 503).json(readiness);
 });
 
 app.post("/api/auth/login", async (req: Request, res: Response, next: NextFunction) => {
@@ -184,9 +191,35 @@ app.get("/api/comparacoes/:id", requireRole("comparison.denied", "saved_comparis
   try { res.status(200).json(await readSavedComparison(authorizationContext(req), parseCatalogId(req.params.id), requestIdOf(res))); } catch (error) { next(error); }
 });
 
+app.get("/api/comparacoes/:id/export", requireRole("comparison.denied", "saved_comparison", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const format = req.query.format === "csv" || req.query.format === "json" ? req.query.format : null;
+    if (!format) throw new HttpError(400, "Formato de exportacao invalido.");
+    const item = await readSavedComparison(authorizationContext(req), parseCatalogId(req.params.id), requestIdOf(res));
+    const content = format === "json" ? JSON.stringify(item, null, 2) : comparisonCsv(item);
+    res.setHeader("Content-Type", format === "json" ? "application/json; charset=utf-8" : "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="comparacao-${item.id}.${format}"`);
+    res.setHeader("Cache-Control", "no-store");
+    res.status(200).send(content);
+  } catch (error) { next(error); }
+});
+
+app.get("/api/ficha-tecnica/versoes/:id/export", requireRole("technical_sheet.denied", "technical_sheet", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => {
+  try { const format = req.query.format === "csv" || req.query.format === "json" ? req.query.format : null; if (!format) throw new HttpError(400, "Formato de exportacao invalido."); const item = await readTechnicalSheetExport(parseCatalogId(req.params.id)); if (!item) throw new HttpError(404, "Ficha indisponivel."); const content = format === "json" ? JSON.stringify(item, null, 2) : technicalSheetCsv(item as any); res.setHeader("Content-Type", format === "json" ? "application/json; charset=utf-8" : "text/csv; charset=utf-8"); res.setHeader("Content-Disposition", `attachment; filename="ficha-${req.params.id}.${format}"`); res.setHeader("Cache-Control", "no-store"); res.status(200).send(content); } catch (error) { next(error); }
+});
+
 app.get("/api/catalogo/fichas", requireAuthenticated, async (req: Request, res: Response, next: NextFunction) => {
   try {
     res.status(200).json(await searchCatalog(parseCatalogSearchInput(req.query)));
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get("/api/catalogo/fichas/pesquisa-tecnica", requireAuthenticated, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const policy = await readTechnicalSearchFacetPolicy();
+    res.status(200).json(await searchTechnicalCatalog(parseTechnicalCatalogSearchInput(req.query, policy)));
   } catch (error) {
     next(error);
   }
@@ -237,10 +270,14 @@ app.post("/api/ficha-tecnica", requireRole("technical_sheet.denied", "technical_
     usageActor = authorizationContext(req);
     const vehicleInput = parseVehicleInput(req.body);
 
-    const [baseAgentPrompt, outputSchema, sourcePolicy, normalizationPolicy, fieldPolicy, qualityPolicy] = await Promise.all([
+    const [baseAgentPrompt, outputSchema, sourcePolicy, sourceEvidencePolicy, researchCapabilityPolicy, researchDocumentPolicy, sourceTrustBootstrapPolicy, normalizationPolicy, fieldPolicy, qualityPolicy] = await Promise.all([
       readBaseAgentPrompt(),
       readOutputSchema(),
       readSourcePolicy(),
+      readSourceEvidencePolicy(),
+      readResearchCapabilityPolicy(),
+      readResearchDocumentPolicy(),
+      readSourceTrustBootstrapPolicy(),
       readNormalizationPolicy(),
       readFieldPolicy(),
       readQualityPolicy()
@@ -251,13 +288,27 @@ app.post("/api/ficha-tecnica", requireRole("technical_sheet.denied", "technical_
       outputSchema,
       vehiclePayload,
       sourcePolicy,
+      sourceEvidencePolicy,
+      researchCapabilityPolicy,
       normalizationPolicy,
       fieldPolicy,
       qualityPolicy
     });
 
     usageAttempted = true;
-    const llmRawResponse = await callLLM(finalPrompt, vehicleInput);
+    const learnedSourceTrustAnchors = await readLearnedSourceTrustAnchors(vehicleInput);
+    const llmResult = await callLLM(
+      finalPrompt,
+      vehicleInput,
+      sourceEvidencePolicy,
+      researchCapabilityPolicy,
+      sourcePolicy,
+      researchDocumentPolicy,
+      sourceTrustBootstrapPolicy,
+      learnedSourceTrustAnchors,
+      (candidates) => recordSourceTrustCandidates(vehicleInput, candidates, sourceTrustBootstrapPolicy),
+    );
+    const llmRawResponse = llmResult.response;
     const requestId = String(res.getHeader("x-request-id") ?? createRequestId());
     const provider = (process.env.LLM_PROVIDER ?? "simulated").toLowerCase();
     const snapshotProvider = provider === "claude" || provider === "openrouter" ? provider : "simulated";
@@ -265,7 +316,9 @@ app.post("/api/ficha-tecnica", requireRole("technical_sheet.denied", "technical_
       vehicle: vehicleInput,
       provider: snapshotProvider,
       sourcePolicy,
+      runtimeFirstPartyDomains: llmResult.runtimeFirstPartyDomains,
       normalizationPolicy,
+      normalizationFailureMode: "downgrade",
       fieldPolicy,
       qualityPolicy
     });
@@ -349,6 +402,9 @@ app.use((error: unknown, _req: Request, res: Response, _next: NextFunction) => {
   const requestId = typeof requestIdHeader === "string" ? requestIdHeader : "unknown";
 
   if (error instanceof HttpError) {
+    if (error instanceof ValidationError) {
+      void logValidationFailure(requestId, error.details);
+    }
     res.status(error.statusCode).json({
       message: error.message,
       details: error.details ?? null
@@ -458,7 +514,7 @@ function toYear(value: unknown): number {
   throw new HttpError(400, "Campo ano_modelo deve ser um inteiro entre 1900 e 2100.");
 }
 
-function parseCatalogSearchInput(query: Request["query"]): { query: string; page: number; pageSize: number; sort: "recent" | "alphabetical"; brand?: string; model?: string; modelYear?: number; market?: string } {
+function parseCatalogSearchInput(query: Request["query"]): { query: string; page: number; pageSize: number; sort: "recent" | "alphabetical"; scope: "latest" | "all_versions"; brand?: string; model?: string; modelYear?: number; market?: string } {
   const rawQuery = query.q;
   if (rawQuery !== undefined && (typeof rawQuery !== "string" || rawQuery.length > 100 || /[\u0000-\u001f\u007f]/.test(rawQuery))) {
     throw new HttpError(400, "Parametro q invalido.");
@@ -473,7 +529,41 @@ function parseCatalogSearchInput(query: Request["query"]): { query: string; page
   const hasCriteria = Boolean((rawQuery?.trim() ?? "") || brand || model || market || modelYear);
   const sort = query.sort === undefined ? (hasCriteria ? "alphabetical" : "recent") : query.sort === "recent" || query.sort === "alphabetical" ? query.sort : null;
   if (!sort) throw new HttpError(400, "Parametro sort invalido.");
-  return { query: rawQuery?.trim() ?? "", page, pageSize, sort, brand, model, modelYear, market };
+  const scope = query.scope === undefined || query.scope === "latest" ? "latest" : query.scope === "all_versions" ? "all_versions" : null;
+  if (!scope) throw new HttpError(400, "Parametro scope invalido.");
+  return { query: rawQuery?.trim() ?? "", page, pageSize, sort, scope, brand, model, modelYear, market };
+}
+
+function parseTechnicalCatalogSearchInput(query: Request["query"], policy: TechnicalSearchFacetPolicy): { tipoCarroceria?: string; motorTipo?: string; potenciaMinCv?: number; potenciaMaxCv?: number; modelYear?: number; market?: string; page: number; pageSize: number } {
+  const bodyFacet = policy.facets.find((facet) => facet.key === "tipo_carroceria");
+  const motorFacet = policy.facets.find((facet) => facet.key === "motor_tipo");
+  if (!bodyFacet || bodyFacet.kind !== "enum" || !motorFacet || motorFacet.kind !== "enum") throw new HttpError(500, "Politica de busca tecnica indisponivel.");
+  const tipoCarroceria = parseAllowedTechnicalFacet(query.tipo_carroceria, "tipo_carroceria", bodyFacet.allowed_values);
+  const motorTipo = parseAllowedTechnicalFacet(query.motor_tipo, "motor_tipo", motorFacet.allowed_values);
+  const potenciaMinCv = parseOptionalTechnicalNumber(query.potencia_min_cv, "potencia_min_cv");
+  const potenciaMaxCv = parseOptionalTechnicalNumber(query.potencia_max_cv, "potencia_max_cv");
+  if (potenciaMinCv !== undefined && potenciaMaxCv !== undefined && potenciaMinCv > potenciaMaxCv) throw new HttpError(400, "Intervalo de potencia invalido.");
+  if (!tipoCarroceria && !motorTipo && potenciaMinCv === undefined && potenciaMaxCv === undefined) throw new HttpError(400, "Informe ao menos uma faceta tecnica.");
+  const page = parsePositiveInteger(query.page, "page", 1, 10_000);
+  const pageSize = parsePositiveInteger(query.page_size, "page_size", 20, 20);
+  const market = parseOptionalCatalogText(query.mercado, "mercado");
+  const modelYear = query.ano_modelo === undefined ? undefined : parsePositiveInteger(query.ano_modelo, "ano_modelo", 1, 2100);
+  if (modelYear !== undefined && modelYear < 1900) throw new HttpError(400, "Parametro ano_modelo invalido.");
+  return { tipoCarroceria, motorTipo, potenciaMinCv, potenciaMaxCv, modelYear, market, page, pageSize };
+}
+
+function parseAllowedTechnicalFacet(value: unknown, name: string, allowed: string[]): string | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || !allowed.includes(value)) throw new HttpError(400, `Parametro ${name} invalido.`);
+  return value;
+}
+
+function parseOptionalTechnicalNumber(value: unknown, name: string): number | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "string" || !/^\d+(?:\.\d+)?$/.test(value)) throw new HttpError(400, `Parametro ${name} invalido.`);
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed > 10_000) throw new HttpError(400, `Parametro ${name} invalido.`);
+  return parsed;
 }
 function parseOptionalCatalogText(value: unknown, name: string): string | undefined { if (value === undefined) return undefined; if (typeof value !== "string" || value.length > 100 || /[\u0000-\u001f\u007f]/.test(value)) throw new HttpError(400, `Parametro ${name} invalido.`); const normalized = value.normalize("NFKC").trim().replace(/\s+/g, " "); if (!normalized) return undefined; return normalized; }
 
@@ -513,6 +603,8 @@ function parseInvitationActivation(body: unknown): { displayName: string; passwo
 function parseMemberInvitation(body: unknown): { email: string; role: OrganizationRole } { if (!isObject(body)) throw new HttpError(400, "Convite indisponivel."); const email = requiredBoundedText(body.email, 5, 254, "email").toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new HttpError(400, "Convite indisponivel."); return { email, role: parseOrganizationRole(body) }; }
 function parseUsagePolicy(body: unknown): { thresholdUnits: number; isActive: boolean } { if (!isObject(body) || typeof body.threshold_units !== "number" || !Number.isSafeInteger(body.threshold_units) || body.threshold_units < 1 || typeof body.is_active !== "boolean") throw new HttpError(400, "Politica de consumo invalida."); return { thresholdUnits: body.threshold_units, isActive: body.is_active }; }
 function parseComparisonVersionIds(body: unknown): [string, string] { if (!isObject(body) || !Array.isArray(body.technical_sheet_version_ids) || body.technical_sheet_version_ids.length !== 2 || body.technical_sheet_version_ids.some((id) => typeof id !== "string")) throw new HttpError(400, "Comparacao invalida."); const ids = body.technical_sheet_version_ids.map((id) => parseCatalogId(id)); if (ids[0] === ids[1]) throw new HttpError(400, "Comparacao invalida."); return [ids[0], ids[1]]; }
+function comparisonCsv(item: Awaited<ReturnType<typeof readSavedComparison>>): string { const safe = (value: unknown) => { const text = value === null || value === undefined ? "" : String(value); const neutralized = /^[=+\-@]/.test(text) ? `'${text}` : text; return `"${neutralized.replace(/"/g, '""')}"`; }; const rows = [["comparacao_id", "campo", "esquerda", "direita", "diferenca"], ...item.comparison.fields.map((field) => [item.id, field.label, field.left?.value, field.right?.value, field.difference])]; return rows.map((row) => row.map(safe).join(",")).join("\r\n"); }
+function technicalSheetCsv(item: any): string { const safe = (value: unknown) => { const text = value == null ? "" : String(value); const neutralized = /^[=+\-@]/.test(text) ? `'${text}` : text; return `"${neutralized.replace(/"/g, '""')}"`; }; const rows: unknown[][] = [["version_id", "version_number", "marca", "modelo", "versao", "ano_modelo", "mercado", "path", "valor"]]; const visit = (value: any, path = "") => { if (value && typeof value === "object" && !Array.isArray(value) && !("valor" in value)) Object.entries(value).forEach(([key, nested]) => visit(nested, path ? `${path}.${key}` : key)); else rows.push([item.technical_sheet.version_id, item.technical_sheet.version_number, item.technical_sheet.vehicle.marca, item.technical_sheet.vehicle.modelo, item.technical_sheet.vehicle.versao, item.technical_sheet.vehicle.ano_modelo, item.technical_sheet.vehicle.mercado, path, JSON.stringify(value)]); }; visit(item.technical_sheet.data); return rows.map((row) => row.map(safe).join(",")).join("\r\n"); }
 function parseOrganizationRole(body: unknown): OrganizationRole { if (!isObject(body) || (body.role !== "viewer" && body.role !== "analyst" && body.role !== "admin")) throw new HttpError(400, "Papel indisponivel."); return body.role; }
 function sanitizeRequestPath(value: string): string { return value.replace(/(\/api\/convites\/)[^/?]+(\/ativar(?:\?.*)?$)/, "$1[redacted]$2").replace(/(\/api\/organizacoes\/solicitacoes\/)[^/?]+(\/decisao(?:\?.*)?$)/, "$1[redacted]$2").replace(/(\/api\/convites\/membros\/)[^/?]+(\/ativar(?:\?.*)?$)/, "$1[redacted]$2"); }
 function parseLogin(body: unknown): { email: string; password: string } { if (!isObject(body)) throw new HttpError(400, "Credenciais invalidas."); const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : ""; const password = typeof body.password === "string" ? body.password : ""; if (email.length < 5 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || password.length < 1 || password.length > 128 || /[\u0000-\u001f\u007f]/.test(password)) throw new HttpError(400, "Credenciais invalidas."); return { email, password }; }

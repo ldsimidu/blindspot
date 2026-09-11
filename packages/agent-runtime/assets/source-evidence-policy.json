@@ -1,0 +1,16 @@
+{
+  "version": "2026-09-09.1",
+  "acceptedAdherenceStatuses": [
+    "exata",
+    "compativel"
+  ],
+  "criticalPathPrefixes": [
+    "ficha_tecnica.identificacao",
+    "ficha_tecnica.motorizacao",
+    "ficha_tecnica.transmissao_e_tracao",
+    "ficha_tecnica.seguranca",
+    "ficha_tecnica.dimensoes_e_capacidade"
+  ],
+  "evidenceExcerptMaxChars": 1200,
+  "publicObservedTitleMaxChars": 300
+}

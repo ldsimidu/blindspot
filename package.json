@@ -11,9 +11,14 @@
     "preview": "vite preview --config vite.config.ts",
     "typecheck": "tsc --noEmit",
     "verify:source-policy": "tsx scripts/verify-source-policy.ts",
+    "verify:source-evidence": "tsx scripts/verify-source-evidence.ts",
+    "verify:research-capabilities": "tsx scripts/verify-research-capabilities.ts",
+    "verify:document-reader": "tsx scripts/verify-document-reader.ts",
+    "verify:telemetry-sanitization": "tsx scripts/verify-telemetry-sanitization.ts",
     "verify:normalization": "tsx scripts/verify-normalization.ts",
     "verify:technical-sheet-catalog": "tsx scripts/verify-technical-sheet-catalog.ts",
     "verify:field-policy": "tsx scripts/verify-field-policy.ts",
+    "verify:technical-search-facets": "tsx scripts/verify-technical-search-facets.ts",
     "verify:quality-policy": "tsx scripts/verify-quality-policy.ts",
     "verify:catalog-contract": "tsx scripts/verify-catalog-contract.ts",
     "db:generate": "drizzle-kit generate",
@@ -25,7 +30,8 @@
     "ajv-formats": "^3.0.1",
     "cors": "^2.8.5",
     "drizzle-orm": "^0.45.2",
-    "express": "^4.21.2",
+    "express": "4.22.2",
+    "pdf-parse": "2.4.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -41,5 +47,9 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.2",
     "vite": "^5.4.11"
+  },
+  "overrides": {
+    "path-to-regexp": "0.1.13",
+    "qs": "6.16.0"
   }
 }

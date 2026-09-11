@@ -40,9 +40,28 @@ for (const path of fieldPolicy.conditionalFields.filter((rule) => !rule.applicab
 }
 validate(electric);
 
-const omittedPath = clone(mock);
-delete (omittedPath.ficha_tecnica as Record<string, unknown>).motorizacao;
-expectError(omittedPath, "technical_sheet_coverage_incomplete");
+const omittedGroup = clone(mock);
+const omittedMotorFieldCount = Object.keys(((omittedGroup.ficha_tecnica as Record<string, unknown>).motorizacao as Record<string, unknown>)).length;
+delete (omittedGroup.ficha_tecnica as Record<string, unknown>).motorizacao;
+const recoveredGroup = validate(omittedGroup);
+const recoveredMotor = ((recoveredGroup.ficha_tecnica as Record<string, unknown>).motorizacao as Record<string, Record<string, unknown>>);
+const recoveredGroupSummary = recoveredGroup.resumo_completude as Record<string, unknown>;
+if (recoveredGroupSummary.campos_estruturais_completados !== omittedMotorFieldCount || recoveredMotor.potencia_cv?.status !== "nao_encontrado" || recoveredMotor.potencia_cv?.obs_ref !== "NF1") {
+  throw new Error("Grupo tecnico ausente deve ser completado como nao encontrado, sem valor ou fonte.");
+}
+
+const omittedCollection = clone(mock);
+delete ((omittedCollection.ficha_tecnica as Record<string, unknown>).adicionais as Record<string, unknown>).adicionais_tecnologia;
+const recoveredCollection = validate(omittedCollection);
+const recoveredAdditions = ((recoveredCollection.ficha_tecnica as Record<string, unknown>).adicionais as Record<string, unknown>);
+const recoveredCollectionSummary = recoveredCollection.resumo_completude as Record<string, unknown>;
+if (recoveredCollectionSummary.campos_estruturais_completados !== 1 || !Array.isArray(recoveredAdditions.adicionais_tecnologia) || recoveredAdditions.adicionais_tecnologia.length !== 0) {
+  throw new Error("Colecao obrigatoria ausente deve ser completada com array vazio.");
+}
+
+const malformedGroup = clone(mock);
+(malformedGroup.ficha_tecnica as Record<string, unknown>).motorizacao = "invalido";
+expectError(malformedGroup, "technical_sheet_coverage_incomplete");
 
 console.log("FIELD_POLICY_CHECK=PASS");
 

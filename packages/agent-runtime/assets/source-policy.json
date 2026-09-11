@@ -1,5 +1,5 @@
 {
-  "version": "2026-09-08.1",
+  "version": "2026-09-08.2",
   "identityFields": ["marca", "modelo", "versao", "ano_modelo", "mercado"],
   "officialSourceTypes": [
     "site_oficial_montadora",

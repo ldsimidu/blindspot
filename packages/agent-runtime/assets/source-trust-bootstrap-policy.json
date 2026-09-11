@@ -1,0 +1,10 @@
+{
+  "version": "1.0.0",
+  "bootstrap": {
+    "max_candidate_hosts": 3,
+    "expires_after_days": 90,
+    "minimum_observations_for_learned": 2,
+    "minimum_confidence_for_learned": 8,
+    "requires_exact_adherence": true
+  }
+}

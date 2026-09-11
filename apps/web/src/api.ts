@@ -3,6 +3,8 @@ import type {
   CatalogEntryResult,
   CatalogRecommendationsResult,
   CatalogSearchResult,
+  TechnicalCatalogSearchFilters,
+  TechnicalCatalogSearchResult,
   FichaTecnicaHistoryItem,
   FichaTecnicaResponse,
   VehicleInput,
@@ -18,9 +20,17 @@ const API_ENDPOINT = "/api/ficha-tecnica";
 const API_LATEST_ENDPOINT = "/api/ficha-tecnica/latest";
 const API_HISTORY_ENDPOINT = "/api/ficha-tecnica/history";
 const API_CATALOG_ENDPOINT = "/api/catalogo/fichas";
+const API_TECHNICAL_CATALOG_ENDPOINT = "/api/catalogo/fichas/pesquisa-tecnica";
 const API_LOGIN_ENDPOINT = "/api/auth/login";
 const API_LOGOUT_ENDPOINT = "/api/auth/logout";
 const API_SESSION_ENDPOINT = "/api/auth/session";
+
+export class ApiRequestError extends Error {
+  constructor(message: string, readonly details: unknown = null) {
+    super(message);
+    this.name = "ApiRequestError";
+  }
+}
 
 export interface AuthSession { state: "authenticated"; email: string; displayName: string; role: OrganizationRole; expires_at?: string; }
 export type LoginOutcome = AuthSession | { state: "pending_review" | "rejected" };
@@ -64,10 +74,7 @@ export async function gerarFichaTecnica(payload: VehicleInput): Promise<FichaTec
   });
 
   if (!response.ok) {
-    const errorPayload = (await safeJson(response)) as ApiErrorResponse | null;
-    const fallbackMessage = `Erro ao gerar ficha tecnica (HTTP ${response.status})`;
-
-    throw new Error(errorPayload?.message ?? fallbackMessage);
+    throw await apiError(response, "Erro ao gerar ficha tecnica");
   }
 
   return (await response.json()) as FichaTecnicaResponse;
@@ -101,7 +108,7 @@ export async function obterHistoricoFichas(limit = 2): Promise<FichaTecnicaHisto
   return (await response.json()) as FichaTecnicaHistoryItem[];
 }
 
-export interface CatalogSearchOptions { query?: string; brand?: string; model?: string; modelYear?: string; market?: string; page?: number; sort?: "recent" | "alphabetical"; }
+export interface CatalogSearchOptions { query?: string; brand?: string; model?: string; modelYear?: string; market?: string; page?: number; sort?: "recent" | "alphabetical"; scope?: "latest" | "all_versions"; }
 export async function buscarCatalogo(options: CatalogSearchOptions = {}): Promise<CatalogSearchResult> {
   const params = new URLSearchParams({ page: String(options.page ?? 1), page_size: "20" });
   if (options.query?.trim()) params.set("q", options.query.trim());
@@ -110,9 +117,23 @@ export async function buscarCatalogo(options: CatalogSearchOptions = {}): Promis
   if (options.modelYear?.trim()) params.set("ano_modelo", options.modelYear.trim());
   if (options.market?.trim()) params.set("mercado", options.market.trim());
   if (options.sort) params.set("sort", options.sort);
+  if (options.scope) params.set("scope", options.scope);
   const response = await fetch(`${API_CATALOG_ENDPOINT}?${params.toString()}`, { credentials: "same-origin" });
   if (!response.ok) throw await apiError(response, "Erro ao consultar catalogo");
   return (await response.json()) as CatalogSearchResult;
+}
+
+export async function buscarCatalogoTecnico(filters: TechnicalCatalogSearchFilters & { page?: number } = {}): Promise<TechnicalCatalogSearchResult> {
+  const params = new URLSearchParams({ page: String(filters.page ?? 1), page_size: "20" });
+  if (filters.tipo_carroceria) params.set("tipo_carroceria", filters.tipo_carroceria);
+  if (filters.motor_tipo) params.set("motor_tipo", filters.motor_tipo);
+  if (filters.potencia_min_cv) params.set("potencia_min_cv", filters.potencia_min_cv);
+  if (filters.potencia_max_cv) params.set("potencia_max_cv", filters.potencia_max_cv);
+  if (filters.ano_modelo) params.set("ano_modelo", filters.ano_modelo);
+  if (filters.mercado?.trim()) params.set("mercado", filters.mercado.trim());
+  const response = await fetch(`${API_TECHNICAL_CATALOG_ENDPOINT}?${params.toString()}`, { credentials: "same-origin" });
+  if (!response.ok) throw await apiError(response, "Erro ao consultar facetas tecnicas");
+  return (await response.json()) as TechnicalCatalogSearchResult;
 }
 
 export async function abrirFichaCatalogo(id: string, vehicle: VehicleInput): Promise<CatalogEntryResult> {
@@ -173,10 +194,12 @@ export async function reconhecerAlertaConsumo(id: string): Promise<void> { const
 export async function criarComparacao(ids: [string, string]): Promise<SavedComparison> { const response = await fetch("/api/comparacoes", { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ technical_sheet_version_ids: ids }) }); if (!response.ok) throw await apiError(response, "Erro ao criar comparacao"); return (await response.json()) as SavedComparison; }
 export async function listarComparacoes(): Promise<{ comparisons: Array<{ id: string; created_at: string; left_version_id: string; right_version_id: string }> }> { const response = await fetch("/api/comparacoes", { credentials: "same-origin" }); if (!response.ok) throw await apiError(response, "Erro ao listar comparacoes"); return (await response.json()) as { comparisons: Array<{ id: string; created_at: string; left_version_id: string; right_version_id: string }> }; }
 export async function obterComparacao(id: string): Promise<SavedComparison> { const response = await fetch(`/api/comparacoes/${encodeURIComponent(id)}`, { credentials: "same-origin" }); if (!response.ok) throw await apiError(response, "Erro ao abrir comparacao"); return (await response.json()) as SavedComparison; }
+export async function exportarComparacao(id: string, format: "csv" | "json"): Promise<void> { const response = await fetch(`/api/comparacoes/${encodeURIComponent(id)}/export?format=${format}`, { credentials: "same-origin" }); if (!response.ok) throw await apiError(response, "Erro ao exportar comparacao"); const url = URL.createObjectURL(await response.blob()); const link = document.createElement("a"); link.href = url; link.download = `comparacao-${id}.${format}`; link.click(); URL.revokeObjectURL(url); }
+export async function exportarFicha(id: string, format: "csv" | "json"): Promise<void> { const response = await fetch(`/api/ficha-tecnica/versoes/${encodeURIComponent(id)}/export?format=${format}`, { credentials: "same-origin" }); if (!response.ok) throw await apiError(response, "Erro ao exportar ficha"); const url = URL.createObjectURL(await response.blob()); const link = document.createElement("a"); link.href = url; link.download = `ficha-${id}.${format}`; link.click(); URL.revokeObjectURL(url); }
 
-async function apiError(response: Response, fallback: string): Promise<Error> {
+async function apiError(response: Response, fallback: string): Promise<ApiRequestError> {
   const errorPayload = (await safeJson(response)) as ApiErrorResponse | null;
-  return new Error(errorPayload?.message ?? `${fallback} (HTTP ${response.status})`);
+  return new ApiRequestError(errorPayload?.message ?? `${fallback} (HTTP ${response.status})`, errorPayload?.details);
 }
 
 async function safeJson(response: Response): Promise<unknown | null> {

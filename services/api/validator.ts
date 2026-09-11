@@ -5,6 +5,7 @@ import { ValidationError, type VehicleInput } from "./types";
 import type { SourcePolicy } from "./runtime-assets";
 import type { NormalizationPolicy } from "./runtime-assets";
 import { normalizeTechnicalMeasurements } from "./normalizer";
+import type { NormalizationFailureMode } from "./normalizer";
 import type { FieldPolicy } from "./runtime-assets";
 import { validateFieldPolicy } from "./field-policy-validator";
 import type { QualityPolicy } from "./runtime-assets";
@@ -14,7 +15,9 @@ interface ValidationContext {
   vehicle: VehicleInput;
   provider: "claude" | "openrouter" | "simulated";
   sourcePolicy: SourcePolicy;
+  runtimeFirstPartyDomains?: string[];
   normalizationPolicy?: NormalizationPolicy;
+  normalizationFailureMode?: NormalizationFailureMode;
   fieldPolicy?: FieldPolicy;
   qualityPolicy?: QualityPolicy;
 }
@@ -25,16 +28,23 @@ export function validateResponse(
   context?: ValidationContext
 ): FichaTecnicaResponse {
   const normalizedResponse = normalizeCandidateResponse(candidateResponse);
+  const structurallyCompletedFields = completeMissingTechnicalSheetFields(normalizedResponse, outputSchema);
   normalizeStatusFieldShapes(normalizedResponse);
-  if (context?.normalizationPolicy) normalizeTechnicalMeasurements(normalizedResponse, context.normalizationPolicy);
+  if (context?.normalizationPolicy) {
+    normalizeTechnicalMeasurements(normalizedResponse, context.normalizationPolicy, {
+      failureMode: context.normalizationFailureMode,
+    });
+  }
+  if (context) applyRequestedVehicleIdentity(normalizedResponse, context.vehicle);
+  rejectUnauthorizedInputProvenance(normalizedResponse);
   if (context?.fieldPolicy) validateFieldPolicy(normalizedResponse, context.fieldPolicy);
   if (context?.qualityPolicy) validateQualityPolicy(normalizedResponse, context.qualityPolicy);
-  enrichResumoCompletude(normalizedResponse, outputSchema, context?.fieldPolicy);
+  enrichResumoCompletude(normalizedResponse, outputSchema, context?.fieldPolicy, structurallyCompletedFields);
+  if (context) classifySourcePolicy(normalizedResponse, context);
   validateWithAjv(normalizedResponse, outputSchema);
   validateFonteRefConsistency(normalizedResponse);
   if (context) {
     validateVehicleIdentity(normalizedResponse, context.vehicle);
-    validateSourcePolicy(normalizedResponse, context);
   }
 
   return normalizedResponse as FichaTecnicaResponse;
@@ -57,10 +67,70 @@ function validateVehicleIdentity(candidateResponse: unknown, requestedVehicle: V
   }
 }
 
-function validateSourcePolicy(candidateResponse: unknown, context: ValidationContext): void {
-  if (!isObject(candidateResponse) || !Array.isArray(candidateResponse.fontes_utilizadas)) {
-    throw new ValidationError("Fontes utilizadas ausentes ou invalidas.");
+function applyRequestedVehicleIdentity(candidateResponse: unknown, requestedVehicle: VehicleInput): void {
+  if (!isObject(candidateResponse) || !isObject(candidateResponse.ficha_tecnica)) return;
+  const identification = candidateResponse.ficha_tecnica.identificacao;
+  if (!isObject(identification)) return;
+
+  const identityValues: Record<keyof VehicleInput, string | number> = {
+    marca: requestedVehicle.marca,
+    modelo: requestedVehicle.modelo,
+    versao: requestedVehicle.versao,
+    ano_modelo: requestedVehicle.ano_modelo,
+    mercado: requestedVehicle.mercado,
+  };
+
+  for (const [field, value] of Object.entries(identityValues)) {
+    identification[field] = {
+      valor: value,
+      status: "informado_na_entrada",
+      origem: "entrada_usuario",
+    };
   }
+}
+
+function rejectUnauthorizedInputProvenance(candidateResponse: unknown): void {
+  if (!isObject(candidateResponse) || !isObject(candidateResponse.ficha_tecnica)) return;
+  const allowedPaths = new Set([
+    "identificacao.marca",
+    "identificacao.modelo",
+    "identificacao.versao",
+    "identificacao.ano_modelo",
+    "identificacao.mercado",
+  ]);
+  const unauthorized: string[] = [];
+
+  walkStatusFields(candidateResponse.ficha_tecnica, "", (field, path) => {
+    if (field.status === "informado_na_entrada" && !allowedPaths.has(path)) unauthorized.push(path);
+  });
+
+  if (unauthorized.length > 0) {
+    throw new ValidationError("Proveniencia de entrada so pode ser usada na identidade do veiculo solicitado.", {
+      code: "input_provenance_not_allowed_for_field",
+      fields: unauthorized,
+    });
+  }
+}
+
+function walkStatusFields(
+  node: unknown,
+  path: string,
+  visit: (field: Record<string, unknown>, path: string) => void,
+): void {
+  if (Array.isArray(node)) {
+    node.forEach((item, index) => walkStatusFields(item, `${path}[${index}]`, visit));
+    return;
+  }
+  if (!isObject(node)) return;
+  if (typeof node.status === "string") visit(node, path);
+  for (const [key, value] of Object.entries(node)) {
+    if (["valor", "status", "origem", "fonte_ref", "obs_ref", "observacoes", "valor_original"].includes(key)) continue;
+    walkStatusFields(value, path ? `${path}.${key}` : key, visit);
+  }
+}
+
+function classifySourcePolicy(candidateResponse: unknown, context: ValidationContext): void {
+  if (!isObject(candidateResponse) || !Array.isArray(candidateResponse.fontes_utilizadas)) return;
 
   const policyMarket = context.sourcePolicy.markets.find(
     (entry) =>
@@ -68,57 +138,67 @@ function validateSourcePolicy(candidateResponse: unknown, context: ValidationCon
       normalizeIdentityValue(entry.market) === normalizeIdentityValue(context.vehicle.mercado)
   );
 
-  if (!policyMarket) {
-    throw new ValidationError("Mercado do veiculo ainda nao possui politica de fontes aprovada.", {
-      code: "source_policy_market_not_approved"
-    });
-  }
-
-  const violations: Array<{ sourceId: string; code: string }> = [];
   for (const source of candidateResponse.fontes_utilizadas) {
-    if (!isObject(source)) {
-      violations.push({ sourceId: "unknown", code: "source_not_object" });
-      continue;
-    }
-    const sourceId = typeof source.id === "string" ? source.id : "unknown";
+    if (!isObject(source)) continue;
+    delete source.avaliacao_politica;
     const type = typeof source.tipo === "string" ? source.tipo : "";
     const host = parseHttpsHost(source.url);
 
     if (!host) {
-      violations.push({ sourceId, code: "source_url_not_https" });
+      source.avaliacao_politica = createSourceAssessment(context.sourcePolicy.version, "nao_rastreavel_com_seguranca", ["url_nao_https_ou_invalida"]);
       continue;
     }
 
     if (context.provider === "simulated") {
-      if (!context.sourcePolicy.simulated.allowedSourceTypes.includes(type) || !hostMatchesAny(host, context.sourcePolicy.simulated.allowedHosts)) {
-        violations.push({ sourceId, code: "simulated_source_not_allowed" });
-      }
+      const isLocalMock = context.sourcePolicy.simulated.allowedSourceTypes.includes(type) && hostMatchesAny(host, context.sourcePolicy.simulated.allowedHosts);
+      source.avaliacao_politica = isLocalMock
+        ? createSourceAssessment(context.sourcePolicy.version, "fonte_simulada_local")
+        : classifyRemoteSource(context.sourcePolicy, policyMarket, type, host, context.runtimeFirstPartyDomains);
       continue;
     }
 
-    if (context.sourcePolicy.officialSourceTypes.includes(type)) {
-      if (!hostMatchesAny(host, policyMarket.officialDomains)) {
-        violations.push({ sourceId, code: "official_source_host_not_allowed" });
-      }
-      continue;
-    }
+    source.avaliacao_politica = classifyRemoteSource(context.sourcePolicy, policyMarket, type, host, context.runtimeFirstPartyDomains);
+  }
+}
 
-    if (context.sourcePolicy.partnerSourceTypes.includes(type)) {
-      if (!hostMatchesAny(host, context.sourcePolicy.partnerDomains)) {
-        violations.push({ sourceId, code: "partner_source_host_not_allowed" });
-      }
-      continue;
-    }
-
-    violations.push({ sourceId, code: "source_type_not_allowed" });
+function classifyRemoteSource(
+  policy: SourcePolicy,
+  policyMarket: SourcePolicy["markets"][number] | undefined,
+  type: string,
+  host: string,
+  runtimeFirstPartyDomains: string[] = [],
+): Record<string, unknown> {
+  const approvedOfficialDomains = [...(policyMarket?.officialDomains ?? []), ...runtimeFirstPartyDomains];
+  if (policy.officialSourceTypes.includes(type) && hostMatchesAny(host, approvedOfficialDomains)) {
+    return createSourceAssessment(policy.version, "na_lista_aprovada");
   }
 
-  if (violations.length > 0) {
-    throw new ValidationError("Resposta contem fontes fora da politica aprovada.", {
-      code: "source_policy_violation",
-      violations
-    });
+  if (policy.partnerSourceTypes.includes(type) && hostMatchesAny(host, policy.partnerDomains)) {
+    return createSourceAssessment(policy.version, "na_lista_aprovada");
   }
+
+  if (
+    !policyMarket &&
+    runtimeFirstPartyDomains.length === 0 &&
+    !policy.officialSourceTypes.includes(type) &&
+    !policy.partnerSourceTypes.includes(type)
+  ) {
+    return createSourceAssessment(policy.version, "sem_politica_para_mercado", ["mercado_sem_politica_local"]);
+  }
+
+  const reasons: string[] = [];
+  if (!policy.officialSourceTypes.includes(type) && !policy.partnerSourceTypes.includes(type)) reasons.push("tipo_declarado_nao_classificado");
+  if (policy.officialSourceTypes.includes(type)) reasons.push("host_oficial_nao_listado_para_marca_mercado");
+  if (policy.partnerSourceTypes.includes(type)) reasons.push("host_parceiro_nao_listado");
+  return createSourceAssessment(policy.version, "fora_da_lista_aprovada", reasons);
+}
+
+function createSourceAssessment(version: string, status: string, reasons: string[] = []): Record<string, unknown> {
+  return {
+    status,
+    versao: version,
+    ...(reasons.length > 0 ? { motivos: reasons } : {})
+  };
 }
 
 function parseHttpsHost(value: unknown): string | null {
@@ -164,6 +244,44 @@ function normalizeCandidateResponse(candidateResponse: unknown): unknown {
   return candidateResponse;
 }
 
+/**
+ * A provider can return valid JSON while omitting required technical-sheet
+ * properties. An omission is never evidence: complete only absent schema paths
+ * with the existing not-found representation, never with a value or source.
+ * Values that are present but malformed remain validation failures.
+ */
+function completeMissingTechnicalSheetFields(candidateResponse: unknown, outputSchema: Record<string, unknown>): number {
+  if (!isRecordObject(candidateResponse) || !isRecordObject(candidateResponse.ficha_tecnica)) return 0;
+
+  const rootProperties = isRecordObject(outputSchema.properties) ? outputSchema.properties : null;
+  const fichaSchema = rootProperties && isRecordObject(rootProperties.ficha_tecnica) ? rootProperties.ficha_tecnica : null;
+  const groups = fichaSchema && isRecordObject(fichaSchema.properties) ? fichaSchema.properties : null;
+  if (!groups) return 0;
+
+  const fichaTecnica = candidateResponse.ficha_tecnica;
+  let completed = 0;
+  for (const [groupName, groupSchema] of Object.entries(groups)) {
+    if (!isRecordObject(groupSchema) || !Array.isArray(groupSchema.required) || !isRecordObject(groupSchema.properties)) continue;
+    if (!Object.prototype.hasOwnProperty.call(fichaTecnica, groupName)) fichaTecnica[groupName] = {};
+    const group = fichaTecnica[groupName];
+    if (!isRecordObject(group)) continue;
+
+    for (const fieldName of groupSchema.required) {
+      if (typeof fieldName !== "string" || Object.prototype.hasOwnProperty.call(group, fieldName)) continue;
+      const fieldSchema = groupSchema.properties[fieldName];
+      group[fieldName] = isArrayFieldSchema(fieldSchema)
+        ? []
+        : { valor: null, status: "nao_encontrado", obs_ref: "NF1" };
+      completed += 1;
+    }
+  }
+  return completed;
+}
+
+function isArrayFieldSchema(value: unknown): boolean {
+  return isRecordObject(value) && value.type === "array";
+}
+
 function validateWithAjv(candidateResponse: unknown, outputSchema: Record<string, unknown>): void {
   const ajv = new Ajv2020({
     allErrors: true,
@@ -177,7 +295,9 @@ function validateWithAjv(candidateResponse: unknown, outputSchema: Record<string
 
   if (!isValid) {
     throw new ValidationError("Resposta do LLM invalida para o schema.", {
-      ajvErrors: formatAjvErrors(validate.errors ?? [])
+      code: "schema_validation_failed",
+      ajvErrors: formatAjvErrors(validate.errors ?? []),
+      schemaIssues: formatAjvIssues(validate.errors ?? [])
     });
   }
 }
@@ -249,8 +369,47 @@ function formatAjvErrors(errors: ErrorObject[]): string[] {
   });
 }
 
+export interface SchemaValidationIssue {
+  path: string;
+  keyword: string;
+}
+
+export function formatAjvIssues(errors: ErrorObject[]): SchemaValidationIssue[] {
+  return errors.slice(0, 20).map((error) => {
+    const missingProperty = error.keyword === "required" && typeof error.params.missingProperty === "string"
+      ? safeSchemaSegment(error.params.missingProperty)
+      : null;
+    const basePath = safeSchemaPath(error.instancePath || "/");
+    const path = missingProperty
+      ? `${basePath === "/" ? "" : basePath}/${missingProperty}`
+      : basePath;
+    return {
+      path: path || "/",
+      keyword: safeSchemaKeyword(error.keyword),
+    };
+  });
+}
+
+function safeSchemaPath(value: string): string {
+  const limited = value.slice(0, 240);
+  return /^\/(?:[A-Za-z0-9_.~-]+\/?)*$/.test(limited) ? limited : "/[redacted]";
+}
+
+function safeSchemaSegment(value: string): string {
+  return /^[A-Za-z0-9_.-]{1,100}$/.test(value) ? value : "[redacted]";
+}
+
+function safeSchemaKeyword(value: string): string {
+  const allowed = new Set(["required", "type", "enum", "const", "format", "minimum", "maximum", "minLength", "maxLength", "minItems", "maxItems", "uniqueItems", "additionalProperties", "anyOf", "oneOf", "allOf", "not"]);
+  return allowed.has(value) ? value : "schema_rule";
+}
+
 function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isRecordObject(value: unknown): value is Record<string, unknown> {
+  return isObject(value) && !Array.isArray(value);
 }
 
 function looksLikeFichaTecnicaResponse(value: Record<string, unknown>): boolean {
@@ -309,7 +468,7 @@ function tryParsePossiblyFencedJson(text: string): unknown | null {
   }
 }
 
-function enrichResumoCompletude(candidateResponse: unknown, outputSchema: Record<string, unknown>, fieldPolicy?: FieldPolicy): void {
+function enrichResumoCompletude(candidateResponse: unknown, outputSchema: Record<string, unknown>, fieldPolicy?: FieldPolicy, structurallyCompletedFields = 0): void {
   if (!isObject(candidateResponse) || !isObject(candidateResponse.ficha_tecnica)) {
     return;
   }
@@ -317,6 +476,8 @@ function enrichResumoCompletude(candidateResponse: unknown, outputSchema: Record
   const counters = {
     total_variaveis: 0,
     preenchidas: 0,
+    informadas_na_entrada: 0,
+    total_pesquisaveis: 0,
     nao_encontradas: 0,
     nao_aplicaveis: 0,
     conflitantes: 0
@@ -327,9 +488,12 @@ function enrichResumoCompletude(candidateResponse: unknown, outputSchema: Record
   candidateResponse.resumo_completude = {
     total_variaveis: counters.total_variaveis,
     preenchidas: counters.preenchidas,
+    informadas_na_entrada: counters.informadas_na_entrada,
+    total_pesquisaveis: counters.total_pesquisaveis,
     nao_encontradas: counters.nao_encontradas,
     nao_aplicaveis: counters.nao_aplicaveis,
     conflitantes: counters.conflitantes,
+    campos_estruturais_completados: structurallyCompletedFields,
     ...(fieldPolicy ? summarizeCoverage(candidateResponse.ficha_tecnica, outputSchema, fieldPolicy) : {})
   };
 }
@@ -448,6 +612,8 @@ function walkAndCountStatus(
   counters: {
     total_variaveis: number;
     preenchidas: number;
+    informadas_na_entrada: number;
+    total_pesquisaveis: number;
     nao_encontradas: number;
     nao_aplicaveis: number;
     conflitantes: number;
@@ -464,6 +630,12 @@ function walkAndCountStatus(
 
   if (typeof node.status === "string") {
     counters.total_variaveis += 1;
+
+    if (node.status === "informado_na_entrada") {
+      counters.informadas_na_entrada += 1;
+    } else {
+      counters.total_pesquisaveis += 1;
+    }
 
     if (node.status === "confirmado" || node.status === "parcial" || node.status === "inferido_minimamente") {
       counters.preenchidas += 1;

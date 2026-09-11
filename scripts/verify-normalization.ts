@@ -34,6 +34,24 @@ const invalidNoValue = clone(mock);
 setMeasure(invalidNoValue, "torque_nm", "0 Nm");
 expectInvalid(invalidNoValue, "torque_nm", "measurement_must_be_positive");
 
+const compoundConsumption = clone(mock);
+setMeasure(compoundConsumption, "consumo_valor", "6.7 km/l 7.4 km/l");
+const downgraded = validate(compoundConsumption, "downgrade");
+const downgradedConsumption = getField(downgraded, "consumo_valor");
+if (
+  downgradedConsumption.status !== "nao_encontrado" ||
+  downgradedConsumption.valor !== null ||
+  downgradedConsumption.obs_ref !== "NF1" ||
+  "fonte_ref" in downgradedConsumption ||
+  "valor_original" in downgradedConsumption
+) {
+  throw new Error("Compound consumption must be isolated as nao_encontrado.");
+}
+const metadata = downgraded.metadados_coleta as Record<string, unknown>;
+if (!Array.isArray(metadata.observacoes_gerais) || !metadata.observacoes_gerais.some((item) => item === "Medida tecnica ambigua ou invalida em motorizacao.consumo_valor; campo rebaixado para nao_encontrado.")) {
+  throw new Error("Downgrade must leave a sanitized normalization warning.");
+}
+
 const absent = clone(mock);
 const absentField = getField(absent, "consumo_valor");
 absentField.valor = null;
@@ -44,8 +62,8 @@ validate(absent);
 
 console.log("NORMALIZATION_CHECK=PASS");
 
-function validate(candidate: unknown): Record<string, unknown> {
-  return validateResponse(candidate, schema, { vehicle, provider: "simulated", sourcePolicy, normalizationPolicy }) as unknown as Record<string, unknown>;
+function validate(candidate: unknown, normalizationFailureMode?: "reject" | "downgrade"): Record<string, unknown> {
+  return validateResponse(candidate, schema, { vehicle, provider: "simulated", sourcePolicy, normalizationPolicy, normalizationFailureMode }) as unknown as Record<string, unknown>;
 }
 
 function setMeasure(candidate: Record<string, unknown>, field: string, value: string): void {

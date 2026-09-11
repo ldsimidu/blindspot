@@ -1,9 +1,10 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { abrirFichaCatalogo, ativarConviteMembro, alterarPapelMembro, buscarCatalogo, cadastrarOrganizacao, convidarMembro, desativarMembro, entrar, gerarFichaTecnica, obterAlertasConsumo, obterConsumo, obterEquipe, obterHistoricoFichas, obterRecomendacoesCatalogo, obterSessao, obterUltimaFichaTecnica, reconhecerAlertaConsumo, revogarConviteMembro, sair, salvarPoliticaConsumo } from "./api";
+import { ApiRequestError, abrirFichaCatalogo, ativarConviteMembro, alterarPapelMembro, buscarCatalogo, cadastrarOrganizacao, convidarMembro, desativarMembro, entrar, exportarFicha, gerarFichaTecnica, obterAlertasConsumo, obterConsumo, obterEquipe, obterHistoricoFichas, obterRecomendacoesCatalogo, obterSessao, obterUltimaFichaTecnica, reconhecerAlertaConsumo, revogarConviteMembro, sair, salvarPoliticaConsumo } from "./api";
 import type { CatalogCandidate, CatalogEntryResult, CatalogSearchResult, FichaTecnicaHistoryItem, FichaTecnicaResponse, OrganizationMember, OrganizationMemberInvitation, OrganizationRole, UsageAlertSettings, UsageSummary, VehicleInput } from "./types";
 import logoBlindspot from "./assets/blindspot-mark.png";
 import { ComparisonPanel } from "./ComparisonPanel";
 import { FichaDiscovery } from "./FichaDiscovery";
+import { TechnicalFichaDiscovery } from "./TechnicalFichaDiscovery";
 
 type AppView = "request" | "catalog" | "comparison" | "history" | "team" | "usage";
 type ThemeMode = "dark" | "light";
@@ -20,12 +21,14 @@ interface FormState {
 interface CampoStatus {
   valor?: unknown;
   status?: string;
+  origem?: "entrada_usuario";
   fonte_ref?: string[];
   obs_ref?: string;
   observacoes?: string;
 }
 
 interface FichaRow {
+  key: string;
   label: string;
   value: string;
   status: string;
@@ -191,7 +194,7 @@ function App() {
       await refreshHistory();
       setActiveView("request");
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Erro inesperado ao gerar ficha tecnica.";
+      const message = formatTechnicalSheetGenerationError(err);
       setError(message);
     } finally {
       setLoading(false);
@@ -465,6 +468,7 @@ function App() {
             <section>
               <h1 ref={viewTitleRef} tabIndex={-1}>Catalogo de fichas</h1>
               <p>Comece pelas fichas recentes ou combine filtros. A seleção sempre confirma a configuração exata; não abrimos um veículo aproximado.</p>
+              <TechnicalFichaDiscovery onSelect={(entry) => void openCatalogEntry(entry.id, entry.vehicle)} />
               <FichaDiscovery onSelect={(entry) => void openCatalogEntry(entry.id, entry.vehicle)} selectionLabel="Abrir ficha exata" />
             </section>
             <section className="panel history-detail">
@@ -473,7 +477,7 @@ function App() {
               {catalogEntry?.state === "not_registered" ? <p className="status-text">A configuracao nao possui ficha catalogada.</p> : null}
               {catalogEntry?.state === "found" ? <>
                 <FichaDashboard title={`Ficha catalogada · versao ${catalogEntry.entry.latestVersion ?? "-"}`} ficha={catalogEntry.entry.response} showTraceability />
-                {(signedInRole === "analyst" || signedInRole === "admin") && catalogEntry.entry.latestTechnicalSheetVersionId ? <button type="button" className="primary-button" onClick={() => addCatalogCandidateToComparison(catalogEntry.entry)}>Adicionar ficha aberta à comparação</button> : null}
+                {(signedInRole === "analyst" || signedInRole === "admin") && catalogEntry.entry.latestTechnicalSheetVersionId ? <><button type="button" className="primary-button" onClick={() => addCatalogCandidateToComparison(catalogEntry.entry)}>Adicionar ficha aberta à comparação</button><button type="button" className="collapse-all-button" onClick={() => void exportarFicha(catalogEntry.entry.latestTechnicalSheetVersionId!, "csv")}>Exportar CSV</button><button type="button" className="collapse-all-button" onClick={() => void exportarFicha(catalogEntry.entry.latestTechnicalSheetVersionId!, "json")}>Exportar JSON</button></> : null}
                 <section className="source-section"><h3>Fichas relacionadas</h3><p className="source-review-notice">Mesma marca, modelo, ano-modelo e mercado. Esta relação não avalia motorização nem garante compatibilidade para comparar.</p>{catalogRelated.length ? <div className="history-list">{catalogRelated.map((entry) => <article key={entry.id} className="history-item"><button type="button" className="history-item" onClick={() => void openCatalogEntry(entry.id, entry.vehicle)}><strong>{entry.vehicle.marca} {entry.vehicle.modelo} {entry.vehicle.versao}</strong><span>{entry.vehicle.ano_modelo} · {entry.vehicle.mercado} · versão {entry.latestVersion ?? "-"}</span></button>{(signedInRole === "analyst" || signedInRole === "admin") && entry.latestTechnicalSheetVersionId ? <button type="button" className="collapse-all-button" onClick={() => addCatalogCandidateToComparison(entry)}>Adicionar à comparação</button> : null}</article>)}</div> : <p className="status-text">Não há outras fichas relacionadas para esta identidade.</p>}</section>
               </> : null}
             </section>
@@ -560,6 +564,22 @@ function App() {
   );
 }
 
+function formatTechnicalSheetGenerationError(error: unknown): string {
+  if (!(error instanceof ApiRequestError)) {
+    return error instanceof Error ? error.message : "Erro inesperado ao gerar ficha tecnica.";
+  }
+  if (!isObject(error.details) || error.details.code !== "schema_validation_failed" || !Array.isArray(error.details.schemaIssues)) {
+    return error.message;
+  }
+  const issues = error.details.schemaIssues.slice(0, 5).flatMap((item) => {
+    if (!isObject(item) || typeof item.path !== "string" || typeof item.keyword !== "string") return [];
+    return [`${item.path} (${item.keyword})`];
+  });
+  return issues.length > 0
+    ? `${error.message} Verifique: ${issues.join(", ")}.`
+    : error.message;
+}
+
 function TeamPanel() {
   const [people, setPeople] = useState<{ members: OrganizationMember[]; invitations: OrganizationMemberInvitation[] } | null>(null);
   const [email, setEmail] = useState(""); const [role, setRole] = useState<OrganizationRole>("viewer"); const [error, setError] = useState<string | null>(null); const [link, setLink] = useState<string | null>(null);
@@ -596,12 +616,20 @@ function FichaDashboard({
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
   const allCollapsed = sections.length > 0 && sections.every((section) => collapsedSections[section.key]);
   const fontesMap = useMemo(() => {
-    const map = new Map<string, { titulo: string; url: string; tipo: string }>();
+    const map = new Map<string, {
+      titulo: string;
+      url: string;
+      tipo: string;
+      avaliacao_politica: FichaTecnicaResponse["fontes_utilizadas"][number]["avaliacao_politica"];
+      avaliacao_aderencia: FichaTecnicaResponse["fontes_utilizadas"][number]["avaliacao_aderencia"];
+    }>();
     ficha.fontes_utilizadas.forEach((fonte) => {
       map.set(fonte.id, {
         titulo: fonte.titulo,
         url: fonte.url,
-        tipo: fonte.tipo
+        tipo: fonte.tipo,
+        avaliacao_politica: fonte.avaliacao_politica,
+        avaliacao_aderencia: fonte.avaliacao_aderencia
       });
     });
     return map;
@@ -616,7 +644,7 @@ function FichaDashboard({
   const zeroCem = extractCampoStatusByPath(ficha.ficha_tecnica, "performance_offroad.aceleracao_0_100_s");
   const completude = formatCompleteness(
     ficha.resumo_completude.preenchidas,
-    ficha.resumo_completude.total_variaveis
+    ficha.resumo_completude.total_pesquisaveis ?? ficha.resumo_completude.total_variaveis
   );
 
   function toggleSection(sectionKey: string): void {
@@ -690,9 +718,10 @@ function FichaDashboard({
             <div className="hero-meta-grid">
               <MetricCard label="Fontes" value={String(ficha.fontes_utilizadas.length)} />
               <MetricCard
-                label="Completude"
-                value={`${String(ficha.resumo_completude.preenchidas ?? "-")} / ${String(ficha.resumo_completude.total_variaveis ?? "-")}`}
+                label="Cobertura pesquisada"
+                value={`${String(ficha.resumo_completude.preenchidas ?? "-")} / ${String(ficha.resumo_completude.total_pesquisaveis ?? ficha.resumo_completude.total_variaveis ?? "-")}`}
               />
+              <MetricCard label="Informados no pedido" value={String(ficha.resumo_completude.informadas_na_entrada ?? "-")} />
               <MetricCard
                 label="Nao aplicaveis"
                 value={String(ficha.resumo_completude.nao_aplicaveis ?? "-")}
@@ -711,18 +740,52 @@ function FichaDashboard({
           {showTraceability ? (
             <section className="source-section">
               <h3>Fontes utilizadas</h3>
-              <div className="source-grid">
-                {ficha.fontes_utilizadas.map((fonte) => (
+              <p className="source-review-notice">
+                Fonte externa nao e automaticamente incorreta, e fonte oficial nao garante aderencia ao ano ou versao. Revise as duas sinalizacoes e o titulo observado durante a geracao.
+              </p>
+              {ficha.fontes_utilizadas.length === 0 ? (
+                <p className="source-review-notice">
+                  Nenhuma fonte com aderencia suficiente permaneceu nesta ficha. Dados sem evidencia valida foram marcados como nao encontrados.
+                </p>
+              ) : (
+                <div className="source-grid">
+                  {ficha.fontes_utilizadas.map((fonte) => (
                   <article key={fonte.id} className="source-card">
                     <strong>{fonte.id}</strong>
                     <span>{fonte.titulo}</span>
                     <span>{fonte.tipo}</span>
-                    <a href={fonte.url} target="_blank" rel="noreferrer">
-                      Abrir fonte
-                    </a>
+                    <span className={`source-assessment source-assessment-${fonte.avaliacao_politica?.status ?? "historical"}`}>
+                      Politica: {formatSourceAssessment(fonte.avaliacao_politica?.status)}
+                    </span>
+                    <span className={`source-assessment source-adherence-${fonte.avaliacao_aderencia?.status ?? "historical"}`}>
+                      Aderencia: {formatSourceAdherence(fonte.avaliacao_aderencia?.status)}
+                    </span>
+                    {fonte.avaliacao_politica?.motivos?.map((motivo, motivoIndex) => (
+                      <span key={`${motivo}-${motivoIndex}`} className="source-assessment-reason">{formatSourceAssessmentReason(motivo)}</span>
+                    ))}
+                    {fonte.avaliacao_aderencia?.motivos.map((motivo, motivoIndex) => (
+                      <span key={`${motivo}-${motivoIndex}`} className="source-assessment-reason">{formatSourceAdherenceReason(motivo)}</span>
+                    ))}
+                    {fonte.evidencia_busca?.observada ? (
+                      <div className="source-observed-evidence">
+                        <span>Titulo observado: {fonte.evidencia_busca.titulo_observado}</span>
+                        <span>Observada em: {formatObservedAt(fonte.evidencia_busca.observada_em)}</span>
+                        <span>Paginas dinamicas podem mudar depois da geracao.</span>
+                      </div>
+                    ) : (
+                      <span className="source-link-unavailable">Sem evidencia observada suficiente nesta execucao</span>
+                    )}
+                    {isSafeHttpsUrl(fonte.url) ? (
+                      <a href={fonte.url} target="_blank" rel="noreferrer">
+                        Abrir fonte
+                      </a>
+                    ) : (
+                      <span className="source-link-unavailable">Link indisponivel por seguranca</span>
+                    )}
                   </article>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </section>
           ) : null}
 
@@ -747,18 +810,18 @@ function FichaDashboard({
                   {!isCollapsed ? (
                     <div className="spec-table">
                       {section.rows.map((row) => (
-                        <div className="spec-row" key={`${section.key}-${row.label}`}>
+                        <div className="spec-row" key={`${section.key}-${row.key}`}>
                           <span className="spec-label">{row.label}</span>
                           <span className="spec-value">{row.value}</span>
                           <div className="spec-meta">
                             <span className={`status-pill status-${row.status}`}>{formatStatusLabel(row.status)}</span>
                             {showTraceability && row.fonteRefs.length > 0 ? (
                               <div className="fonte-tags">
-                                {row.fonteRefs.map((fonteId) => {
+                                {row.fonteRefs.map((fonteId, fonteIndex) => {
                                   const fonte = fontesMap.get(fonteId);
-                                  const title = fonte ? `${fonte.titulo} (${fonte.tipo})` : "Fonte sem cadastro";
+                                  const title = fonte ? `${fonte.titulo} (${fonte.tipo}) - aderencia ${formatSourceAdherence(fonte.avaliacao_aderencia?.status)}` : "Fonte sem cadastro";
                                   return (
-                                    <span key={`${row.label}-${fonteId}`} className="fonte-chip" title={title}>
+                                    <span key={`${row.key}-${fonteId}-${fonteIndex}`} className="fonte-chip" title={title}>
                                       {fonteId}
                                     </span>
                                   );
@@ -767,8 +830,8 @@ function FichaDashboard({
                             ) : null}
                             {showTraceability && row.comments.length > 0 ? (
                               <div className="row-comments">
-                                {row.comments.map((comment) => (
-                                  <span key={`${row.label}-${comment}`} className="comment-chip">
+                                {row.comments.map((comment, commentIndex) => (
+                                  <span key={`${row.key}-${commentIndex}`} className="comment-chip">
                                     {comment}
                                   </span>
                                 ))}
@@ -857,6 +920,7 @@ function buildRows(groupValue: Record<string, unknown>): FichaRow[] {
   for (const [key, value] of Object.entries(groupValue)) {
     if (isCampoStatus(value)) {
       rows.push({
+        key,
         label: formatLabel(key),
         value: formatCampoValue(value),
         status: value.status ?? "confirmado",
@@ -867,13 +931,14 @@ function buildRows(groupValue: Record<string, unknown>): FichaRow[] {
     }
 
     if (Array.isArray(value)) {
-      for (const item of value) {
+      for (const [itemIndex, item] of value.entries()) {
         if (!isObject(item) || typeof item.nome !== "string") {
           continue;
         }
 
         const detalhe = isCampoStatus(item.detalhe) ? item.detalhe : null;
         rows.push({
+          key: `${key}-${itemIndex}`,
           label: item.nome,
           value: detalhe ? formatCampoValue(detalhe) : "Sem detalhe",
           status: detalhe?.status ?? "confirmado",
@@ -938,12 +1003,77 @@ function formatSimpleValue(value: unknown): string {
   return String(value);
 }
 
+function formatSourceAssessment(status: string | undefined): string {
+  const labels: Record<string, string> = {
+    na_lista_aprovada: "Na lista aprovada",
+    fora_da_lista_aprovada: "Fora da lista aprovada",
+    nao_rastreavel_com_seguranca: "Nao rastreavel com seguranca",
+    sem_politica_para_mercado: "Sem politica local para este mercado",
+    fonte_simulada_local: "Fonte simulada local"
+  };
+  return status ? (labels[status] ?? "Avaliacao indisponivel") : "Sem avaliacao historica";
+}
+
+function formatSourceAssessmentReason(reason: string): string {
+  const labels: Record<string, string> = {
+    host_oficial_nao_listado_para_marca_mercado: "Host oficial nao listado para marca e mercado",
+    host_parceiro_nao_listado: "Host parceiro nao listado",
+    tipo_declarado_nao_classificado: "Tipo declarado nao classificado",
+    mercado_sem_politica_local: "Mercado ainda sem politica local",
+    url_nao_https_ou_invalida: "URL nao permite link seguro"
+  };
+  return labels[reason] ?? "Motivo de classificacao indisponivel";
+}
+
+function formatSourceAdherence(status: string | undefined): string {
+  const labels: Record<string, string> = {
+    exata: "Exata",
+    compativel: "Compativel",
+    ambigua: "Ambigua",
+    divergente: "Divergente",
+    nao_verificada: "Nao verificada"
+  };
+  return status ? (labels[status] ?? "Indisponivel") : "Sem avaliacao historica";
+}
+
+function formatSourceAdherenceReason(reason: string): string {
+  if (reason.startsWith("ano_modelo_divergente:")) return `Ano-modelo divergente: ${reason.split(":")[1]}`;
+  const labels: Record<string, string> = {
+    url_nao_observada_no_provider: "URL nao observada pelo provider",
+    url_nao_https_ou_insegura: "URL observada sem transporte HTTPS seguro",
+    marca_ou_modelo_nao_comprovado: "Marca ou modelo nao comprovado",
+    versao_ou_motorizacao_nao_comprovada: "Versao ou motorizacao nao comprovada",
+    ano_modelo_nao_comprovado: "Ano-modelo nao comprovado",
+    mercado_divergente: "Mercado divergente",
+    mercado_nao_comprovado: "Mercado nao comprovado"
+  };
+  return labels[reason] ?? reason;
+}
+
+function formatObservedAt(value: string | undefined): string {
+  if (!value) return "instante indisponivel";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString("pt-BR");
+}
+
+function isSafeHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function formatLabel(value: string): string {
   const base = value.replace(/_/g, " ").trim();
   return base.charAt(0).toUpperCase() + base.slice(1);
 }
 
 function formatStatusLabel(status: string): string {
+  if (status === "informado_na_entrada") {
+    return "Informado no pedido";
+  }
+
   if (status === "nao_aplicavel") {
     return "Nao aplicavel";
   }

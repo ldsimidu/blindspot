@@ -17,6 +17,38 @@ export interface FonteUtilizada {
   url: string;
   titulo: string;
   tipo: string;
+  avaliacao_politica?: AvaliacaoPoliticaFonte;
+  avaliacao_aderencia?: AvaliacaoAderenciaFonte;
+  evidencia_busca?: EvidenciaBuscaFonte;
+}
+
+export interface AvaliacaoPoliticaFonte {
+  status: "na_lista_aprovada" | "fora_da_lista_aprovada" | "nao_rastreavel_com_seguranca" | "sem_politica_para_mercado" | "fonte_simulada_local";
+  versao: string;
+  motivos?: string[];
+}
+
+export interface AvaliacaoAderenciaFonte {
+  status: "exata" | "compativel" | "ambigua" | "divergente" | "nao_verificada";
+  criterios: {
+    marca_modelo: "compativel" | "divergente" | "nao_verificado";
+    versao_motorizacao: "compativel" | "divergente" | "nao_verificado";
+    ano_modelo: "compativel" | "divergente" | "nao_verificado";
+    mercado: "compativel" | "divergente" | "nao_verificado";
+  };
+  motivos: string[];
+  versao: string;
+  avaliada_em?: string;
+}
+
+export interface EvidenciaBuscaFonte {
+  observada: boolean;
+  titulo_observado?: string;
+  observada_em?: string;
+  conteudo_sha256?: string;
+  provider?: "openrouter" | "claude";
+  modelo?: string;
+  passe?: string;
 }
 
 export interface FichaTecnicaResponse {
@@ -49,10 +81,24 @@ export interface CatalogCandidate {
 
 export interface CatalogSearchResult {
   state: "found" | "not_registered";
+  scope: "latest" | "all_versions";
   page: number;
   pageSize: number;
   total: number;
   entries: CatalogCandidate[];
+}
+
+export interface TechnicalSearchFilters {
+  tipoCarroceria?: string;
+  motorTipo?: string;
+  potenciaMinCv?: number;
+  potenciaMaxCv?: number;
+  modelYear?: number;
+  market?: string;
+}
+
+export interface TechnicalCatalogSearchResult extends CatalogSearchResult {
+  appliedFilters: TechnicalSearchFilters;
 }
 
 export type CatalogEntryResult =

@@ -1,0 +1,32 @@
+{
+  "version": "1.0.0",
+  "inputIdentityPaths": [
+    "identificacao.marca",
+    "identificacao.modelo",
+    "identificacao.versao",
+    "identificacao.ano_modelo",
+    "identificacao.mercado"
+  ],
+  "capabilities": [
+    {
+      "id": "especificacao_tecnica",
+      "pathPrefixes": ["motorizacao", "transmissao_e_tracao", "dimensoes_e_capacidade", "performance_offroad"],
+      "evidenceKinds": ["ficha tecnica", "catalogo", "documento tecnico", "manual", "documento regulatorio"]
+    },
+    {
+      "id": "configuracao_visual",
+      "pathPrefixes": ["cores_externas", "exterior"],
+      "evidenceKinds": ["catalogo", "configurador", "guia comercial", "pagina oficial do veiculo"]
+    },
+    {
+      "id": "experiencia_e_conectividade",
+      "pathPrefixes": ["interior_e_conforto", "sistema_multimidia_e_conectividade", "conectividade_via_aplicativo", "tecnologia_dinamica"],
+      "evidenceKinds": ["manual", "pagina de recursos", "ficha tecnica", "pagina oficial de servico"]
+    },
+    {
+      "id": "seguranca_e_servico",
+      "pathPrefixes": ["seguranca", "garantia_servicos_e_comercial"],
+      "evidenceKinds": ["manual", "documento regulatorio", "pagina oficial de seguranca", "pagina oficial de servico"]
+    }
+  ]
+}

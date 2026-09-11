@@ -10,27 +10,65 @@ interface MeasureField {
   fonte_ref?: unknown;
 }
 
+export type NormalizationFailureMode = "reject" | "downgrade";
+
+interface NormalizationOptions {
+  failureMode?: NormalizationFailureMode;
+}
+
 const VALUE_STATUSES = new Set<StatusWithValue>(["confirmado", "parcial", "inferido_minimamente"]);
 const MEASURE_PATTERN = /^([+-]?(?:\d+(?:[.,]\d+)?|\.\d+))\s*([\p{L}³._/]+(?:\s*\/\s*\d+\s*[\p{L}]+)?)$/iu;
 
 /**
- * Mutates only policy allowlisted fields. It never changes status or source references.
+ * Mutates only policy allowlisted fields. In downgrade mode, invalid LLM output is
+ * isolated to its field instead of rejecting an otherwise usable technical sheet.
  */
-export function normalizeTechnicalMeasurements(candidateResponse: unknown, policy: NormalizationPolicy): void {
+export function normalizeTechnicalMeasurements(
+  candidateResponse: unknown,
+  policy: NormalizationPolicy,
+  options: NormalizationOptions = {},
+): void {
   if (!isObject(candidateResponse) || !isObject(candidateResponse.ficha_tecnica)) return;
 
   for (const rule of policy.fields) {
     const field = resolveField(candidateResponse.ficha_tecnica, rule.path);
     if (!field || !VALUE_STATUSES.has(field.status as StatusWithValue)) continue;
 
-    if (typeof field.valor !== "string") {
-      throw normalizationError(rule.path, "measurement_must_be_string_with_unit");
-    }
+    try {
+      if (typeof field.valor !== "string") {
+        throw normalizationError(rule.path, "measurement_must_be_string_with_unit");
+      }
 
-    const normalized = normalizeMeasure(field.valor, rule.path, rule.kind);
-    if (normalized.converted) field.valor_original = field.valor;
-    else delete field.valor_original;
-    field.valor = normalized.value;
+      const normalized = normalizeMeasure(field.valor, rule.path, rule.kind);
+      if (normalized.converted) field.valor_original = field.valor;
+      else delete field.valor_original;
+      field.valor = normalized.value;
+    } catch (error) {
+      if (options.failureMode !== "downgrade" || !(error instanceof ValidationError)) throw error;
+      downgradeInvalidMeasurement(field);
+      recordNormalizationWarning(candidateResponse, rule.path);
+    }
+  }
+}
+
+function downgradeInvalidMeasurement(field: MeasureField): void {
+  field.valor = null;
+  field.status = "nao_encontrado";
+  delete field.fonte_ref;
+  delete field.valor_original;
+  (field as Record<string, unknown>).obs_ref = "NF1";
+  delete (field as Record<string, unknown>).observacoes;
+}
+
+function recordNormalizationWarning(candidateResponse: Record<string, unknown>, path: string): void {
+  const metadata = isObject(candidateResponse.metadados_coleta)
+    ? candidateResponse.metadados_coleta
+    : null;
+  if (!metadata || !Array.isArray(metadata.observacoes_gerais)) return;
+
+  const warning = `Medida tecnica ambigua ou invalida em ${path}; campo rebaixado para nao_encontrado.`;
+  if (!metadata.observacoes_gerais.includes(warning)) {
+    metadata.observacoes_gerais.push(warning);
   }
 }
 

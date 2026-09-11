@@ -1,0 +1,24 @@
+{
+  "version": "1.0.0",
+  "eligible_status": "confirmado",
+  "facets": [
+    {
+      "key": "tipo_carroceria",
+      "path": "identificacao.tipo_carroceria",
+      "kind": "enum",
+      "allowed_values": ["sedan", "hatch", "suv", "crossover", "cupe", "picape", "caminhonete", "van", "minivan", "utilitario", "conversivel", "wagon", "monovolume", "outro"]
+    },
+    {
+      "key": "motor_tipo",
+      "path": "motorizacao.motor_tipo",
+      "kind": "enum",
+      "allowed_values": ["combustao", "eletrico", "hibrido", "hibrido_plugin", "celula_combustivel"]
+    },
+    {
+      "key": "potencia_cv",
+      "path": "motorizacao.potencia_cv",
+      "kind": "number",
+      "unit": "cv"
+    }
+  ]
+}

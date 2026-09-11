@@ -45,3 +45,11 @@ As rotas de importação também exigem PostgreSQL. P1-013 vincula ator/organiza
 
 - `HttpError` — status e JSON `{ message, details? }`; `401`, `403` e `404` esperados não são registrados como stack trace de erro interno.
 - Erros não mapeados — **500** com mensagem genérica e `details: null`.
+
+## Evidência observada e aderência (P0-009)
+
+No provider real, a API normaliza as citações devolvidas pela ferramenta web antes de aceitar a lista final de fontes. Para OpenRouter, reconhece `url_citation.url_citation`; para Claude, `web_search_result` e citações equivalentes.
+
+O servidor preserva no contrato público somente URL, título observado, instante, provider/modelo/passe e SHA-256 do material limitado usado na análise. O trecho sanitizado fica em memória durante o passe. Avaliações emitidas pelo modelo são descartadas e recalculadas pelo servidor.
+
+O fluxo passa a ser: pesquisa aberta (salvo restrição explícita), normalização da evidência, isolamento de URL não observada/insegura, avaliação de aderência, auditoria de `fonte_ref`, métricas de cobertura comprovada, refine por qualidade e validação final. O probe HTTP server-side foi removido: a API não segue redirects nem faz um segundo fetch das URLs citadas.
