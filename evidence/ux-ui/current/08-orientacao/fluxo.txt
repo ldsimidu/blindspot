@@ -1,0 +1,1 @@
+sinceramente, nem sei pra que serve esse fluxo de orientação, e na minha cabeça ele pode super sair na refatoração dos fluxos

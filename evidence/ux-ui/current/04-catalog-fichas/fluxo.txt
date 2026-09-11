@@ -1,0 +1,1 @@
+o catagolo será importante para listar varias fichas técnicas de vários carros diferentes, mas eu gostaria que aparecesse as opções das fichas já geradas até hoje na parte da direita. A principio talvez esse fluxo mude, considerando algumas tasks ja criadas e que serão executadas posteriormente
