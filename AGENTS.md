@@ -4,6 +4,8 @@
 
 Leia `docs/architecture/`, o perfil do PDK e as instruções do domínio antes de alterar fluxo, schema, IA, API ou interface. O runtime canônico de prompt e schema fica em `packages/agent-runtime/assets/`; documentos em `docs/architecture/` não são fonte de runtime.
 
+Quando o usuário invocar `:pek`, pedir auditoria UX/UI ou indicar o PEK explicitamente, consulte `.codex/product-experience-kit/manifest.md` e `.codex/product-experience-kit/blindspot-adapter.md`. O PEK é opt-in: não aplique revisão visual a uma feature comum sem esse escopo explícito.
+
 ## Segurança
 
 Nunca copie ou publique `.env`, logs, snapshots brutos de LLM, tokens ou credenciais. Mudanças de schema, prompt, endpoint público, provider, persistência ou contrato exigem Architecture Gate aprovado.
@@ -17,5 +19,6 @@ Antes de alterar autenticação, autorização, dados sensíveis, segredos, APIs
 - Uma mudança só pode começar após arquitetura `APPROVED` ou justificativa explícita de `Não aplicável` na task; em ambos os casos, respeite as regras específicas deste repositório.
 - Quando o usuário disser “tenho uma tarefa para você” ou indicar uma task em `.codex/task-queue/entrada/`, consulte `.codex/skills/project-task-queue/SKILL.md` e `.codex/task-queue/INSTRUCOES.md`.
 - Antes de implementar, leia `.codex/project-delivery-kit/project-profile.md` e as instruções de domínio aplicáveis. Não sobrescreva, sincronize ou instale padrões sem pedido explícito.
+- Ao iniciar a sessão, leia `.codex/project-delivery-kit/SESSION-COORDINATION.md`. Trabalho simultâneo exige plano válido, ownership explícito e autorização humana; sem isso, opere em modo único.
 <!-- project-delivery-kit:end -->
 

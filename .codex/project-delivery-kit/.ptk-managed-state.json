@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "packageVersion": "1.13.0",
+  "packageVersion": "1.17.0",
   "status": "complete",
   "files": [
     {
       "id": "manifest",
-      "hash": "09E9BFDF3E29F53FF1AD9499E65CFBC95FED5E2882BD8991AD25606C7421816F"
+      "hash": "2D7E845CC2556C64CC74B809DC7E9ACD9433BEB4CD3827914F7D15952AA378F9"
     },
     {
       "id": "handoff-contract",
@@ -40,6 +40,10 @@
       "hash": "FBBEF3D71F402468EE106E2AB314E2D39A966DC07FA8A53944AC0AB9E54309B1"
     },
     {
+      "id": "session-coordination",
+      "hash": "E2E7EEAE5A8DEA2B86519A5C5B8ED1617FE14F2E54E88CF1F8F6FA2DF1D5AFBC"
+    },
+    {
       "id": "security-contract",
       "hash": "792D739D645BB8CB99ECBB7E546FFA0ABA57704D1C6F916DA3177C0A60AFA50D"
     },
@@ -54,6 +58,22 @@
     {
       "id": "compliance-skill",
       "hash": "7C65312B383009F110D47DA4FF9CEB782F11FD1962DDBA7ED9B234FDABCAC8DC"
+    },
+    {
+      "id": "multiagent-coordination-contract",
+      "hash": "D489D959950A70C54E5460BB259AFEC48704FCA13069D3156904497D6807098B"
+    },
+    {
+      "id": "multiagent-worktree-protocol",
+      "hash": "7D3D26EBA131B200149640832647DCED03CF52C8C1E5131D2E7EFF5208C38D92"
+    },
+    {
+      "id": "multiagent-pilot-protocol",
+      "hash": "392CA8BF2EA45FF242CE167504B7600BD6BF5EED6445411294B7EB000AF75B7D"
+    },
+    {
+      "id": "multiagent-coordination-skill",
+      "hash": "8CE982528AE7C7AD61113F7BB744D75945F5A4E5B76998991D7B1F037120B1FB"
     }
   ]
 }
