@@ -2,19 +2,23 @@ import assert from "node:assert/strict";
 import {
   applySourceEvidenceAssessment,
   collectObservedCitationEvidence,
+  collectObservedWebFetchEvidence,
   retainOnlyObservedAndPermittedSources,
   retainOnlyTrustedSourceAuthorities,
 } from "../services/api/source-evidence";
 import {
   buildOpenRouterRefinePrompt,
   calculateRouterScore,
+  calculateLegacyRouterScore,
   calculateRoutingMetrics,
   decideRouterNextPass,
   mergeResultsByEvidence,
+  resolveOpenRouterResearchMode,
   type RouterConfig,
   callLLMSimulated,
 } from "../services/api/llm";
 import { countUrlCitations } from "../services/api/logger";
+import { confirmFetchedBrandPresenceDomains } from "../services/api/source-trust";
 import { readFieldPolicy, readNormalizationPolicy, readQualityPolicy, readRuntimeMockResponse, readRuntimeSchema, readSourceEvidencePolicy, readSourcePolicy } from "../services/api/runtime-assets";
 import { validateResponse } from "../services/api/validator";
 
@@ -80,6 +84,25 @@ assert.equal(countUrlCitations(providerResponse), 3, "logger deve contar url_cit
 assert.equal(evidence[0]?.sanitizedExcerpt?.includes("Ranger Raptor"), true);
 assert.match(evidence[0]?.contentSha256 ?? "", /^[a-f0-9]{64}$/);
 
+const fetchedEvidence = collectObservedWebFetchEvidence({
+  tool_result: {
+    url: "https://www.ford.com.br/picapes/ranger-raptor/",
+    title: "Ford Ranger Raptor | Ford Brasil",
+    content: "A Ranger Raptor esta disponivel no Brasil. Conteudo oficial da pagina.",
+    status: "completed",
+  },
+}, { provider: "openrouter", model: "google/gemini-test", pass: "page_fetch", observedAt }, policy, ["https://www.ford.com.br/picapes/ranger-raptor/"]);
+assert.equal(fetchedEvidence.length, 1, "somente fetch concluido para URL previamente observada vira conteudo obtido");
+assert.equal(fetchedEvidence[0]?.observationKind, "fetched_content");
+assert.equal(collectObservedWebFetchEvidence({ url: "https://www.ford.com.br/outra", content: "texto", status: "completed" }, { provider: "openrouter", model: "google/gemini-test", pass: "page_fetch", observedAt }, policy, ["https://www.ford.com.br/picapes/ranger-raptor/"]).length, 0, "fetch fora do inventario nao pode ser promovido");
+
+const bydVehicle = { marca: "BYD", modelo: "King", versao: "GL", ano_modelo: 2025, mercado: "Brasil" };
+const bydFetched = collectObservedWebFetchEvidence({
+  tool_result: { url: "https://www.byd.com/br/car/king", title: "BYD King | Brasil", content: "A BYD apresenta o King no Brasil.", status: "completed" },
+}, { provider: "openrouter", model: "google/gemini-test", pass: "brand_presence_fetch", observedAt }, policy, ["https://www.byd.com/br/car/king"]);
+assert.deepEqual(confirmFetchedBrandPresenceDomains(bydFetched, bydVehicle, ["byd.com"]), ["byd.com"], "conteudo institucional concluido pode liberar o host apenas nesta execucao");
+assert.deepEqual(confirmFetchedBrandPresenceDomains(evidence, bydVehicle, ["byd.com"]), [], "snippet de busca nunca promove host candidato");
+
 const payload = {
   metadados_coleta: { observacoes_gerais: [] as string[] },
   fontes_utilizadas: [
@@ -115,6 +138,30 @@ assert.equal(payload.ficha_tecnica.exterior.assinatura.status, "nao_encontrado",
 assert.equal(quality.confirmedOnlyByDivergentSourceCount, 2);
 assert.equal(payload.resumo_completude.preenchidas, 2);
 
+const compatibilityPayload = {
+  metadados_coleta: { observacoes_gerais: [] as string[] },
+  fontes_utilizadas: [
+    { id: "F1", url: providerResponse.choices[0].message.annotations[0].url_citation.url, titulo: "Pagina Ford divergente", tipo: "fonte_externa_rastreavel" },
+    { id: "F2", url: "https://dados-auto.example/brasil/ford/ranger/raptor/2025/ficha.pdf", titulo: "Fonte externa exata", tipo: "fonte_externa_rastreavel" },
+  ],
+  ficha_tecnica: {
+    identificacao: {
+      ano_modelo: { valor: 2025, status: "confirmado", fonte_ref: ["F1"] },
+      modelo: { valor: "Ranger", status: "confirmado", fonte_ref: ["F2"] },
+    },
+  },
+  resumo_completude: {},
+};
+applySourceEvidenceAssessment(compatibilityPayload, evidence, vehicle, policy, {
+  acceptedAdherenceStatuses: ["exata", "compativel", "ambigua", "nao_verificada"],
+  retainIneligiblePublicSources: true,
+});
+assert.equal(compatibilityPayload.fontes_utilizadas.length, 2, "modo compativel preserva fonte externa e divergente para revisao");
+assert.equal(compatibilityPayload.ficha_tecnica.identificacao.ano_modelo.status, "nao_encontrado", "fonte explicitamente divergente nao confirma o alvo nem no modo compativel");
+assert.equal(compatibilityPayload.ficha_tecnica.identificacao.modelo.status, "confirmado", "fonte externa observada e aderente permanece utilizavel no modo compativel");
+assert.equal(resolveOpenRouterResearchMode(undefined), "ex_prompt_compat", "modo compativel e o padrao reversivel");
+assert.equal(resolveOpenRouterResearchMode("strict_evidence"), "strict_evidence", "modo estrito permanece selecionavel");
+
 const routingMetrics = calculateRoutingMetrics(payload, policy);
 const routerConfig: RouterConfig = {
   enabled: true,
@@ -137,6 +184,7 @@ assert.match(refinePrompt, /ano-modelo e mercado exatos/i);
 
 const betterMetrics = { ...routingMetrics, groundedCoverageRate: 1, criticalGroundedCoverageRate: 1, divergentSourceCount: 0, confirmedOnlyByDivergentSourceCount: 0 };
 assert.ok(calculateRouterScore(betterMetrics) > calculateRouterScore(routingMetrics), "score deve premiar qualidade comprovada");
+assert.ok(calculateLegacyRouterScore({ ...routingMetrics, coverageRate: 0.8, preenchidas: 8 }) > calculateLegacyRouterScore({ ...betterMetrics, coverageRate: 0.5, preenchidas: 5 }), "modo compativel deve priorizar cobertura bruta como o legado");
 
 const unsafePayload = {
   metadados_coleta: { observacoes_gerais: [] as string[] },

@@ -73,6 +73,13 @@ assert.match(refinePrompt, /configuracao_visual/);
 assert.match(refinePrompt, /catalogo, configurador, guia comercial/);
 assert.match(refinePrompt, /seguranca_e_servico/);
 assert.equal(/Ford|Ranger|Raptor/i.test(refinePrompt), false, "research guidance must not encode a vehicle-specific fix");
+assert.match(refinePrompt, /somente parceiros pre-aprovados/i, "modo estrito deve preservar a restricao de parceiros");
+
+const compatibleRefinePrompt = buildOpenRouterRefinePrompt("BASE", metrics, 10, undefined, "ex_prompt_compat");
+assert.match(compatibleRefinePrompt, /fontes externas observadas, HTTPS e rastreaveis podem complementar lacunas/i, "modo compativel deve permitir evidencia externa observada para lacunas");
+assert.match(compatibleRefinePrompt, /Liste todas as fontes efetivamente usadas/i, "modo compativel deve pedir somente fontes usadas");
+assert.equal(/somente parceiros pre-aprovados/i.test(compatibleRefinePrompt), false, "modo compativel nao pode reintroduzir a restricao estrita de parceiros");
+assert.equal(/Ford|Ranger|Raptor/i.test(compatibleRefinePrompt), false, "refine compativel nao deve codificar um veiculo especifico");
 
 const discoveryPrompt = buildOpenRouterDiscoveryPrompt(vehicle);
 assert.match(discoveryPrompt, /Marca de teste/);

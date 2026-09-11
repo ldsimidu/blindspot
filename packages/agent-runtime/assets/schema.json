@@ -1284,7 +1284,8 @@
             "conteudo_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
             "provider": { "enum": ["openrouter", "claude"] },
             "modelo": { "type": "string", "minLength": 1 },
-            "passe": { "type": "string", "minLength": 1 }
+            "passe": { "type": "string", "minLength": 1 },
+            "nivel": { "enum": ["resultado_de_busca", "conteudo_obtido"] }
           },
           "allOf": [
             {

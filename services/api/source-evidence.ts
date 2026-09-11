@@ -9,6 +9,11 @@ export type SourceAdherenceStatus =
   | "divergente"
   | "nao_verificada";
 
+export interface SourceEvidenceAssessmentOptions {
+  acceptedAdherenceStatuses?: SourceAdherenceStatus[];
+  retainIneligiblePublicSources?: boolean;
+}
+
 export type SourceAdherenceCriterion =
   | "compativel"
   | "divergente"
@@ -23,6 +28,7 @@ export interface ObservedCitationEvidence {
   model: string;
   pass: string;
   observedAt: string;
+  observationKind: "search_result" | "fetched_content";
 }
 
 export interface SourceEvidenceQualityMetrics {
@@ -46,7 +52,7 @@ export interface ObservedEvidenceAdherence {
 
 export function collectObservedCitationEvidence(
   node: unknown,
-  context: Omit<ObservedCitationEvidence, "url" | "observedTitle" | "sanitizedExcerpt" | "contentSha256">,
+  context: Omit<ObservedCitationEvidence, "url" | "observedTitle" | "sanitizedExcerpt" | "contentSha256" | "observationKind">,
   policy: SourceEvidencePolicy,
 ): ObservedCitationEvidence[] {
   const byUrl = new Map<string, ObservedCitationEvidence>();
@@ -78,6 +84,7 @@ export function collectObservedCitationEvidence(
           observedTitle: title,
           sanitizedExcerpt: content,
           contentSha256: createHash("sha256").update(fingerprintInput).digest("hex"),
+          observationKind: "search_result",
         });
       }
     }
@@ -89,11 +96,50 @@ export function collectObservedCitationEvidence(
   return [...byUrl.values()];
 }
 
+/**
+ * Normalizes only completed `openrouter:web_fetch` payloads.  Search snippets
+ * must never be promoted to fetched page content merely because they carry a
+ * URL citation.
+ */
+export function collectObservedWebFetchEvidence(
+  node: unknown,
+  context: Omit<ObservedCitationEvidence, "url" | "observedTitle" | "sanitizedExcerpt" | "contentSha256" | "observationKind">,
+  policy: SourceEvidencePolicy,
+  allowedUrls: string[],
+): ObservedCitationEvidence[] {
+  const allowed = new Set(allowedUrls.map(normalizeUrl));
+  const byUrl = new Map<string, ObservedCitationEvidence>();
+  function visit(value: unknown): void {
+    if (Array.isArray(value)) { value.forEach(visit); return; }
+    const obj = asRecord(value);
+    if (!obj) return;
+    const url = readString(obj.url);
+    const content = readString(obj.content);
+    const status = readString(obj.status);
+    if (url && content && status === "completed" && allowed.has(normalizeUrl(url)) && isHttpsUrl(url)) {
+      const title = limitText(readString(obj.title) ?? readString(obj.titulo), policy.publicObservedTitleMaxChars);
+      const excerpt = limitText(content, policy.evidenceExcerptMaxChars);
+      if (excerpt) {
+        const normalizedUrl = normalizeUrl(url);
+        byUrl.set(normalizedUrl, {
+          ...context, url, observedTitle: title, sanitizedExcerpt: excerpt,
+          contentSha256: createHash("sha256").update([normalizedUrl, title ?? "", excerpt].join("\n")).digest("hex"),
+          observationKind: "fetched_content",
+        });
+      }
+    }
+    Object.values(obj).forEach(visit);
+  }
+  visit(node);
+  return [...byUrl.values()];
+}
+
 export function applySourceEvidenceAssessment(
   responsePayload: unknown,
   evidence: ObservedCitationEvidence[],
   vehicle: VehicleInput,
   policy: SourceEvidencePolicy,
+  options: SourceEvidenceAssessmentOptions = {},
 ): SourceEvidenceQualityMetrics {
   const root = asRecord(responsePayload);
   if (!root || !Array.isArray(root.fontes_utilizadas)) {
@@ -124,6 +170,7 @@ export function applySourceEvidenceAssessment(
         provider: observed.provider,
         modelo: observed.model,
         passe: observed.pass,
+        nivel: observed.observationKind === "fetched_content" ? "conteudo_obtido" : "resultado_de_busca",
       };
     } else {
       source.evidencia_busca = { observada: false };
@@ -132,8 +179,12 @@ export function applySourceEvidenceAssessment(
     if (id) adherenceBySourceId.set(id, assessment.status as SourceAdherenceStatus);
   }
 
-  const metrics = auditTechnicalFields(root, adherenceBySourceId, policy);
-  isolateIneligiblePublicSources(root, adherenceBySourceId, policy);
+  const acceptedAdherenceStatuses = options.acceptedAdherenceStatuses ?? policy.acceptedAdherenceStatuses;
+  if (options.retainIneligiblePublicSources) {
+    removeExplicitlyDivergentReferences(root, adherenceBySourceId);
+  }
+  const metrics = auditTechnicalFields(root, adherenceBySourceId, policy, acceptedAdherenceStatuses);
+  isolateIneligiblePublicSources(root, adherenceBySourceId, acceptedAdherenceStatuses, options.retainIneligiblePublicSources ?? false);
   addEvidenceWarnings(root, metrics);
   recalculateBasicCompleteness(root);
   return metrics;
@@ -148,10 +199,12 @@ export function applySourceEvidenceAssessment(
 function isolateIneligiblePublicSources(
   root: Record<string, unknown>,
   adherenceBySourceId: Map<string, SourceAdherenceStatus>,
-  policy: SourceEvidencePolicy,
+  acceptedAdherenceStatuses: SourceAdherenceStatus[],
+  retainIneligiblePublicSources: boolean,
 ): void {
   if (!Array.isArray(root.fontes_utilizadas)) return;
-  const accepted = new Set<SourceAdherenceStatus>(policy.acceptedAdherenceStatuses);
+  if (retainIneligiblePublicSources) return;
+  const accepted = new Set<SourceAdherenceStatus>(acceptedAdherenceStatuses);
   const removedIds: string[] = [];
   root.fontes_utilizadas = root.fontes_utilizadas.filter((candidate) => {
     const source = asRecord(candidate);
@@ -371,6 +424,7 @@ function auditTechnicalFields(
   root: Record<string, unknown>,
   adherenceBySourceId: Map<string, SourceAdherenceStatus>,
   policy: SourceEvidencePolicy,
+  acceptedAdherenceStatuses: SourceAdherenceStatus[],
 ): SourceEvidenceQualityMetrics {
   const metrics = emptyQualityMetrics();
   for (const status of adherenceBySourceId.values()) {
@@ -381,7 +435,7 @@ function auditTechnicalFields(
     else metrics.unverifiedSourceCount += 1;
   }
 
-  const accepted = new Set<string>(policy.acceptedAdherenceStatuses);
+  const accepted = new Set<string>(acceptedAdherenceStatuses);
   walkFields(root.ficha_tecnica, "ficha_tecnica", (field, path) => {
     const refs = Array.isArray(field.fonte_ref)
       ? field.fonte_ref.filter((value): value is string => typeof value === "string")
@@ -408,6 +462,30 @@ function auditTechnicalFields(
   });
   metrics.qualityIssuePaths = [...new Set(metrics.qualityIssuePaths)];
   return metrics;
+}
+
+function removeExplicitlyDivergentReferences(
+  root: Record<string, unknown>,
+  adherenceBySourceId: Map<string, SourceAdherenceStatus>,
+): void {
+  walkFields(root.ficha_tecnica, "ficha_tecnica", (field) => {
+    if (!Array.isArray(field.fonte_ref)) return;
+    const remaining = field.fonte_ref.filter(
+      (ref): ref is string => typeof ref === "string" && adherenceBySourceId.get(ref) !== "divergente",
+    );
+    if (remaining.length > 0) {
+      field.fonte_ref = remaining;
+      return;
+    }
+    if (["confirmado", "parcial", "inferido_minimamente", "conflitante"].includes(String(field.status))) {
+      field.valor = null;
+      field.status = "nao_encontrado";
+      field.obs_ref = "NF1";
+      delete field.fonte_ref;
+      delete field.observacoes;
+      delete field.valor_original;
+    }
+  });
 }
 
 function downgradeField(field: Record<string, unknown>, reason: string): void {

@@ -28,6 +28,35 @@ export function deriveBrandPresenceCandidateDomains(
   return [...candidates].sort((left, right) => left.localeCompare(right)).slice(0, Math.max(0, maxCandidateHosts));
 }
 
+/**
+ * A brand-presence search result is a navigation hint only. A host can become
+ * first-party for the current execution only after the bounded fetch returned
+ * completed content that itself confirms the make and market.
+ */
+export function confirmFetchedBrandPresenceDomains(
+  evidence: ObservedCitationEvidence[],
+  vehicle: VehicleInput,
+  candidateDomains: string[],
+): string[] {
+  const candidates = new Set(candidateDomains.map((domain) => domain.toLowerCase().replace(/^www\./, "")));
+  const brandTokens = normalizeCatalogText(vehicle.marca).split(" ").filter((token) => token.length >= 3);
+  const market = normalizeCatalogText(vehicle.mercado);
+  const brazilTarget = market.includes("brasil") || market.includes("brazil");
+  const confirmed = new Set<string>();
+  for (const item of evidence) {
+    if (item.observationKind !== "fetched_content") continue;
+    const hostname = publicHttpsHostname(item.url);
+    if (!hostname || !candidates.has(hostname) || looksLikeNonFirstPartyHost(hostname)) continue;
+    const text = normalizeCatalogText(`${item.observedTitle ?? ""} ${item.sanitizedExcerpt ?? ""}`);
+    const hasBrand = brandTokens.length > 0 && brandTokens.every((token) => text.includes(token));
+    const hasMarket = brazilTarget
+      ? hostname.endsWith(".br") || /\bbrasil\b|\bbrazil\b/.test(text)
+      : text.includes(market);
+    if (hasBrand && hasMarket) confirmed.add(hostname);
+  }
+  return [...confirmed].sort((left, right) => left.localeCompare(right));
+}
+
 export function deriveSourceTrustCandidates(
   evidence: ObservedCitationEvidence[],
   vehicle: VehicleInput,

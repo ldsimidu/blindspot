@@ -1,9 +1,13 @@
-import { sanitizeBrandPresenceDiscovery, sanitizeDocumentReader, sanitizeOpenRouterPassTelemetry, sanitizeSchemaValidationIssues, sanitizeSourceTrustBootstrap, sanitizeTelemetryPath } from "../services/api/logger";
+import { sanitizeBrandPresenceDiscovery, sanitizeDocumentReader, sanitizeLLMResultSummary, sanitizeOpenRouterPassTelemetry, sanitizeResearchMode, sanitizeSchemaValidationIssues, sanitizeSourceTrustBootstrap, sanitizeTelemetryPath } from "../services/api/logger";
 import { formatAjvIssues } from "../services/api/validator";
 
 const value = sanitizeTelemetryPath("/api/convites/secret-token-12345678901234567890/ativar?token=do-not-log");
 if (value.includes("secret-token") || value.includes("?") || !value.includes("[redacted]")) {
   throw new Error("Telemetry path sanitization did not remove sensitive values.");
+}
+
+if (sanitizeResearchMode({ researchMode: "ex_prompt_compat" }) !== "ex_prompt_compat" || sanitizeResearchMode({ researchMode: "untrusted-mode" }) !== null) {
+  throw new Error("Research mode telemetry must be allowlisted.");
 }
 
 const bootstrap = sanitizeSourceTrustBootstrap({
@@ -104,6 +108,40 @@ const sanitizedIssues = sanitizeSchemaValidationIssues({
 });
 if (sanitizedIssues.length !== 1 || JSON.stringify(sanitizedIssues).includes("must-not-be-logged")) {
   throw new Error("Schema validation telemetry leaked an unsafe path or value.");
+}
+
+const resultSummary = sanitizeLLMResultSummary({
+  ficha_tecnica: {
+    motorizacao: {
+      potencia_cv: { valor: 250, status: "confirmado", fonte_ref: ["F1"] },
+      torque_nm: { valor: 500, status: "confirmado", fonte_ref: ["F1", "F2"] },
+      torque: { valor: "must-not-be-logged", status: "nao_encontrado", observacoes: "must-not-be-logged" },
+      consumo: { valor: "must-not-be-logged", status: "confirmado", fonte_ref: ["F9"] },
+    },
+    "unsafe group": { campo: { valor: "must-not-be-logged", status: "confirmado", fonte_ref: "leak" } },
+  },
+  resumo_completude: {
+    total_variaveis: 2,
+    preenchidas: 1,
+    informadas_na_entrada: 0,
+    total_pesquisaveis: 2,
+    nao_encontradas: 1,
+    nao_aplicaveis: 0,
+    conflitantes: 0,
+  },
+  fontes_utilizadas: [
+    { id: "F1", url: "https://must-not-be-logged.example", titulo: "must-not-be-logged", avaliacao_aderencia: { status: "exata" } },
+    { id: "F2", url: "https://must-not-be-logged.example/second", titulo: "must-not-be-logged", avaliacao_aderencia: { status: "ambigua" } },
+  ],
+});
+if (!resultSummary || resultSummary.completeness?.preenchidas !== 1 || resultSummary.field_statuses.confirmado !== 3 || resultSummary.field_statuses.nao_encontrado !== 1 || resultSummary.fields_with_source_ref !== 2 || resultSummary.groups.motorizacao?.confirmado !== 3 || resultSummary.sources.by_adherence.exata !== 1 || resultSummary.sources.by_adherence.ambigua !== 1) {
+  throw new Error("Result summary telemetry did not retain the expected aggregate counters.");
+}
+if (resultSummary.source_usage.referenced_source_count !== 2 || resultSummary.source_usage.invalid_field_reference_count !== 1 || resultSummary.source_usage.groups.motorizacao?.fields_with_source_ref !== 2 || resultSummary.source_usage.groups.motorizacao?.referenced_source_count !== 2 || resultSummary.source_usage.groups.motorizacao?.fields_with_single_source_ref !== 1 || resultSummary.source_usage.groups.motorizacao?.fields_with_multiple_source_refs !== 1) {
+  throw new Error("Result summary telemetry did not retain source-use cardinalities.");
+}
+if (JSON.stringify(resultSummary).includes("must-not-be-logged") || JSON.stringify(resultSummary).includes("F1") || JSON.stringify(resultSummary).includes("F2") || JSON.stringify(resultSummary).includes("F9") || "unsafe group" in resultSummary.groups) {
+  throw new Error("Result summary telemetry leaked provider-controlled content.");
 }
 
 console.log("TELEMETRY_SANITIZATION=PASS");

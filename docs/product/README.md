@@ -14,6 +14,11 @@ Este diretório é a referência navegável para produto e planejamento. O contr
 | [Matriz de cobertura](coverage-matrix.md) | Fontes efetivamente auditadas, destino, classificação e lacunas. |
 | [Backlog detalhado](backlog.md) | Decomposição proposta de épicos, capabilities, PBIs e entregas verificáveis. |
 | [Fluxograma visual para desenvolvimento do agente](fluxograma-desenvolvimento-agente.md) | Referência principal em Markdown: jornada, exceções, requisitos e fluxo técnico verificável do agente. |
+| [Fluxo de refatoração da experiência](fluxograma-refatoracao-experiencia.md) | Proposta de jornadas e arquitetura de informação para UX/UI; não substitui o fluxo funcional comprovado. |
+| [Auditoria UX/UI do estado atual](ux-ui-auditoria-estado-atual.md) | Baseline visual, achados por jornada, evidências e limites de validação. |
+| [Direção UX/UI alvo e decisões](ux-ui-direcao-alvo-e-decisoes.md) | Arquitetura de informação, jornadas alvo, decisões e invariantes da refatoração. |
+| [Roadmap UX/UI de refatoração](ux-ui-roadmap-e-backlog.md) | Ordem de implementação, marcos e tasks PDK derivadas. |
+| [Design System](design-system.md) | Fonte de verdade da refatoração visual, dos tokens futuros, componentes e referências aprovadas. |
 | [Arquivo de decisões P0](archive/README.md) | Preflights e revisões de segurança preservados para auditoria, fora da navegação diária. |
 | [Contrato HTTP atual](../architecture/agent-core/HTTP_PIPELINE.md) | Rotas implementadas e pipeline da API. |
 | [Contrato de entrada](../architecture/agent-core/VEHICLE_INPUT_SPEC.md) | Payload de veículo aceito pela API. |

@@ -62,6 +62,7 @@ function App() {
   const [registrationError, setRegistrationError] = useState<string | null>(null);
   const [signedInName, setSignedInName] = useState("");
   const [signedInRole, setSignedInRole] = useState<OrganizationRole | null>(null);
+  const [logoutState, setLogoutState] = useState<"idle" | "loading" | "error">("idle");
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     const saved = typeof window !== "undefined" ? window.localStorage.getItem("blindspot_theme_mode") : null;
     return saved === "light" ? "light" : "dark";
@@ -275,10 +276,24 @@ function App() {
   }
 
   async function handleLogout(): Promise<void> {
-    try { await sair(); } finally { setSignedInName(""); setSignedInRole(null); setLoginPassword(""); setAuthState("signed_out"); }
+    if (logoutState === "loading") return;
+    setLogoutState("loading");
+    try {
+      await sair();
+      setSignedInName("");
+      setSignedInRole(null);
+      setLoginPassword("");
+      setAccessView("login");
+      setAuthState("signed_out");
+      setLogoutState("idle");
+    } catch {
+      setLogoutState("error");
+    }
   }
 
-  const statusAnnouncement = loading
+  const statusAnnouncement = logoutState === "loading"
+    ? "Encerrando sessão."
+    : loading
     ? "Gerando ficha técnica."
     : catalogLoading
       ? "Consultando catálogo."
@@ -328,7 +343,6 @@ function App() {
           <img className="brand-logo" src={logoBlindspot} alt="BlindSpot" />
           <span className="brand-wordmark">BLINDSPOT</span>
           <div className="brand-controls">
-            <button type="button" className="theme-toggle" onClick={() => void handleLogout()} title="Encerrar sessão" aria-label={`Encerrar sessão de ${signedInName || "usuário"}`}>↪</button>
             <button
               type="button"
               className="theme-toggle"
@@ -393,6 +407,22 @@ function App() {
             <span className="sidebar-link-label">Orientação</span>
           </button>
         </nav>
+        <section className="sidebar-session" aria-label="Sessão atual">
+          <p className="sidebar-session-label">Conectado como <strong>{signedInName || "usuário"}</strong></p>
+          <button
+            type="button"
+            className="logout-button"
+            onClick={() => void handleLogout()}
+            disabled={logoutState === "loading"}
+            aria-busy={logoutState === "loading"}
+            aria-label={logoutState === "loading" ? "Encerrando sessão" : `Encerrar sessão de ${signedInName || "usuário"}`}
+            title="Encerrar sessão"
+          >
+            <span aria-hidden="true">↪</span>
+            <span className="logout-button-label">{logoutState === "loading" ? "Encerrando sessão…" : "Sair"}</span>
+          </button>
+          {logoutState === "error" ? <p className="logout-status" role="alert">Não foi possível encerrar a sessão. Tente novamente.</p> : null}
+        </section>
       </aside>
 
       <main id="main-content" className="dashboard-content" tabIndex={-1}>

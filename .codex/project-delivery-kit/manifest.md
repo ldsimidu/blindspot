@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | --- | --- |
-| Versão do PDK | 1.13.0 |
+| Versão do PDK | 1.17.0 |
 | Adaptador local | Genérico |
 | Fonte canônica opcional | `C:\Users\lucas\Documents\bedrock\tools\project-delivery-kit` |
 | Estado da instalação | Configurar perfil do projeto e bloco do AGENTS.md |
@@ -29,5 +29,6 @@ Use a auditoria do PDK antes de atualizar. A cópia local é a referência opera
 - `project-change-preflight`, `project-decision-ledger` e `project-release-management`: impacto, decisões e releases rastreáveis.
 - `project-security-assurance`: revisão e evidência proporcionais de segurança, sem instalar scanners ou ferramentas externas.
 - `project-compliance-assurance`: revisão proporcional de LGPD e obrigações declaradas, com fontes oficiais e sem substituir orientação jurídica.
+- `project-multiagent-coordination`: plano de trabalho concorrente com dependências, ownership e checkpoints de integração, sem iniciar workers ou Git.
 
 Instale extensões somente com a opção explícita do instalador.

@@ -20,6 +20,9 @@
   --accent-strong: #ea580c;
   --accent-soft: #ffb780;
   --brand-contrast: #0f0f10;
+  --logout-border: #9a3412;
+  --logout-background: #4a1d0a;
+  --logout-text: #ffedd5;
 }
 
 body.theme-light {
@@ -41,6 +44,9 @@ body.theme-light {
   --accent-strong: #c2410c;
   --accent-soft: #9a3412;
   --brand-contrast: #ffffff;
+  --logout-border: #c2410c;
+  --logout-background: #fff7ed;
+  --logout-text: #9a3412;
 }
 
 * {
@@ -75,6 +81,10 @@ body {
   display: flex;
   flex-direction: column;
   gap: 24px;
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .brand-header {
@@ -164,6 +174,52 @@ body {
   color: var(--accent-soft);
 }
 
+.sidebar-session {
+  margin-top: auto;
+  border-top: 1px solid var(--border-soft);
+  padding-top: 16px;
+}
+
+.sidebar-session-label {
+  margin: 0 0 8px;
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.sidebar-session-label strong {
+  color: var(--text-secondary);
+}
+
+.logout-button {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid var(--logout-border);
+  border-radius: 10px;
+  background: var(--logout-background);
+  color: var(--logout-text);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.logout-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.logout-status {
+  margin: 8px 0 0;
+  color: #fecaca;
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
 .sidebar-collapsed .sidebar {
   padding: 20px 10px;
 }
@@ -195,6 +251,20 @@ body {
 
 .sidebar-collapsed .sidebar-link-label {
   display: none;
+}
+
+.sidebar-collapsed .sidebar-session {
+  width: 100%;
+}
+
+.sidebar-collapsed .sidebar-session-label,
+.sidebar-collapsed .logout-button-label,
+.sidebar-collapsed .logout-status {
+  display: none;
+}
+
+.sidebar-collapsed .logout-button {
+  padding: 0;
 }
 
 .dashboard-content {
@@ -946,6 +1016,9 @@ pre {
   .sidebar {
     border-right: 0;
     border-bottom: 1px solid var(--border-primary);
+    position: static;
+    height: auto;
+    overflow-y: visible;
   }
 
   .sidebar-nav {
