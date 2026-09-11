@@ -23,6 +23,7 @@ export interface ObservedCitationEvidence {
   model: string;
   pass: string;
   observedAt: string;
+  observationKind: "search_result" | "fetched_content";
 }
 
 export interface SourceEvidenceQualityMetrics {
@@ -46,7 +47,7 @@ export interface ObservedEvidenceAdherence {
 
 export function collectObservedCitationEvidence(
   node: unknown,
-  context: Omit<ObservedCitationEvidence, "url" | "observedTitle" | "sanitizedExcerpt" | "contentSha256">,
+  context: Omit<ObservedCitationEvidence, "url" | "observedTitle" | "sanitizedExcerpt" | "contentSha256" | "observationKind">,
   policy: SourceEvidencePolicy,
 ): ObservedCitationEvidence[] {
   const byUrl = new Map<string, ObservedCitationEvidence>();
@@ -78,6 +79,7 @@ export function collectObservedCitationEvidence(
           observedTitle: title,
           sanitizedExcerpt: content,
           contentSha256: createHash("sha256").update(fingerprintInput).digest("hex"),
+          observationKind: "search_result",
         });
       }
     }
@@ -85,6 +87,44 @@ export function collectObservedCitationEvidence(
     Object.values(obj).forEach(visit);
   }
 
+  visit(node);
+  return [...byUrl.values()];
+}
+
+/**
+ * Normalizes only completed `openrouter:web_fetch` payloads.  Search snippets
+ * must never be promoted to fetched page content merely because they carry a
+ * URL citation.
+ */
+export function collectObservedWebFetchEvidence(
+  node: unknown,
+  context: Omit<ObservedCitationEvidence, "url" | "observedTitle" | "sanitizedExcerpt" | "contentSha256" | "observationKind">,
+  policy: SourceEvidencePolicy,
+  allowedUrls: string[],
+): ObservedCitationEvidence[] {
+  const allowed = new Set(allowedUrls.map(normalizeUrl));
+  const byUrl = new Map<string, ObservedCitationEvidence>();
+  function visit(value: unknown): void {
+    if (Array.isArray(value)) { value.forEach(visit); return; }
+    const obj = asRecord(value);
+    if (!obj) return;
+    const url = readString(obj.url);
+    const content = readString(obj.content);
+    const status = readString(obj.status);
+    if (url && content && status === "completed" && allowed.has(normalizeUrl(url)) && isHttpsUrl(url)) {
+      const title = limitText(readString(obj.title) ?? readString(obj.titulo), policy.publicObservedTitleMaxChars);
+      const excerpt = limitText(content, policy.evidenceExcerptMaxChars);
+      if (excerpt) {
+        const normalizedUrl = normalizeUrl(url);
+        byUrl.set(normalizedUrl, {
+          ...context, url, observedTitle: title, sanitizedExcerpt: excerpt,
+          contentSha256: createHash("sha256").update([normalizedUrl, title ?? "", excerpt].join("\n")).digest("hex"),
+          observationKind: "fetched_content",
+        });
+      }
+    }
+    Object.values(obj).forEach(visit);
+  }
   visit(node);
   return [...byUrl.values()];
 }
@@ -124,6 +164,7 @@ export function applySourceEvidenceAssessment(
         provider: observed.provider,
         modelo: observed.model,
         passe: observed.pass,
+        nivel: observed.observationKind === "fetched_content" ? "conteudo_obtido" : "resultado_de_busca",
       };
     } else {
       source.evidencia_busca = { observada: false };

@@ -98,6 +98,18 @@ export interface ResearchDocumentPolicy {
     search_modes: Array<"landing_links" | "year_archive">;
     require_first_party_anchor_for_fallback: boolean;
   };
+  page_fetch: {
+    enabled: boolean;
+    engine: "openrouter" | "jina";
+    max_urls: number;
+    max_uses: number;
+    max_content_tokens: number;
+    max_tool_calls: number;
+  };
+  brand_presence_fetch: {
+    enabled: boolean;
+    max_urls: number;
+  };
   document_reader: {
     enabled: boolean;
     max_documents: number;

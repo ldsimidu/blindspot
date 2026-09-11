@@ -8,6 +8,8 @@ Leia `docs/architecture/`, o perfil do PDK e as instruções do domínio antes d
 
 Nunca copie ou publique `.env`, logs, snapshots brutos de LLM, tokens ou credenciais. Mudanças de schema, prompt, endpoint público, provider, persistência ou contrato exigem Architecture Gate aprovado.
 
+Antes de alterar autenticação, autorização, dados sensíveis, segredos, APIs públicas, integrações, dependências, CI/CD, infraestrutura ou IA com ferramentas, consulte `.codex/skills/project-security-assurance/SKILL.md`.
+
 <!-- project-delivery-kit:start -->
 ## Project Delivery Kit
 

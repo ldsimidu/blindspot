@@ -21,6 +21,18 @@
     "search_modes": ["landing_links", "year_archive"],
     "require_first_party_anchor_for_fallback": true
   },
+  "page_fetch": {
+    "enabled": true,
+    "engine": "openrouter",
+    "max_urls": 2,
+    "max_uses": 2,
+    "max_content_tokens": 6000,
+    "max_tool_calls": 2
+  },
+  "brand_presence_fetch": {
+    "enabled": true,
+    "max_urls": 1
+  },
   "document_reader": {
     "enabled": true,
     "max_documents": 2,

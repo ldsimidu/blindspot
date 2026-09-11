@@ -9,6 +9,8 @@ Especificação do contrato HTTP, composição do prompt, validação, LLM e pip
 | [VALIDATION_AND_TYPES.md](VALIDATION_AND_TYPES.md) | Normalização determinística, AJV, `fonte_ref`, tipos |
 | [SOURCE_CLASSIFICATION_SECURITY_REVIEW.md](SOURCE_CLASSIFICATION_SECURITY_REVIEW.md) | Revisão proporcional da classificação de fontes |
 | [SOURCE_EVIDENCE_SECURITY_REVIEW.md](SOURCE_EVIDENCE_SECURITY_REVIEW.md) | Evidência observada, aderência, SSRF e risco residual |
+| [TOLERANT_DOCUMENT_AND_FIELD_RESEARCH.md](TOLERANT_DOCUMENT_AND_FIELD_RESEARCH.md) | Gate READY para pesquisa oficial-first e orientada por lacunas |
+| [TOLERANT_DOCUMENT_AND_FIELD_RESEARCH_SECURITY_REVIEW.md](TOLERANT_DOCUMENT_AND_FIELD_RESEARCH_SECURITY_REVIEW.md) | Revisão de segurança do novo fluxo proposto |
 | [LLM_RUNTIME.md](LLM_RUNTIME.md) | Simulado, Claude, envs |
 | [HTTP_PIPELINE.md](HTTP_PIPELINE.md) | Rotas e fluxo do handler |
 
