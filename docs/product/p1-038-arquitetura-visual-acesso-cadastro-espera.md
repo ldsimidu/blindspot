@@ -193,3 +193,7 @@ O movimento desta jornada é **funcional e quase invisível**: ele confirma a tr
 ## 12. Decisão humana necessária
 
 `VISUAL_READY — a arquitetura visual está pronta para revisão. A implementação recomeça somente após Lucas aprovar esta composição; a aprovação técnica anterior permanece válida apenas para o escopo de contrato já descrito.`
+
+## 13. Checkpoint obrigatório após aprovação
+
+Antes de concluir P1-038, aplicar `core/first-render-composition-checkpoint.md` do PEK v0.7 após criar a estrutura mínima. A captura inicial deve cobrir login desktop/mobile, uma microetapa de cadastro, revisão e espera. Se houver card comprimido, região sem função, colisão de labels, valor quebrado, CTA sem contexto ou canvas vazio, a implementação retorna à seção 6 desta arquitetura antes de continuar.

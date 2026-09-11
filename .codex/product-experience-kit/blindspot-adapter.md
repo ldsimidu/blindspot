@@ -39,6 +39,10 @@ Magic UI, Velora UI, Spell UI, Cult UI, Skiper UI, Originkit, Cruip, Awwwards, R
 
 No BlindSpot, movimento só pode orientar troca de contexto, progresso local já confirmado ou feedback de interface. Ele não pode simular pesquisa, geração, aprovação ou confiança de fonte; loops, partículas, typing, brilho contínuo, 3D/tilt e efeitos de cursor não entram em ficha, cadastro, estados de espera ou dados técnicos sem uma exceção explicitamente aprovada.
 
+## Checkpoint de primeira renderização
+
+Depois de uma arquitetura visual aprovada e antes de acabamento, animação, asset ou conclusão da task, renderizar a estrutura mínima no viewport da evidência atual e nos breakpoints definidos. Avaliar canvas, largura útil da tarefa, propósito de cada região, colisão/truncamento de labels e dados, hierarquia em cinco segundos e reorganização mobile. Uma reprovação é retorno obrigatório à arquitetura visual; typecheck, build ou componente reutilizado não a compensam.
+
 ## Regras de Domínio na Interface
 
 - `fonte_ref`, status, completude e conflito são informações decisórias; não podem aparecer apenas por cor, tooltip ou detalhe oculto.
