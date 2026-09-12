@@ -294,7 +294,7 @@ O cabeçalho de tarefa mostra `Empresa · etapa 1 de 4`, título objetivo e ajud
 
 ## 15. Arquitetura visual v3 — qualidade de estados e Liquid Glass
 
-> Estado: `VISUAL_READY — aguarda aprovação humana.` Esta v3 substitui a v2 para implementação. Ela nasce das capturas em `C:\Users\lucas\Downloads\evidencia-cadastrov2\` e da análise humana em `evidencia.txt`.
+> Estado: `APPROVED — Lucas autorizou a implementação em 2026-09-11.` Esta v3 substitui a v2 para implementação. Ela nasce das capturas em `C:\Users\lucas\Downloads\evidencia-cadastrov2\` e da análise humana em `evidencia.txt`.
 
 ### Achados confirmados
 
@@ -333,4 +333,4 @@ O cabeçalho de tarefa mostra `Empresa · etapa 1 de 4`, título objetivo e ajud
 
 ### Decisão humana necessária
 
-`VISUAL_READY — arquitetura v3 pronta para revisão humana. A P1-038 não recebe novo CSS/JSX até Lucas aprovar v3; a validação de CNPJ requer um gate técnico complementar.`
+`APPROVED — arquitetura v3 autorizada por Lucas em 2026-09-11. A validação de CNPJ requer um gate técnico complementar e não integra esta implementação visual.`

@@ -5,7 +5,7 @@ import logoBlindspot from "./assets/blindspot-mark.png";
 import { ComparisonPanel } from "./ComparisonPanel";
 import { FichaDiscovery } from "./FichaDiscovery";
 import { TechnicalFichaDiscovery } from "./TechnicalFichaDiscovery";
-import { UiButton, UiCard, UiField, UiStatus } from "./ui/primitives";
+import { UiButton, UiCard, UiField, UiStatus, UiToast } from "./ui/primitives";
 
 type AppView = "request" | "catalog" | "comparison" | "history" | "team" | "usage";
 type ThemeMode = "dark" | "light";
@@ -66,6 +66,8 @@ function App() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [loginNotice, setLoginNotice] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ tone: "success" | "error"; title: string; message: string } | null>(null);
   const [accessView, setAccessView] = useState<AccessView>("login");
   const [registration, setRegistration] = useState({ company_name: "", cnpj: "", contact_name: "", contact_email: "", password: "", password_confirmation: "", privacy_notice_version: "" });
   const [registrationStep, setRegistrationStep] = useState(1);
@@ -75,6 +77,7 @@ function App() {
   const [signedInRole, setSignedInRole] = useState<OrganizationRole | null>(null);
   const [logoutState, setLogoutState] = useState<"idle" | "loading" | "error">("idle");
   const accessHeadingRef = useRef<HTMLHeadingElement>(null);
+  const toastTimerRef = useRef<number | null>(null);
   const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
     const saved = typeof window !== "undefined" ? window.localStorage.getItem("blindspot_theme_mode") : null;
     return saved === "light" ? "light" : "dark";
@@ -149,6 +152,10 @@ function App() {
   useEffect(() => {
     if (authState !== "signed_in") accessHeadingRef.current?.focus();
   }, [authState, accessView, registrationStep]);
+
+  useEffect(() => () => {
+    if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
+  }, []);
 
   useEffect(() => {
     if (authState !== "signed_in") {
@@ -269,9 +276,21 @@ function App() {
     setIsOnboardingOpen(false);
   }
 
+  function publishToast(tone: "success" | "error", title: string, message: string): void {
+    if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
+    setToast({ tone, title, message });
+    toastTimerRef.current = window.setTimeout(() => setToast(null), 6000);
+  }
+
+  function dismissToast(): void {
+    if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = null;
+    setToast(null);
+  }
+
   async function handleLogin(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault(); setLoginLoading(true); setLoginError(null);
-    try { const outcome = await entrar(loginEmail, loginPassword); if (outcome.state !== "authenticated") { setAccessView(outcome.state); return; } setSignedInName(outcome.displayName); setSignedInRole(outcome.role); setLoginPassword(""); setAuthState("signed_in"); } catch { setLoginError("Não foi possível entrar com essas credenciais."); } finally { setLoginLoading(false); }
+    event.preventDefault(); setLoginLoading(true); setLoginError(null); setLoginNotice(null);
+    try { const outcome = await entrar(loginEmail, loginPassword); if (outcome.state !== "authenticated") { setAccessView(outcome.state); return; } setSignedInName(outcome.displayName); setSignedInRole(outcome.role); setLoginPassword(""); setAuthState("signed_in"); publishToast("success", "Sessão iniciada", "Seu acesso foi confirmado."); } catch { const message = "Não foi possível entrar com essas credenciais."; setLoginError(message); publishToast("error", "Não foi possível entrar", "Revise suas credenciais e tente novamente."); } finally { setLoginLoading(false); }
   }
 
   async function handleRegistration(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -285,8 +304,9 @@ function App() {
       setRegistration({ company_name: "", cnpj: "", contact_name: "", contact_email: "", password: "", password_confirmation: "", privacy_notice_version: "" });
       setRegistrationStep(1);
       setAccessView("received");
+      publishToast("success", "Solicitação enviada", "Recebemos seu cadastro para análise.");
     }
-    catch { setRegistrationError("Não foi possível enviar o cadastro agora. Revise os dados e tente novamente."); }
+    catch { const message = "Não foi possível enviar o cadastro agora. Revise os dados e tente novamente."; setRegistrationError(message); publishToast("error", "Não foi possível enviar", "Revise os dados e tente novamente."); }
     finally { setRegistrationLoading(false); }
   }
 
@@ -315,7 +335,8 @@ function App() {
 
   function returnToLoginForStatus(): void {
     setLoginPassword("");
-    setLoginError("Para verificar o status, entre novamente com seu e-mail e senha.");
+    setLoginError(null);
+    setLoginNotice("Para verificar o status, entre novamente com seu e-mail e senha.");
     setAccessView("login");
   }
 
@@ -330,8 +351,10 @@ function App() {
       setAccessView("login");
       setAuthState("signed_out");
       setLogoutState("idle");
+      publishToast("success", "Sessão encerrada", "Você saiu do BlindSpot com segurança.");
     } catch {
       setLogoutState("error");
+      publishToast("error", "Não foi possível sair", "Tente encerrar sua sessão novamente.");
     }
   }
 
@@ -372,21 +395,25 @@ function App() {
             <aside className="access-editorial access-media" aria-label="Contexto visual do BlindSpot">
               <div className="access-media-glow" aria-hidden="true" />
               <div className="access-media-content">
-                <img className="access-media-logo" src={logoBlindspot} alt="BlindSpot" />
-                <p>INTELIGÊNCIA AUTOMOTIVA</p>
+                <div className="access-orb-brand">
+                  <img className="access-media-logo" src={logoBlindspot} alt="BlindSpot" />
+                  <strong>BLINDSPOT</strong>
+                  <p>Decisões estratégicas <em>sem</em> pontos cegos.</p>
+                </div>
               </div>
-              {accessView === "registration" && <ol className="access-phase-list" aria-label="Fases do cadastro">
-                {registrationPhases.map((phase, index) => <li key={phase} className={index === registrationPhaseIndex ? "is-current" : index < registrationPhaseIndex ? "is-complete" : ""} aria-current={index === registrationPhaseIndex ? "step" : undefined}><span>{index + 1}</span>{phase}</li>)}
-              </ol>}
             </aside>
             <UiCard as="section" className="access-task" raised aria-busy={authState === "checking" || registrationLoading}>
               <p className="access-task-eyebrow">{accessView === "registration" ? `${currentRegistrationStep.phase} · etapa ${registrationStep} de ${registrationFlow.length}` : "Área segura"}</p>
+              {accessView === "registration" && <ol className="access-phase-list access-task-steps" aria-label="Fases do cadastro">
+                {registrationPhases.map((phase, index) => <li key={phase} className={index === registrationPhaseIndex ? "is-current" : index < registrationPhaseIndex ? "is-complete" : ""} aria-current={index === registrationPhaseIndex ? "step" : undefined}><span>{index + 1}</span>{phase}</li>)}
+              </ol>}
               <h1 ref={accessHeadingRef} tabIndex={-1}>{accessTitle}</h1>
               <p className="access-task-description">{accessDescription}</p>
               {authState === "checking" && <UiStatus tone="entry" label="Verificando sessão" />}
               {accessView === "login" && authState === "signed_out" && <form onSubmit={handleLogin} className="access-form">
                 <UiField label="E-mail corporativo"><input type="email" autoComplete="username" value={loginEmail} onChange={(event) => setLoginEmail(event.target.value)} required /></UiField>
                 <UiField label="Senha"><input type="password" autoComplete="current-password" value={loginPassword} onChange={(event) => setLoginPassword(event.target.value)} required /></UiField>
+                {loginNotice && <p className="access-notice" role="status">{loginNotice}</p>}
                 {loginError && <p className="access-error" role="alert">{loginError}</p>}
                 <UiButton className="access-primary" type="submit" isLoading={loginLoading} loadingLabel="Entrando…">Entrar</UiButton>
                 <button type="button" className="access-text-action" onClick={() => { setLoginError(null); setRegistrationStep(1); setAccessView("registration"); }}>Cadastrar minha empresa</button>
@@ -396,14 +423,21 @@ function App() {
                 {registrationStep === 1 && <div className="access-field-pair"><UiField label="Nome da empresa"><input value={registration.company_name} onChange={(event) => setRegistration((current) => ({ ...current, company_name: event.target.value }))} minLength={2} maxLength={160} autoComplete="organization" required /></UiField><UiField label="CNPJ" hint="Usado para identificar a organização."><input value={registration.cnpj} onChange={(event) => setRegistration((current) => ({ ...current, cnpj: event.target.value }))} inputMode="numeric" autoComplete="off" required /></UiField></div>}
                 {registrationStep === 2 && <div className="access-field-pair"><UiField label="Nome do responsável"><input value={registration.contact_name} onChange={(event) => setRegistration((current) => ({ ...current, contact_name: event.target.value }))} minLength={2} maxLength={120} autoComplete="name" required /></UiField><UiField label="E-mail corporativo"><input type="email" autoComplete="email" value={registration.contact_email} onChange={(event) => setRegistration((current) => ({ ...current, contact_email: event.target.value }))} required /></UiField></div>}
                 {registrationStep === 3 && <><div className="access-field-pair"><UiField label="Crie uma senha" hint="Mínimo de 12 caracteres."><input type="password" autoComplete="new-password" value={registration.password} onChange={(event) => setRegistration((current) => ({ ...current, password: event.target.value }))} minLength={12} maxLength={128} required /></UiField><UiField label="Confirme sua senha"><input type="password" autoComplete="new-password" value={registration.password_confirmation} onChange={(event) => setRegistration((current) => ({ ...current, password_confirmation: event.target.value }))} minLength={12} maxLength={128} required /></UiField></div><label className="access-checkbox"><input type="checkbox" checked={Boolean(registration.privacy_notice_version)} onChange={(event) => setRegistration((current) => ({ ...current, privacy_notice_version: event.target.checked ? "2026-09" : "" }))} /> Li o aviso de privacidade aplicável ao cadastro.</label></>}
-                {registrationStep === 4 && <section className="registration-review" aria-label="Revisão do cadastro"><UiStatus tone="entry" label="Pronto para enviar" /><p>Revise os dados. O cadastro será enviado para análise após esta confirmação.</p><dl><div><dt>Empresa</dt><dd>{registration.company_name}</dd></div><div><dt>CNPJ</dt><dd>{registration.cnpj}</dd></div><div><dt>Responsável</dt><dd>{registration.contact_name}</dd></div><div><dt>E-mail</dt><dd>{registration.contact_email}</dd></div></dl></section>}
+                {registrationStep === 4 && <section className="registration-review" aria-label="Revisão do cadastro">
+                  <header><div><UiStatus tone="entry" label="Pronto para enviar" /><h2>Confirme sua solicitação</h2></div><p>Confira os dados antes de encaminhar o cadastro para análise.</p></header>
+                  <div className="registration-review__groups">
+                    <section><div className="registration-review__group-heading"><h3>Empresa</h3><button type="button" onClick={() => setRegistrationStep(1)}>Editar</button></div><dl><div><dt>Nome</dt><dd>{registration.company_name}</dd></div><div><dt>CNPJ</dt><dd>{registration.cnpj}</dd></div></dl></section>
+                    <section><div className="registration-review__group-heading"><h3>Responsável</h3><button type="button" onClick={() => setRegistrationStep(2)}>Editar</button></div><dl><div><dt>Nome</dt><dd>{registration.contact_name}</dd></div><div><dt>E-mail</dt><dd>{registration.contact_email}</dd></div></dl></section>
+                  </div>
+                </section>}
                 {registrationError && <p className="access-error" role="alert">{registrationError}</p>}
-                <div className="access-actions"><UiButton tone="secondary" type="button" onClick={returnToPreviousRegistrationStep}>Voltar</UiButton><UiButton type="submit" isLoading={registrationLoading} loadingLabel="Enviando cadastro…">{registrationStep === registrationFlow.length ? "Enviar cadastro" : "Continuar"}</UiButton></div>
+                <div className={`access-actions ${registrationStep === registrationFlow.length ? "access-actions--final" : ""}`}><UiButton tone="secondary" type="button" onClick={returnToPreviousRegistrationStep}>Voltar</UiButton><UiButton type="submit" isLoading={registrationLoading} loadingLabel="Enviando cadastro…">{registrationStep === registrationFlow.length ? "Enviar solicitação para análise" : "Continuar"}</UiButton></div>
               </form>}
               {(accessView === "received" || accessView === "pending_review") && <section className="approval-wait" aria-label="Status do cadastro"><ol className="approval-timeline"><li className="is-complete"><strong>Cadastro enviado</strong><span>Recebemos sua solicitação.</span></li><li className="is-current"><strong>Em análise</strong><span>O acesso ainda não está liberado.</span></li><li><strong>Próximo passo</strong><span>Entre novamente para verificar o status quando necessário.</span></li></ol><div className="access-actions"><UiButton type="button" onClick={returnToLoginForStatus}>Voltar ao login</UiButton><a href="mailto:suporte@blindspot.local">Falar com o suporte</a></div></section>}
               {accessView === "rejected" && <div className="access-actions"><UiButton tone="secondary" type="button" onClick={() => setAccessView("login")}>Voltar ao login</UiButton><a href="mailto:suporte@blindspot.local">Falar com o suporte</a></div>}
             </UiCard>
           </div>
+          {toast && <UiToast tone={toast.tone} title={toast.title} message={toast.message} onDismiss={dismissToast} />}
         </div>
       </main>
     );
@@ -411,6 +445,7 @@ function App() {
 
   return (
     <div className={`dashboard-page ${isSidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+      {toast && <UiToast tone={toast.tone} title={toast.title} message={toast.message} onDismiss={dismissToast} />}
       <a className="skip-link" href="#main-content">Pular para o conteúdo principal</a>
       <aside className="sidebar" aria-label="Navegação do BlindSpot">
         <div className="brand-header">

@@ -1880,3 +1880,129 @@ pre {
     transition: none;
   }
 }
+
+/* P1-038 v3: assinatura central, painel Liquid Glass e estados dedicados. */
+.access-editorial.access-media {
+  background:
+    radial-gradient(circle at 50% 52%, rgb(255 106 0 / 28%), transparent 27%),
+    radial-gradient(circle at 22% 72%, rgb(255 106 0 / 28%), transparent 38%),
+    linear-gradient(135deg, #0d0e12 0%, #17191f 52%, #090a0d 100%);
+}
+
+.access-media-glow {
+  inset: 18% auto auto 22%;
+  width: min(43vw, 560px);
+  background: rgb(255 106 0 / 30%);
+  animation-duration: 6.5s;
+}
+
+.access-media-content {
+  display: grid;
+  height: 100%;
+  place-items: center;
+  align-content: center;
+}
+
+.access-orb-brand {
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  max-width: 28rem;
+  text-align: center;
+}
+
+.access-orb-brand .access-media-logo { width: 82px; height: 82px; }
+.access-orb-brand strong { color: #fff; font-size: clamp(1.25rem, 2vw, 1.8rem); font-weight: 850; letter-spacing: 0.14em; }
+.access-orb-brand p { max-width: 25ch; color: rgb(255 255 255 / 84%); font-size: clamp(1rem, 1.4vw, 1.2rem); font-weight: 500; letter-spacing: 0; line-height: 1.45; }
+.access-orb-brand em { color: #ff6a00; font-style: normal; font-weight: 800; }
+
+.access-task {
+  border: 1px solid rgb(255 255 255 / 52%);
+  background: rgb(255 255 255 / 78%);
+  box-shadow: -20px 0 58px rgb(0 0 0 / 22%);
+  backdrop-filter: blur(24px) saturate(130%);
+  -webkit-backdrop-filter: blur(24px) saturate(130%);
+}
+
+.access-task-eyebrow {
+  margin-bottom: 10px;
+  color: #ae4100;
+  font-size: 0.94rem;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.access-task-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  width: 100%;
+  margin: 0 0 26px;
+}
+
+.access-task-steps li { gap: 7px; color: #68707c; font-size: 0.78rem; white-space: nowrap; }
+.access-task-steps span { width: 24px; height: 24px; border-color: #b7bec9; font-size: 0.72rem; }
+.access-task-steps .is-current span { border-color: #ff6a00; background: #ff6a00; }
+.access-task-steps .is-complete span { border-color: #236b4e; color: #236b4e; }
+
+.access-task-description { font-size: 1rem; }
+.access-form .ui-field__label { color: #303743; font-size: 0.96rem; }
+.access-form input:not([type="checkbox"]) { min-height: 56px; background: #fff; font-size: 1rem; }
+.access-primary, .access-actions .ui-button { min-height: 52px; }
+.access-notice { margin: 0; padding: 12px 14px; border: 1px solid #d8dee7; border-radius: 10px; background: #fff; color: #465160; font-size: 0.92rem; }
+
+.access-task .registration-review {
+  gap: 22px;
+  padding: 24px;
+  border-color: #dce1e8;
+  background: #fff;
+  box-shadow: 0 8px 24px rgb(25 32 42 / 6%);
+}
+
+.registration-review header { display: grid; gap: 10px; }
+.registration-review header > div { display: flex; align-items: center; gap: 10px; }
+.registration-review h2, .registration-review h3 { margin: 0; color: #171b22; }
+.registration-review h2 { font-size: 1.16rem; }
+.registration-review h3 { font-size: 1rem; }
+.registration-review header p { color: #515c6a; line-height: 1.5; }
+.registration-review__groups { display: grid; gap: 14px; }
+.registration-review__groups > section { padding: 16px; border: 1px solid #e1e5eb; border-radius: 12px; background: #fafbfc; }
+.registration-review__group-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 13px; }
+.registration-review__group-heading button { padding: 0; border: 0; background: transparent; color: #c84b00; font: inherit; font-size: 0.9rem; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.registration-review__groups dl { gap: 16px; }
+.registration-review dt { color: #68727e; font-size: 0.76rem; letter-spacing: 0.04em; }
+.registration-review dd { color: #202631; font-size: 0.96rem; font-weight: 650; }
+.access-actions--final { margin-top: 4px; padding-top: 22px; border-top: 1px solid #dce1e8; }
+
+.access-task .approval-wait { gap: 26px; }
+.access-task .approval-timeline { max-width: none; margin: 0; padding: 24px; border: 1px solid #dce1e8; border-radius: 14px; background: #fff; }
+.access-task .approval-timeline li { min-height: 58px; padding-left: 48px; color: #68727e; }
+.access-task .approval-timeline li::before { top: 0; width: 26px; height: 26px; border-width: 2px; }
+.access-task .approval-timeline li:not(:last-child)::after { top: 30px; bottom: -13px; left: 12px; width: 2px; background: #d6dce4; }
+.access-task .approval-timeline strong { color: #202631; font-size: 1rem; }
+.access-task .approval-timeline span { color: #56616f; font-size: 0.94rem; line-height: 1.45; }
+.access-task .approval-timeline .is-current::before { box-shadow: 0 0 0 6px rgb(255 106 0 / 16%); }
+.access-task .approval-timeline .is-complete::before { background: #e8f5ee; border-color: #236b4e; }
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .access-task { background: #fff; }
+}
+
+@media (prefers-contrast: more) {
+  .access-task { background: #fff; backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+
+@media (max-width: 1079px) {
+  .access-media-content { min-height: 194px; }
+  .access-task-steps { margin-bottom: 22px; }
+}
+
+@media (max-width: 640px) {
+  .access-orb-brand { gap: 8px; }
+  .access-orb-brand .access-media-logo { width: 48px; height: 48px; }
+  .access-orb-brand strong { font-size: 0.9rem; }
+  .access-orb-brand p { font-size: 0.82rem; }
+  .access-task-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; }
+  .access-task-steps li { font-size: 0.78rem; }
+  .registration-review__groups dl { grid-template-columns: 1fr; }
+}

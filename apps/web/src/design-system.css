@@ -208,6 +208,35 @@ body.theme-light {
 .ui-state--error { border-color: var(--color-status-conflict-text); }
 .ui-state--loading { border-color: var(--color-feedback-info); }
 
+.ui-toast-region {
+  position: fixed;
+  z-index: 100;
+  top: var(--space-4);
+  right: var(--space-4);
+  width: min(380px, calc(100vw - 2 * var(--space-4)));
+  pointer-events: none;
+}
+
+.ui-toast {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-raised);
+  pointer-events: auto;
+}
+
+.ui-toast strong,
+.ui-toast p { margin: 0; }
+.ui-toast strong { display: block; font-size: var(--type-body); }
+.ui-toast p { margin-top: 3px; font-size: var(--type-meta); line-height: 1.45; }
+.ui-toast--success { background: var(--color-status-confirmed-bg); border-color: var(--color-feedback-success); color: var(--color-status-confirmed-text); }
+.ui-toast--error { background: var(--color-status-conflict-bg); border-color: var(--color-feedback-danger); color: var(--color-status-conflict-text); }
+.ui-toast__dismiss { flex: 0 0 auto; padding: 0; border: 0; background: transparent; color: currentColor; font-size: 1.4rem; line-height: 1; cursor: pointer; }
+
 :where(button, input, select, textarea, a):focus-visible {
   outline: 3px solid var(--color-focus-ring);
   outline-offset: 3px;

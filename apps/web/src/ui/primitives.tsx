@@ -2,6 +2,7 @@ import { cloneElement, type ButtonHTMLAttributes, type HTMLAttributes, type Reac
 
 type Tone = "primary" | "secondary" | "danger";
 type StatusTone = "confirmed" | "entry" | "partial" | "conflict" | "not-found" | "not-applicable" | "inferred";
+type ToastTone = "success" | "error";
 
 function classNames(...values: Array<string | undefined | false>): string {
   return values.filter(Boolean).join(" ");
@@ -76,6 +77,27 @@ export interface UiStatusProps extends HTMLAttributes<HTMLSpanElement> {
 
 export function UiStatus({ className, label, tone, ...props }: UiStatusProps) {
   return <span {...props} className={classNames("ui-status", `ui-status--${tone}`, className)}>{label}</span>;
+}
+
+export interface UiToastProps {
+  tone: ToastTone;
+  title: string;
+  message?: string;
+  onDismiss: () => void;
+}
+
+export function UiToast({ message, onDismiss, title, tone }: UiToastProps) {
+  return (
+    <aside className="ui-toast-region" aria-label="Notificações">
+      <div className={classNames("ui-toast", `ui-toast--${tone}`)} role={tone === "error" ? "alert" : "status"} aria-live={tone === "error" ? "assertive" : "polite"}>
+        <div>
+          <strong>{title}</strong>
+          {message ? <p>{message}</p> : null}
+        </div>
+        <button type="button" className="ui-toast__dismiss" onClick={onDismiss} aria-label="Fechar notificação">×</button>
+      </div>
+    </aside>
+  );
 }
 
 interface UiStateProps extends HTMLAttributes<HTMLElement> {

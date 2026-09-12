@@ -1,4 +1,4 @@
-# ❌ Pendente — refatorar acesso, cadastro e espera
+# 🚧 Em execução — refatorar acesso, cadastro e espera
 
 > Prioridade: P1
 >
@@ -6,7 +6,7 @@
 >
 > Origem ou referência: UX-BS-005; `docs/product/ux-ui-direcao-alvo-e-decisoes.md`
 >
-> Arquitetura: `TÉCNICA APPROVED; ARQUITETURA VISUAL V3 AGUARDA aprovação humana após evidência de 2026-09-11.`
+> Arquitetura: `TÉCNICA APPROVED; ARQUITETURA VISUAL V3 APPROVED por Lucas em 2026-09-11.`
 >
 > Triagem automática: `Material — autenticação e fluxo de dados pessoais`
 >
@@ -95,12 +95,13 @@ Curadoria complementar: Magic UI, Velora UI, Spell UI, Cult UI, Skiper UI, Origi
 
 ## Resultado do agente
 
-- Estado: `❌ Pendente — reaberta por evidência humana do render v2.`
-- Arquitetura: `Técnica approved; arquitetura visual v3 aguarda aprovação humana.`
+- Estado: `🚧 Em execução — implementação visual v3 concluída; validação de render pendente.`
+- Arquitetura: `Técnica e visual v3 approved por Lucas em 2026-09-11.`
 - Triagem automática: `Material — autenticação e dados pessoais`.
 - Segurança: `Aplicável — revisão obrigatória`.
-- Implementação: a composição v2 é um rascunho visual reprovado para evolução incremental. Seus acertos funcionais (quatro agrupamentos, senha/confirmação juntos, contrato de sessão) podem ser preservados, mas marca, progresso, painel, revisão, timeline e feedback precisam seguir a arquitetura v3 depois de aprovada.
-- Arquivos alterados: `apps/web/src/App.tsx`, `apps/web/src/styles.css` e esta task. Foram reutilizados `UiButton`, `UiField` e `UiStatus` da fundação P1-037.
+- Implementação v3: marca centralizada na orbe, progresso transferido para o painel de tarefa, painel Liquid Glass com fallback opaco, campos/CTA ampliados, revisão em blocos editáveis, timeline com maior gravidade e feedback operacional separado da validação inline. O fluxo, os contratos HTTP e o tratamento de credenciais existentes foram preservados.
+- Arquivos alterados: `apps/web/src/App.tsx`, `apps/web/src/styles.css`, `apps/web/src/design-system.css`, `apps/web/src/ui/primitives.tsx`, a especificação visual e esta task. A fundação agora expõe `UiToast`; foram reutilizados `UiButton`, `UiField` e `UiStatus`.
 - Verificação executada: as capturas de `C:\Users\lucas\Downloads\evidencia-cadastrov2\` e `evidencia.txt` foram revisadas. Elas aprovam direção de marca e agrupamento de senha, mas reprovam densidade, marca duplicada/fora da orbe, posicionamento do stepper, ausência de Liquid Glass, ênfase de timeline e revisão. Também revelam que CNPJ arbitrário passa na validação local.
-- Verificação pendente: aprovação humana da arquitetura v3; gate técnico de validação CNPJ; depois, render desktop/tablet/mobile, teclado, reduced motion, toast, revisão e espera com dados sanitizados.
-- Próximo passo: Lucas aprovar ou ajustar a v3 antes de retomar o código.
+- Verificação executada: `npm run build` em `apps/web` passou em produção após permissão de leitura do Vite. `git diff --check` passou. A automação de navegador local não iniciou (`os error 3` no runtime da ferramenta), por isso não há alegação de aprovação visual.
+- Verificação pendente: render desktop/tablet/mobile, teclado, reduced motion, toast, revisão e espera com dados sanitizados; gate técnico específico antes de validar CNPJ no cliente e no endpoint.
+- Próximo passo: obter evidência visual v3 e fechar a task somente se os critérios restantes forem confirmados.
