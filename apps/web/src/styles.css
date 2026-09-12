@@ -2148,3 +2148,60 @@ pre {
 @media (max-width: 680px) {
   .access-orb-brand p { font-size: 1.05rem; }
 }
+
+/* Painel de login: composição limpa e concentrada da referência de acesso. */
+.access-task:has(> .access-form:not(.registration-flow)) {
+  align-items: center;
+  background: linear-gradient(145deg, #fff 0%, #fff 62%, #f4f6fa 100%);
+}
+
+.access-task:has(> .access-form:not(.registration-flow)) .access-task-eyebrow,
+.access-task:has(> .access-form:not(.registration-flow)) h1,
+.access-task:has(> .access-form:not(.registration-flow)) .access-task-description {
+  width: min(100%, 360px);
+  max-width: 360px;
+  align-self: center;
+  text-align: center;
+}
+
+.access-task:has(> .access-form:not(.registration-flow)) .access-task-eyebrow {
+  margin-bottom: 14px;
+  color: #5b6472;
+  font-size: 0.78rem;
+  font-weight: 750;
+}
+
+.access-task:has(> .access-form:not(.registration-flow)) h1 {
+  color: #12151b;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: clamp(2rem, 2.65vw, 2.7rem);
+  font-weight: 700;
+  letter-spacing: -0.055em;
+  line-height: 1;
+}
+
+.access-task:has(> .access-form:not(.registration-flow)) .access-task-description {
+  margin-top: 12px;
+  margin-bottom: 30px;
+  color: #646d78;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.access-task:has(> .access-form:not(.registration-flow)) .access-form {
+  width: min(100%, 360px);
+  max-width: 360px;
+  gap: 15px;
+  align-self: center;
+}
+
+.access-task:has(> .access-form:not(.registration-flow)) .ui-field { gap: 6px; }
+.access-task:has(> .access-form:not(.registration-flow)) .ui-field__label { color: #242a34; font-size: 0.75rem; font-weight: 700; }
+.access-task:has(> .access-form:not(.registration-flow)) input:not([type="checkbox"]) { min-height: 48px; border-color: #e3e6ec; border-radius: 3px; font-size: 0.86rem; }
+.access-task:has(> .access-form:not(.registration-flow)) .access-primary { min-height: 50px; margin-top: 4px; border-color: #101114; background: #101114; color: #fff; border-radius: 3px; }
+.access-task:has(> .access-form:not(.registration-flow)) .access-primary:hover:not(:disabled) { background: #2a2d33; }
+.access-task:has(> .access-form:not(.registration-flow)) .access-text-action { justify-self: center; margin-top: 4px; color: #242a34; font-size: 0.8rem; font-weight: 600; }
+
+@media (max-width: 680px) {
+  .access-task:has(> .access-form:not(.registration-flow)) h1 { font-size: 2.2rem; }
+}
