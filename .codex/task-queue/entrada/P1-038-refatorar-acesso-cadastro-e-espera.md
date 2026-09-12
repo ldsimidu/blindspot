@@ -6,7 +6,7 @@
 >
 > Origem ou referência: UX-BS-005; `docs/product/ux-ui-direcao-alvo-e-decisoes.md`
 >
-> Arquitetura: `TÉCNICA APPROVED; ARQUITETURA VISUAL V4 APPROVED por Lucas em 2026-09-11.`
+> Arquitetura: `TÉCNICA APPROVED; ARQUITETURA VISUAL V5 READY — aguarda APPROVED explícito de Lucas.`
 >
 > Triagem automática: `Material — autenticação e fluxo de dados pessoais`
 >
@@ -108,10 +108,20 @@ O feedback humano posterior muda a composição, o propósito da mídia e a assi
 
 `APPROVED — Lucas autorizou a implementação da composição V4 em 2026-09-11.`
 
+### Reabertura visual V5 — precisão operacional após review humano
+
+O review humano `C:\Users\lucas\Downloads\review-cadastro-v4.md`, recebido em 2026-09-12, identifica mudanças de composição: progresso gráfico duplicado, largura interna insuficiente, alinhamento de formulário, hierarquia da revisão/timeline e estabilidade vertical de feedback. Pelo PEK v0.10, essa evidência reabre a arquitetura visual; não é polimento local.
+
+Especificação V5: [`docs/product/p1-038-arquitetura-visual-acesso-cadastro-espera-v5.md`](../../../docs/product/p1-038-arquitetura-visual-acesso-cadastro-espera-v5.md).
+
+Deliberações: preservar assinatura editorial grande no canvas por instrução humana anterior; remover somente a barra linear, manter stepper; ampliar conteúdo do painel; alinhar cadastro à esquerda; simplificar revisão; separar próxima ação da timeline; manter `NO_IMAGE`. Mostrar/ocultar senha e link de privacidade não entram sem destino/decisão e gate próprios.
+
+`READY — Lucas precisa aprovar explicitamente a arquitetura V5 antes de CSS/JSX.`
+
 ## Resultado do agente
 
 - Estado: `🚧 Em execução — composição V4 implementada; evidência de render pendente.`
-- Arquitetura: `Técnica e visual V4 approved por Lucas em 2026-09-11.`
+- Arquitetura: `Técnica approved; visual V5 READY — aguarda APPROVED explícito de Lucas.`
 - Triagem automática: `Material — autenticação e dados pessoais`.
 - Segurança: `Aplicável — revisão obrigatória`.
 - Implementação V4: a mídia/orbe agora é canvas integral e o painel Liquid Glass de `clamp(480px, 40vw, 640px)` flutua à direita. A assinatura usa símbolo grande à esquerda, wordmark `BLINDSPOT` em uma linha com escala editorial e tracking compacto, e subtítulo abaixo. Em tablet o painel sobrepõe centralizado; em mobile volta ao fluxo para preservar leitura e teclado. Stepper, revisão, timeline, toast e regras de credenciais V3 foram preservados.
@@ -120,4 +130,4 @@ O feedback humano posterior muda a composição, o propósito da mídia e a assi
 - Verificação executada: as capturas de `C:\Users\lucas\Downloads\evidencia-cadastrov2\` e `evidencia.txt` foram revisadas. Elas aprovam direção de marca e agrupamento de senha, mas reprovam densidade, marca duplicada/fora da orbe, posicionamento do stepper, ausência de Liquid Glass, ênfase de timeline e revisão. Também revelam que CNPJ arbitrário passa na validação local.
 - Verificação executada: `npm run build` em `apps/web` passou em produção após permissão de leitura do Vite. `git diff --check` passou. A automação de navegador local não iniciou (`os error 3` no runtime da ferramenta), por isso não há alegação de aprovação visual.
 - Verificação pendente: render desktop/tablet/mobile, teclado, reduced motion, toast, revisão e espera com dados sanitizados; gate técnico específico antes de validar CNPJ no cliente e no endpoint.
-- Próximo passo: obter evidência visual V4 e fechar a task somente se os critérios restantes forem confirmados.
+- Próximo passo: Lucas aprovar, ajustar ou rejeitar a V5; somente então implementar, capturar renderes e fechar a task.
