@@ -315,6 +315,7 @@ Uma task que altera materialmente uma tela consulta este Design System e aplica 
 | 2026-09-11 | P1-037 implementou tokens semânticos e primitives sem migrar telas | Implementado |
 | 2026-09-11 | Design System passou a ser a especificação central de linguagem, componentes, grid, adoção PEK e checkpoints | Aprovado para documentação |
 | 2026-09-11 | Image System complementar formalizado | Aprovado para documentação |
+| 2026-09-12 | Incorporados padrões de topografia estável de feedback, validação progressiva e invariantes geométricos a partir da evidência do cadastro P0-015 | Aprovado para documentação |
 
 ## Padrão de qualidade pós-render: densidade, feedback e estados de marco
 
@@ -323,6 +324,22 @@ Captura visual não valida apenas que elementos “cabem” no viewport. Depois 
 ### Contrato de feedback de ação
 
 `Toast` é um componente transversal de retorno de uma ação que terminou e não pertence exclusivamente a um campo: sucesso de envio, falha de rede/envio, salvamento e alteração de estado confirmada. Ele deve ter título, mensagem curta, tom semântico, região `aria-live` apropriada, duração que permita leitura e opção de dispensar quando persistente. Verde comunica sucesso de operação; vermelho comunica falha de operação. Toast não substitui erro de validação associado ao campo, explicação de bloqueio ou estado persistente de página; esses continuam próximos ao objeto afetado.
+
+#### Topografia estável do feedback
+
+O retorno de uma operação não pode deslocar a ação que a pessoa acabou de usar. Para cada fluxo, definir antes de implementar onde vivem as três camadas abaixo e manter essa geometria no estado normal e no estado de erro:
+
+| Camada | Região e comportamento obrigatório | Exemplo no cadastro |
+| --- | --- | --- |
+| Campo | abaixo do controle/grupo e associado por semântica acessível | CNPJ inválido após `blur` ou tentativa de avançar |
+| Operação persistente | slot reservado junto à ação final, com altura suficiente no estado normal | falha temporária ao enviar a solicitação |
+| Transversal | overlay de viewport fora do fluxo de layout | confirmação ou falha de envio, dispensável e sem dados sensíveis |
+
+`Toast` é uma camada de viewport: é portalizado fora do contêiner da tela, usa `position: fixed`, z-index de overlay e safe areas. Ele nunca empurra formulário, botões ou conteúdo. Se a falha também exige recuperação contextual, o painel mantém uma explicação segura em slot reservado; não duplicar detalhes sensíveis, técnicos ou já compreendidos pela validação local.
+
+#### Validação progressiva de identificadores
+
+Campos com máscara, tamanho fixo ou dígito verificador aceitam digitação parcial sem acusar falha a cada caractere. A UI normaliza e orienta em `blur` ou na tentativa de avançar; o servidor reaplica a mesma regra autoritativa antes de processar/persistir. A validação cliente melhora a tarefa, mas não concede aceitação. Mensagens públicas continuam neutras e não expõem existência, duplicidade, dados fornecidos, token ou regra interna.
 
 ### Estados que exigem composição dedicada
 
@@ -338,6 +355,12 @@ Captura visual não valida apenas que elementos “cabem” no viewport. Depois 
 Em cada viewport, identificar `objeto primário`, `estado primário`, `ação primária` e `região de apoio`. A soma visual (área, contraste, tamanho de texto, proximidade e movimento) deve favorecer o objeto/estado primário. Um painel com 40% da tela que contém somente dois inputs pode aumentar tamanhos, ritmo vertical, material ou contexto operacional, mas não deve receber conteúdo inventado para “preencher”.
 
 Um label de progresso composto usa unidade tipográfica: `Empresa · etapa 1 de 4`, sem espaçamento artificial entre letras/palavras além do token normal de label. Tracking amplo é reservado a eyebrow curto em caixa alta, nunca a informação que a pessoa precisa ler rapidamente.
+
+### Invariantes geométricos de componentes
+
+Elementos cujo formato comunica estado não podem depender do encolhimento acidental do layout. Marcadores circulares de stepper, avatares, ícones de estado, controles quadrados e áreas mínimas de toque declaram largura, altura e comportamento flex/grid explicitamente (`flex-shrink: 0` quando cabível, proporção e dimensão mínima). Texto e rótulo recebem a região que pode quebrar ou reorganizar.
+
+Em breakpoint insuficiente, a solução é mudar a composição — grade em duas colunas, indicador vertical, rótulo abreviado com nome acessível ou progresso textual — e nunca deformar o marcador, sobrepor labels ou reduzir o alvo de toque. Um componente só é reutilizável após ser conferido no seu estado mais longo, com todos os itens ativos/inativos e nos viewports previstos.
 
 ### Marca no campo visual
 
