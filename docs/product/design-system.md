@@ -65,7 +65,7 @@ O estudo de Liquid Glass confirma que o valor aproveitável é hierarquia por ma
 
 Toda aplicação desse material declara: fundo que aparece sob o vidro, fallback opaco, contraste, estado sem blur, custo de renderização, comportamento em `prefers-reduced-transparency` quando disponível e alternativa em mobile. O vidro não pode esconder `fonte_ref`, status, erro, senha ou CTA. A referência conceitual é a orientação oficial de [Liquid Glass da Apple](https://developer.apple.com/documentation/TechnologyOverviews/liquid-glass), que recomenda preservar foco no conteúdo e usar cor de modo criterioso; não há adoção de assets, SDK ou código Apple.
 
-Para um painel sobre canvas rico, o vidro não é apenas `opacity`: combina transparência moderada, `backdrop-filter` de blur/saturação, borda externa clara, aro interno de baixa opacidade, reflexo especular localizado e sombra externa. Essas camadas criam refração visual sem transformar o formulário em imagem. Inputs, alertas, revisões, timelines e CTAs continuam sobre superfícies estáveis dentro do painel; fallback sem blur e modo de alto contraste voltam ao fundo opaco. Esse é o padrão `glass.optical.overlay`, inicialmente aplicado à P1-038, e não autoriza um efeito global.
+Quando a tarefa exigir máxima legibilidade, o painel pode usar um gradiente branco opaco sobre o canvas, com borda clara e sombra curta, em vez de vidro. Inputs, alertas, revisões, timelines e CTAs continuam sobre superfícies estáveis. A P1-038 adota essa alternativa; Liquid Glass não é uma exigência visual global.
 
 ### Arquitetura de acesso: introdução não é formulário
 

@@ -386,6 +386,6 @@ O único movimento continua sendo a orbe/fundo. Ele descreve apenas a atmosfera 
 
 `APPROVED — implementar V4 autorizado explicitamente por Lucas em 2026-09-11.`
 
-### Refinamento aprovado — material óptico e escala do subtítulo
+### Refinamento aprovado — painel branco e escala do subtítulo
 
-A referência visual fornecida por Lucas em 2026-09-11 esclarece que o painel não deve parecer apenas branco translúcido: ele precisa produzir leitura de material óptico. A implementação aplica `glass.optical.overlay`: transparência em camadas, blur/saturação, borda externa, aro interno, reflexo especular e sombra. Isso é uma tradução de princípio; não copia assets, SDK ou código Apple. As superfícies internas de formulário e estado continuam opacas, e há fallback sem blur/alto contraste. O subtítulo da assinatura sobe para `clamp(1.2rem, 1.8vw, 1.65rem)` no desktop e `1.05rem` em compacto, mantendo `sem` como realce laranja.
+Após o feedback posterior de Lucas, o painel não usa Liquid Glass. Ele passa a ter gradiente branco opaco, borda clara e sombra curta, preservando contraste e separação sobre o canvas escuro. O subtítulo da assinatura permanece ampliado: `clamp(1.2rem, 1.8vw, 1.65rem)` no desktop e `1.05rem` em compacto, mantendo `sem` como realce laranja.
