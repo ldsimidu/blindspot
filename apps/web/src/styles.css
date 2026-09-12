@@ -2205,3 +2205,112 @@ pre {
 @media (max-width: 680px) {
   .access-task:has(> .access-form:not(.registration-flow)) h1 { font-size: 2.2rem; }
 }
+
+/* Cadastro e espera: a mesma escala centrada do login, com laranja por contexto. */
+.access-task:has(> .registration-flow),
+.access-task:has(> .approval-wait),
+.access-task:has(> .access-actions) {
+  align-items: center;
+}
+
+.access-task:has(> .registration-flow) .access-task-eyebrow,
+.access-task:has(> .registration-flow) h1,
+.access-task:has(> .registration-flow) .access-task-description,
+.access-task:has(> .approval-wait) .access-task-eyebrow,
+.access-task:has(> .approval-wait) h1,
+.access-task:has(> .approval-wait) .access-task-description,
+.access-task:has(> .access-actions) .access-task-eyebrow,
+.access-task:has(> .access-actions) h1,
+.access-task:has(> .access-actions) .access-task-description {
+  width: min(100%, 420px);
+  max-width: 420px;
+  align-self: center;
+  text-align: center;
+}
+
+.access-task:has(> .registration-flow) .access-task-eyebrow,
+.access-task:has(> .approval-wait) .access-task-eyebrow,
+.access-task:has(> .access-actions) .access-task-eyebrow {
+  margin-bottom: 14px;
+  color: #d95805;
+  font-size: 0.92rem;
+  font-weight: 800;
+}
+
+.access-task:has(> .registration-flow) h1,
+.access-task:has(> .approval-wait) h1,
+.access-task:has(> .access-actions) h1 {
+  color: #12151b;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+  font-size: clamp(2.35rem, 3.2vw, 3.25rem);
+  font-weight: 760;
+  letter-spacing: -0.06em;
+  line-height: 1;
+}
+
+.access-task:has(> .registration-flow) .access-task-description,
+.access-task:has(> .approval-wait) .access-task-description,
+.access-task:has(> .access-actions) .access-task-description {
+  margin-top: 14px;
+  margin-bottom: 32px;
+  color: #626b77;
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.access-task:has(> .registration-flow) .registration-flow,
+.access-task:has(> .approval-wait) .approval-wait,
+.access-task:has(> .access-actions) > .access-actions {
+  width: min(100%, 420px);
+  max-width: 420px;
+  align-self: center;
+}
+
+.access-task:has(> .registration-flow) .registration-flow { gap: 20px; }
+.access-task:has(> .registration-flow) .access-field-pair { gap: 20px; }
+.access-task:has(> .registration-flow) .ui-field { gap: 7px; }
+.access-task:has(> .registration-flow) .ui-field__label { color: #242a34; font-size: 0.9rem; font-weight: 750; }
+.access-task:has(> .registration-flow) input:not([type="checkbox"]) { min-height: 60px; border-color: #e0e4eb; border-radius: 4px; font-size: 1rem; }
+.access-task:has(> .registration-flow) .access-checkbox { font-size: 0.93rem; line-height: 1.5; }
+
+.access-task:has(> .registration-flow) .access-task-steps {
+  width: min(100%, 420px);
+  margin-bottom: 28px;
+  align-self: center;
+  gap: 9px;
+}
+
+.access-task:has(> .registration-flow) .access-task-steps li { gap: 8px; font-size: 0.82rem; white-space: normal; line-height: 1.15; }
+.access-task:has(> .registration-flow) .access-task-steps span { width: 28px; height: 28px; font-size: 0.78rem; }
+.access-task:has(> .registration-flow) .access-progress { height: 5px; }
+.access-task:has(> .registration-flow) .access-actions { margin-top: 8px; }
+.access-task:has(> .registration-flow) .access-actions .ui-button,
+.access-task:has(> .approval-wait) .access-actions .ui-button,
+.access-task:has(> .access-actions) > .access-actions .ui-button { min-height: 56px; font-size: 1rem; }
+.access-task:has(> .registration-flow) .ui-button--primary,
+.access-task:has(> .approval-wait) .ui-button--primary { border-color: #f05d00; background: #f05d00; color: #fff; }
+.access-task:has(> .registration-flow) .ui-button--primary:hover:not(:disabled),
+.access-task:has(> .approval-wait) .ui-button--primary:hover:not(:disabled) { border-color: #ca4900; background: #ca4900; }
+
+.access-task:has(> .registration-flow) .registration-review { width: 100%; padding: 28px; }
+.access-task:has(> .registration-flow) .registration-review h2 { font-size: 1.3rem; }
+.access-task:has(> .registration-flow) .registration-review h3 { font-size: 1.05rem; }
+.access-task:has(> .registration-flow) .registration-review dd { font-size: 1rem; }
+.access-task:has(> .registration-flow) .registration-review__group-heading button { color: #d95805; font-size: 0.96rem; }
+
+.access-task:has(> .approval-wait) .approval-wait { gap: 28px; }
+.access-task:has(> .approval-wait) .approval-timeline { padding: 28px; }
+.access-task:has(> .approval-wait) .approval-timeline li { min-height: 66px; padding-left: 54px; }
+.access-task:has(> .approval-wait) .approval-timeline li::before { width: 30px; height: 30px; }
+.access-task:has(> .approval-wait) .approval-timeline li:not(:last-child)::after { top: 34px; left: 14px; }
+.access-task:has(> .approval-wait) .approval-timeline strong { font-size: 1.08rem; }
+.access-task:has(> .approval-wait) .approval-timeline span { font-size: 1rem; }
+.access-task:has(> .approval-wait) .access-actions { justify-content: center; }
+
+@media (max-width: 680px) {
+  .access-task:has(> .registration-flow) h1,
+  .access-task:has(> .approval-wait) h1,
+  .access-task:has(> .access-actions) h1 { font-size: 2.35rem; }
+  .access-task:has(> .registration-flow) .access-task-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .access-task:has(> .registration-flow) input:not([type="checkbox"]) { min-height: 56px; }
+}
