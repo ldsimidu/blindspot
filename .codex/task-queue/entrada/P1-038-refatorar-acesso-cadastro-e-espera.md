@@ -1,4 +1,4 @@
-# 🚧 Em execução — refatorar acesso, cadastro e espera
+# ❌ Pendente — refatorar acesso, cadastro e espera
 
 > Prioridade: P1
 >
@@ -6,7 +6,7 @@
 >
 > Origem ou referência: UX-BS-005; `docs/product/ux-ui-direcao-alvo-e-decisoes.md`
 >
-> Arquitetura: `TÉCNICA APPROVED; ARQUITETURA VISUAL V3 APPROVED por Lucas em 2026-09-11.`
+> Arquitetura: `TÉCNICA APPROVED; ARQUITETURA VISUAL V4 AGUARDA aprovação humana após nova direção de composição.`
 >
 > Triagem automática: `Material — autenticação e fluxo de dados pessoais`
 >
@@ -93,10 +93,25 @@ Especificação completa: [`docs/product/p1-038-arquitetura-visual-acesso-cadast
 
 Curadoria complementar: Magic UI, Velora UI, Spell UI, Cult UI, Skiper UI, Originkit, Cruip, Awwwards, Refero Styles e Inspora foram classificados na seção 10 da especificação. Para esta task, somente uma transição local reduzida entre etapas é proposta; nenhum pacote, template, conta, CLI, MCP ou código externo foi adotado.
 
+### Reabertura visual V4 — mídia de tela inteira e assinatura editorial
+
+O feedback humano posterior muda a composição, o propósito da mídia e a assinatura da marca. Conforme o PEK, esta não é uma correção localizada: a implementação v3 fica reaberta até a aprovação desta V4.
+
+- Canvas desktop: a mídia animada deixa de ocupar apenas a coluna esquerda e passa a preencher 100% do viewport. A borda/orbe permanece uma camada decorativa ambiental do canvas, sem cobrir textos, inputs, estados ou ações.
+- Painel de tarefa: continua com 40% da largura útil no desktop, mas passa a flutuar sobre a mídia, ancorado à direita e elevado por sombra, borda e fundo Liquid Glass. A largura é `clamp(480px, 40vw, 640px)`; em 1440 px ela mede 576 px. A área de conteúdo interno continua opaca onde há campos, revisão, timeline e alertas.
+- Assinatura: sai do centro geométrico do viewport para a região livre à esquerda do painel. Logo grande à esquerda do wordmark; `BLINDSPOT` em caixa alta, escala editorial e tracking compacto/levemente negativo, usando uma pilha local moderna (`Arial Nova`, `Helvetica Neue`, `Arial`, sans-serif), sem instalar fonte ou depender de rede. O subtítulo fica abaixo do conjunto, alinhado ao início do wordmark: `Decisões estratégicas sem pontos cegos.`, com `sem` em laranja. O conjunto não usa letras espaçadas nem etiqueta secundária em caixa alta.
+- Escala: a logo mede `clamp(88px, 9vw, 156px)` e o wordmark `clamp(3.4rem, 8vw, 9rem)`. A assinatura pode quebrar somente no subtítulo; o wordmark é uma linha única em desktop largo.
+- Breakpoints: entre 1080 px e 680 px, o painel ainda se sobrepõe à mídia, mas passa a ter largura máxima de 620 px e margens simétricas; abaixo de 680 px, a mídia vira cabeçalho de contexto e o painel segue em fluxo, sem sobreposição que comprometa formulário ou teclado. A assinatura reduz sem truncar nem invadir o painel.
+- Estados: stepper, revisão, timeline, toast e regras de privacidade/credencial V3 permanecem inalterados. Não há alteração de API, schema, CNPJ, sessão, cookie, senha ou contrato.
+
+**Double-check V4.** A composição proposta elimina o vazio sem propósito porque a mídia passa a ser o canvas. O painel mantém largura de tarefa suficiente e independente da arte. A marca deixa de disputar a mesma região do painel, o wordmark não depende de espaçamento para parecer premium e a animação continua reduzível por `prefers-reduced-motion`. Não há imagem externa, dependência ou download novo (`NO_IMAGE`).
+
+`VISUAL_READY — aguarda Lucas aprovar esta composição V4 antes de novo CSS/JSX.`
+
 ## Resultado do agente
 
-- Estado: `🚧 Em execução — implementação visual v3 concluída; validação de render pendente.`
-- Arquitetura: `Técnica e visual v3 approved por Lucas em 2026-09-11.`
+- Estado: `❌ Pendente — reaberta pela direção visual V4.`
+- Arquitetura: `Técnica approved; arquitetura visual V4 aguarda aprovação humana.`
 - Triagem automática: `Material — autenticação e dados pessoais`.
 - Segurança: `Aplicável — revisão obrigatória`.
 - Implementação v3: marca centralizada na orbe, progresso transferido para o painel de tarefa, painel Liquid Glass com fallback opaco, campos/CTA ampliados, revisão em blocos editáveis, timeline com maior gravidade e feedback operacional separado da validação inline. O fluxo, os contratos HTTP e o tratamento de credenciais existentes foram preservados.

@@ -334,3 +334,54 @@ O cabeçalho de tarefa mostra `Empresa · etapa 1 de 4`, título objetivo e ajud
 ### Decisão humana necessária
 
 `APPROVED — arquitetura v3 autorizada por Lucas em 2026-09-11. A validação de CNPJ requer um gate técnico complementar e não integra esta implementação visual.`
+
+---
+
+## 16. Arquitetura visual v4 — canvas integral e assinatura editorial
+
+> Estado: `VISUAL_READY — aguarda aprovação humana.` Esta V4 substitui a composição V3 para implementação. Ela nasce do direcionamento humano posterior: a mídia deve preencher a tela, o painel de tarefa deve sobrepor esse canvas em 40%, e a assinatura deve assumir a escala e a estrutura da referência.
+
+### Leitura consolidada do feedback
+
+1. A V3 melhorou a camada visual, mas ainda manteve o modelo de duas colunas como estrutura do canvas. Isso limita a mídia à esquerda e enfraquece o efeito de transparência do painel.
+2. A assinatura central V3 está conceitualmente correta, mas subdimensionada e vertical. A referência pede uma marca editorial horizontal: símbolo grande, wordmark enorme e compacto, subtítulo abaixo.
+3. O wordmark atual usa peso e tracking que o tornam conservador/espalhado. A nova assinatura precisa de massa, proximidade entre caracteres e uma relação inequívoca entre símbolo e nome.
+
+### Composição aprovada em proposta
+
+| Região | Desktop amplo (≥ 1080 px) | Intermediário (680–1079 px) | Compacto (< 680 px) |
+| --- | --- | --- | --- |
+| Canvas de mídia | `position: absolute; inset: 0`; 100% do viewport | 100% do viewport | cabeçalho no fluxo, sem sobrepor a tarefa |
+| Painel de tarefa | sobreposto à direita; `clamp(480px, 40vw, 640px)` | sobreposto e centralizado; `min(620px, calc(100vw - 48px))` | largura total menos 32 px; abaixo da mídia |
+| Assinatura | região livre à esquerda, centrada verticalmente | acima/esquerda do painel, sem colisão | centralizada e reduzida no cabeçalho |
+| Mídia/orbe | fundo integral, ambiental; pode ocupar atrás do painel | fundo integral, intensidade reduzida | fundo de contexto, sem competir com conteúdo |
+
+O painel não recebe uma segunda coluna nem tenta reservar 60% para conteúdo inexistente. Ele é uma superfície Liquid Glass em primeiro plano, com sombra curta, borda clara e fallback branco opaco. Inputs, revisões, timeline, alertas e ações permanecem em superfícies opacas para preservar leitura.
+
+### Assinatura visual
+
+```text
+[ logo grande ]  BLINDSPOT
+                 Decisões estratégicas sem pontos cegos.
+```
+
+- Logo: `clamp(88px, 9vw, 156px)`, à esquerda e verticalmente alinhada ao wordmark.
+- Wordmark: uma linha, `clamp(3.4rem, 8vw, 9rem)`, `font-weight: 900`, `letter-spacing: -0.075em`, sem tracking expansivo. A pilha é local e sem dependência: `"Arial Nova", "Helvetica Neue", Arial, sans-serif`.
+- Subtítulo: alinhado ao início do wordmark, escala legível (`clamp(1rem, 1.4vw, 1.25rem)`), peso médio e `sem` laranja. Não há rótulo em caixa alta nem texto concorrente.
+- A assinatura é semântica: logo com `alt="BlindSpot"`; wordmark e subtítulo são texto selecionável, não imagem gerada. Portanto, esta tela declara `NO_IMAGE` e não abre curadoria ou download de asset externo.
+
+### Movimento, acessibilidade e estados
+
+O único movimento continua sendo a orbe/fundo. Ele descreve apenas a atmosfera do canvas, não carregamento, aprovação, pesquisa ou confiabilidade. Não há dependência externa. `prefers-reduced-motion` mantém a composição estática. O painel preserva ordem de foco, stepper e avisos V3; em compacto, a sobreposição é removida para não causar perda de leitura ou navegação por teclado.
+
+### Double-check da arquitetura
+
+- O canvas integral torna a área livre intencional e dá função real ao glass; não reduz a largura dos campos.
+- O painel de 40% é uma camada, não uma segunda região fixa; em 1440 px mede 576 px e comporta formulário de uma coluna, revisão e espera.
+- Logo, nome e subtítulo formam uma só assinatura; a hierarquia não depende de letras espaçadas nem repete marca em outro ponto.
+- Mobile deixa de usar sobreposição; a hierarquia continua factual, responsiva e navegável.
+- Nenhum dado, contrato ou estado autenticado é alterado. CNPJ continua fora do escopo até Gate específico.
+
+### Decisão humana necessária
+
+`VISUAL_READY — implementar V4 somente após aprovação explícita de Lucas.`
