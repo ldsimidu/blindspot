@@ -1,4 +1,4 @@
-# ❌ Pendente — refatorar acesso, cadastro e espera
+# 🚧 Em execução — refatorar acesso, cadastro e espera
 
 > Prioridade: P1
 >
@@ -6,7 +6,7 @@
 >
 > Origem ou referência: UX-BS-005; `docs/product/ux-ui-direcao-alvo-e-decisoes.md`
 >
-> Arquitetura: `TÉCNICA APPROVED; ARQUITETURA VISUAL V4 AGUARDA aprovação humana após nova direção de composição.`
+> Arquitetura: `TÉCNICA APPROVED; ARQUITETURA VISUAL V4 APPROVED por Lucas em 2026-09-11.`
 >
 > Triagem automática: `Material — autenticação e fluxo de dados pessoais`
 >
@@ -106,17 +106,17 @@ O feedback humano posterior muda a composição, o propósito da mídia e a assi
 
 **Double-check V4.** A composição proposta elimina o vazio sem propósito porque a mídia passa a ser o canvas. O painel mantém largura de tarefa suficiente e independente da arte. A marca deixa de disputar a mesma região do painel, o wordmark não depende de espaçamento para parecer premium e a animação continua reduzível por `prefers-reduced-motion`. Não há imagem externa, dependência ou download novo (`NO_IMAGE`).
 
-`VISUAL_READY — aguarda Lucas aprovar esta composição V4 antes de novo CSS/JSX.`
+`APPROVED — Lucas autorizou a implementação da composição V4 em 2026-09-11.`
 
 ## Resultado do agente
 
-- Estado: `❌ Pendente — reaberta pela direção visual V4.`
-- Arquitetura: `Técnica approved; arquitetura visual V4 aguarda aprovação humana.`
+- Estado: `🚧 Em execução — composição V4 implementada; evidência de render pendente.`
+- Arquitetura: `Técnica e visual V4 approved por Lucas em 2026-09-11.`
 - Triagem automática: `Material — autenticação e dados pessoais`.
 - Segurança: `Aplicável — revisão obrigatória`.
-- Implementação v3: marca centralizada na orbe, progresso transferido para o painel de tarefa, painel Liquid Glass com fallback opaco, campos/CTA ampliados, revisão em blocos editáveis, timeline com maior gravidade e feedback operacional separado da validação inline. O fluxo, os contratos HTTP e o tratamento de credenciais existentes foram preservados.
-- Arquivos alterados: `apps/web/src/App.tsx`, `apps/web/src/styles.css`, `apps/web/src/design-system.css`, `apps/web/src/ui/primitives.tsx`, a especificação visual e esta task. A fundação agora expõe `UiToast`; foram reutilizados `UiButton`, `UiField` e `UiStatus`.
+- Implementação V4: a mídia/orbe agora é canvas integral e o painel Liquid Glass de `clamp(480px, 40vw, 640px)` flutua à direita. A assinatura usa símbolo grande à esquerda, wordmark `BLINDSPOT` em uma linha com escala editorial e tracking compacto, e subtítulo abaixo. Em tablet o painel sobrepõe centralizado; em mobile volta ao fluxo para preservar leitura e teclado. Stepper, revisão, timeline, toast e regras de credenciais V3 foram preservados.
+- Arquivos desta revisão: `apps/web/src/styles.css`, a especificação visual e esta task. Não houve alteração de API, schema, CNPJ, sessão, cookie, senha, contrato ou dependência externa.
 - Verificação executada: as capturas de `C:\Users\lucas\Downloads\evidencia-cadastrov2\` e `evidencia.txt` foram revisadas. Elas aprovam direção de marca e agrupamento de senha, mas reprovam densidade, marca duplicada/fora da orbe, posicionamento do stepper, ausência de Liquid Glass, ênfase de timeline e revisão. Também revelam que CNPJ arbitrário passa na validação local.
 - Verificação executada: `npm run build` em `apps/web` passou em produção após permissão de leitura do Vite. `git diff --check` passou. A automação de navegador local não iniciou (`os error 3` no runtime da ferramenta), por isso não há alegação de aprovação visual.
 - Verificação pendente: render desktop/tablet/mobile, teclado, reduced motion, toast, revisão e espera com dados sanitizados; gate técnico específico antes de validar CNPJ no cliente e no endpoint.
-- Próximo passo: obter evidência visual v3 e fechar a task somente se os critérios restantes forem confirmados.
+- Próximo passo: obter evidência visual V4 e fechar a task somente se os critérios restantes forem confirmados.

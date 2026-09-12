@@ -339,7 +339,7 @@ O cabeçalho de tarefa mostra `Empresa · etapa 1 de 4`, título objetivo e ajud
 
 ## 16. Arquitetura visual v4 — canvas integral e assinatura editorial
 
-> Estado: `VISUAL_READY — aguarda aprovação humana.` Esta V4 substitui a composição V3 para implementação. Ela nasce do direcionamento humano posterior: a mídia deve preencher a tela, o painel de tarefa deve sobrepor esse canvas em 40%, e a assinatura deve assumir a escala e a estrutura da referência.
+> Estado: `APPROVED — Lucas autorizou a implementação em 2026-09-11.` Esta V4 substitui a composição V3 para implementação. Ela nasce do direcionamento humano posterior: a mídia deve preencher a tela, o painel de tarefa deve sobrepor esse canvas em 40%, e a assinatura deve assumir a escala e a estrutura da referência.
 
 ### Leitura consolidada do feedback
 
@@ -384,4 +384,4 @@ O único movimento continua sendo a orbe/fundo. Ele descreve apenas a atmosfera 
 
 ### Decisão humana necessária
 
-`VISUAL_READY — implementar V4 somente após aprovação explícita de Lucas.`
+`APPROVED — implementar V4 autorizado explicitamente por Lucas em 2026-09-11.`

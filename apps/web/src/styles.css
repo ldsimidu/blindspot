@@ -2006,3 +2006,126 @@ pre {
   .access-task-steps li { font-size: 0.78rem; }
   .registration-review__groups dl { grid-template-columns: 1fr; }
 }
+
+/* P1-038 v4: mídia como canvas integral e painel de tarefa flutuante. */
+.access-layout {
+  position: relative;
+  display: block;
+  min-height: 100svh;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.access-editorial.access-media {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  min-height: 100%;
+  padding: 0;
+}
+
+.access-editorial.access-media::before {
+  inset: 11% 23% 8% 8%;
+  border-width: 1px;
+  border-radius: 42% 58% 50% 50%;
+}
+
+.access-media-glow {
+  inset: 19% auto auto 8%;
+  width: min(49vw, 740px);
+}
+
+.access-media-content {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  height: auto;
+  padding: clamp(40px, 8vw, 144px);
+  padding-right: 46%;
+}
+
+.access-orb-brand {
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: clamp(18px, 2.4vw, 42px);
+  row-gap: 8px;
+  max-width: none;
+  text-align: left;
+}
+
+.access-orb-brand .access-media-logo {
+  grid-row: 1 / span 2;
+  width: clamp(88px, 9vw, 156px);
+  height: clamp(88px, 9vw, 156px);
+}
+
+.access-orb-brand strong {
+  align-self: end;
+  color: #fff;
+  font-family: "Arial Nova", "Helvetica Neue", Arial, sans-serif;
+  font-size: clamp(3.4rem, 7.5vw, 8rem);
+  font-weight: 900;
+  letter-spacing: -0.075em;
+  line-height: 0.82;
+  white-space: nowrap;
+}
+
+.access-orb-brand p {
+  align-self: start;
+  max-width: 38ch;
+  color: rgb(255 255 255 / 84%);
+  font-size: clamp(1rem, 1.35vw, 1.25rem);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.access-task {
+  position: relative;
+  z-index: 1;
+  width: clamp(480px, 40vw, 640px);
+  min-height: calc(100svh - 48px);
+  margin: 24px clamp(24px, 4vw, 72px) 24px auto;
+  padding: clamp(44px, 4.5vw, 76px) clamp(32px, 4vw, 58px);
+  border-radius: 24px;
+}
+
+@media (min-width: 1080px) {
+  .access-task { max-height: calc(100svh - 48px); overflow-y: auto; }
+}
+
+@media (max-width: 1079px) {
+  .access-layout { display: grid; align-content: start; justify-items: center; padding: 36px 24px 48px; }
+  .access-editorial.access-media { position: absolute; min-height: 100%; }
+  .access-media-content { align-content: start; justify-items: start; padding: 42px 48px; }
+  .access-orb-brand strong { font-size: clamp(3rem, 8vw, 5.25rem); }
+  .access-orb-brand .access-media-logo { width: clamp(72px, 9vw, 108px); height: clamp(72px, 9vw, 108px); }
+  .access-task {
+    width: min(620px, calc(100vw - 48px));
+    min-height: min(760px, calc(100svh - 196px));
+    margin: 176px auto 0;
+    border-radius: 24px;
+  }
+}
+
+@media (max-width: 680px) {
+  .access-layout { display: block; overflow: visible; min-height: 100vh; padding: 0 0 32px; background: #090a0d; }
+  .access-editorial.access-media { position: relative; min-height: 230px; height: 230px; }
+  .access-editorial.access-media::before { inset: 14% 14% 12% 8%; }
+  .access-media-glow { inset: 8% auto auto 16%; width: 70vw; filter: blur(42px); }
+  .access-media-content { align-content: center; justify-items: center; padding: 24px; }
+  .access-orb-brand { column-gap: 14px; row-gap: 5px; }
+  .access-orb-brand .access-media-logo { width: 58px; height: 58px; }
+  .access-orb-brand strong { font-size: clamp(2.2rem, 11vw, 3.7rem); line-height: 0.86; }
+  .access-orb-brand p { font-size: 0.9rem; }
+  .access-task {
+    width: min(100% - 32px, 620px);
+    min-height: auto;
+    max-height: none;
+    margin: 0 auto;
+    padding: 38px 24px;
+    border-radius: 0 0 24px 24px;
+  }
+}
