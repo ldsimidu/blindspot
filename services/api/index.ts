@@ -21,6 +21,7 @@ import { recordAudit, type AuditAction, type AuditResourceType } from "./audit";
 import { activateOrganizationMemberInvitation, changeOrganizationMemberRole, deactivateOrganizationMember, inviteOrganizationMember, listOrganizationPeople, revokeOrganizationMemberInvitation } from "./members";
 import { acknowledgeUsageAlert, evaluateUsagePolicy, parseUsagePeriod, readUsageAlerts, readUsageSummary, recordUsageFailure, updateUsagePolicy } from "./usage";
 import { createSavedComparison, listSavedComparisons, readSavedComparison } from "./comparisons";
+import { isValidCnpj, normalizeCnpj } from "../../packages/contracts/cnpj";
 import { activateInitialAdmin, decideOrganizationRequest, issueInitialAdminInvitation, listPendingOrganizationRequests, registerOrganization, revokeInitialAdminInvitation, submitOrganizationRequest } from "./organizations";
 import { buildVehiclePayload, composeFinalPrompt, readBaseAgentPrompt, readOutputSchema } from "./prompt-builder";
 import { readFieldPolicy, readNormalizationPolicy, readQualityPolicy, readResearchCapabilityPolicy, readResearchDocumentPolicy, readSourceEvidencePolicy, readSourcePolicy, readSourceTrustBootstrapPolicy, readTechnicalSearchFacetPolicy, type TechnicalSearchFacetPolicy } from "./runtime-assets";
@@ -586,7 +587,7 @@ function parseOrganizationRequest(body: unknown) {
   if (!isObject(body)) throw new HttpError(400, "Solicitacao invalida.");
   const companyName = requiredBoundedText(body.company_name, 2, 160, "company_name"); const contactName = requiredBoundedText(body.contact_name, 2, 120, "contact_name"); const contactEmail = requiredBoundedText(body.contact_email, 5, 254, "contact_email").toLowerCase(); const privacyNoticeVersion = requiredBoundedText(body.privacy_notice_version, 1, 40, "privacy_notice_version");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) throw new HttpError(400, "Solicitacao invalida.");
-  const cnpj = typeof body.cnpj === "string" ? body.cnpj.replace(/\D/g, "") : ""; if (!/^\d{14}$/.test(cnpj)) throw new HttpError(400, "Solicitacao invalida.");
+  const cnpj = normalizeCnpj(body.cnpj); if (!isValidCnpj(cnpj)) throw new HttpError(400, "Solicitacao invalida.");
   return { companyName, cnpj, contactName, contactEmail, privacyNoticeVersion };
 }
 function parseOrganizationRegistration(body: unknown) {

@@ -2,6 +2,7 @@ import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ApiRequestError, abrirFichaCatalogo, ativarConviteMembro, alterarPapelMembro, buscarCatalogo, cadastrarOrganizacao, convidarMembro, desativarMembro, entrar, exportarFicha, gerarFichaTecnica, obterAlertasConsumo, obterConsumo, obterEquipe, obterHistoricoFichas, obterRecomendacoesCatalogo, obterSessao, obterUltimaFichaTecnica, reconhecerAlertaConsumo, revogarConviteMembro, sair, salvarPoliticaConsumo } from "./api";
 import type { CatalogCandidate, CatalogEntryResult, CatalogSearchResult, FichaTecnicaHistoryItem, FichaTecnicaResponse, OrganizationMember, OrganizationMemberInvitation, OrganizationRole, UsageAlertSettings, UsageSummary, VehicleInput } from "./types";
 import logoBlindspot from "./assets/blindspot-mark.png";
+import { formatCnpj, isValidCnpj } from "../../../packages/contracts/cnpj";
 import { ComparisonPanel } from "./ComparisonPanel";
 import { FichaDiscovery } from "./FichaDiscovery";
 import { TechnicalFichaDiscovery } from "./TechnicalFichaDiscovery";
@@ -73,6 +74,8 @@ function App() {
   const [registrationStep, setRegistrationStep] = useState(1);
   const [registrationLoading, setRegistrationLoading] = useState(false);
   const [registrationError, setRegistrationError] = useState<string | null>(null);
+  const [registrationFieldErrors, setRegistrationFieldErrors] = useState<{ cnpj?: string }>({});
+  const [registrationOperationError, setRegistrationOperationError] = useState<string | null>(null);
   const [signedInName, setSignedInName] = useState("");
   const [signedInRole, setSignedInRole] = useState<OrganizationRole | null>(null);
   const [logoutState, setLogoutState] = useState<"idle" | "loading" | "error">("idle");
@@ -294,7 +297,7 @@ function App() {
   }
 
   async function handleRegistration(event: FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault(); setRegistrationError(null);
+    event.preventDefault(); setRegistrationError(null); setRegistrationOperationError(null);
     if (registrationStep !== registrationFlow.length) { advanceRegistration(); return; }
     setRegistrationLoading(true);
     try {
@@ -302,18 +305,20 @@ function App() {
       setLoginEmail(registration.contact_email);
       setLoginPassword("");
       setRegistration({ company_name: "", cnpj: "", contact_name: "", contact_email: "", password: "", password_confirmation: "", privacy_notice_version: "" });
+      setRegistrationFieldErrors({});
       setRegistrationStep(1);
       setAccessView("received");
       publishToast("success", "Solicitação enviada", "Recebemos seu cadastro para análise.");
     }
-    catch { const message = "Não foi possível enviar o cadastro agora. Revise os dados e tente novamente."; setRegistrationError(message); publishToast("error", "Não foi possível enviar", "Revise os dados e tente novamente."); }
+    catch { const message = "Não foi possível enviar o cadastro agora. Revise os dados e tente novamente."; setRegistrationOperationError(message); publishToast("error", "Não foi possível enviar", "Revise os dados e tente novamente."); }
     finally { setRegistrationLoading(false); }
   }
 
   function advanceRegistration(): void {
     setRegistrationError(null);
+    const cnpjIsValid = registrationStep === 1 ? validateRegistrationCnpj() : true;
     const stepErrors: Record<number, string | null> = {
-      1: registration.company_name.trim().length >= 2 && registration.cnpj.trim().length > 0 ? null : "Informe o nome da empresa e o CNPJ para continuar.",
+      1: registration.company_name.trim().length >= 2 && cnpjIsValid ? null : registration.company_name.trim().length >= 2 ? null : "Informe o nome da empresa para continuar.",
       2: registration.contact_name.trim().length >= 2 && /^\S+@\S+\.\S+$/.test(registration.contact_email) ? null : "Informe o nome do responsável e um e-mail corporativo válido.",
       3: registration.password.length >= 12 && registration.password === registration.password_confirmation && Boolean(registration.privacy_notice_version) ? null : "Use uma senha de ao menos 12 caracteres, confirme-a e leia o aviso de privacidade.",
     };
@@ -322,8 +327,14 @@ function App() {
     setRegistrationStep((current) => Math.min(current + 1, registrationFlow.length));
   }
 
+  function validateRegistrationCnpj(): boolean {
+    const isValid = isValidCnpj(registration.cnpj);
+    setRegistrationFieldErrors((current) => ({ ...current, cnpj: isValid ? undefined : "Informe um CNPJ válido para continuar." }));
+    return isValid;
+  }
+
   function returnToPreviousRegistrationStep(): void {
-    setRegistrationError(null);
+    setRegistrationError(null); setRegistrationOperationError(null);
     if (registrationStep === 1) {
       setRegistration((current) => ({ ...current, password: "", password_confirmation: "", privacy_notice_version: "" }));
       setLoginPassword("");
@@ -420,7 +431,7 @@ function App() {
               </form>}
               {accessView === "registration" && <form onSubmit={handleRegistration} className="access-form registration-flow" aria-busy={registrationLoading}>
                 <div className="access-progress" role="progressbar" aria-label="Progresso do cadastro" aria-valuemin={1} aria-valuemax={registrationFlow.length} aria-valuenow={registrationStep}><span style={{ width: `${(registrationStep / registrationFlow.length) * 100}%` }} /></div>
-                {registrationStep === 1 && <div className="access-field-pair"><UiField label="Nome da empresa"><input value={registration.company_name} onChange={(event) => setRegistration((current) => ({ ...current, company_name: event.target.value }))} minLength={2} maxLength={160} autoComplete="organization" required /></UiField><UiField label="CNPJ" hint="Usado para identificar a organização."><input value={registration.cnpj} onChange={(event) => setRegistration((current) => ({ ...current, cnpj: event.target.value }))} inputMode="numeric" autoComplete="off" required /></UiField></div>}
+                {registrationStep === 1 && <div className="access-field-pair"><UiField label="Nome da empresa"><input value={registration.company_name} onChange={(event) => setRegistration((current) => ({ ...current, company_name: event.target.value }))} minLength={2} maxLength={160} autoComplete="organization" required /></UiField><UiField label="CNPJ" hint="Usado para identificar a organização." error={registrationFieldErrors.cnpj}><input value={registration.cnpj} onChange={(event) => { setRegistration((current) => ({ ...current, cnpj: formatCnpj(event.target.value) })); setRegistrationFieldErrors((current) => ({ ...current, cnpj: undefined })); }} onBlur={() => { if (registration.cnpj.trim()) validateRegistrationCnpj(); }} inputMode="numeric" maxLength={18} autoComplete="off" required /></UiField></div>}
                 {registrationStep === 2 && <div className="access-field-pair"><UiField label="Nome do responsável"><input value={registration.contact_name} onChange={(event) => setRegistration((current) => ({ ...current, contact_name: event.target.value }))} minLength={2} maxLength={120} autoComplete="name" required /></UiField><UiField label="E-mail corporativo"><input type="email" autoComplete="email" value={registration.contact_email} onChange={(event) => setRegistration((current) => ({ ...current, contact_email: event.target.value }))} required /></UiField></div>}
                 {registrationStep === 3 && <><div className="access-field-pair"><UiField label="Crie uma senha" hint="Mínimo de 12 caracteres."><input type="password" autoComplete="new-password" value={registration.password} onChange={(event) => setRegistration((current) => ({ ...current, password: event.target.value }))} minLength={12} maxLength={128} required /></UiField><UiField label="Confirme sua senha"><input type="password" autoComplete="new-password" value={registration.password_confirmation} onChange={(event) => setRegistration((current) => ({ ...current, password_confirmation: event.target.value }))} minLength={12} maxLength={128} required /></UiField></div><label className="access-checkbox"><input type="checkbox" checked={Boolean(registration.privacy_notice_version)} onChange={(event) => setRegistration((current) => ({ ...current, privacy_notice_version: event.target.checked ? "2026-09" : "" }))} /> Li o aviso de privacidade aplicável ao cadastro.</label></>}
                 {registrationStep === 4 && <section className="registration-review" aria-label="Revisão do cadastro">
@@ -432,6 +443,7 @@ function App() {
                 </section>}
                 {registrationError && <p className="access-error" role="alert">{registrationError}</p>}
                 <div className={`access-actions ${registrationStep === registrationFlow.length ? "access-actions--final" : ""}`}><UiButton tone="secondary" type="button" onClick={returnToPreviousRegistrationStep}>Voltar</UiButton><UiButton type="submit" isLoading={registrationLoading} loadingLabel="Enviando cadastro…">{registrationStep === registrationFlow.length ? "Enviar solicitação para análise" : "Continuar"}</UiButton></div>
+                {registrationStep === registrationFlow.length && <div className="access-operation-feedback" aria-live="polite">{registrationOperationError && <p className="access-error" role="status">{registrationOperationError}</p>}</div>}
               </form>}
               {(accessView === "received" || accessView === "pending_review") && <section className="approval-wait" aria-label="Status do cadastro"><ol className="approval-timeline"><li className="is-complete"><strong>Cadastro enviado</strong><span>Recebemos sua solicitação.</span></li><li className="is-current"><strong>Em análise</strong><span>O acesso ainda não está liberado.</span></li><li><strong>Próximo passo</strong><span>Entre novamente para verificar o status quando necessário.</span></li></ol><div className="access-actions"><UiButton type="button" onClick={returnToLoginForStatus}>Voltar ao login</UiButton><a href="mailto:suporte@blindspot.local">Falar com o suporte</a></div></section>}
               {accessView === "rejected" && <div className="access-actions"><UiButton tone="secondary" type="button" onClick={() => setAccessView("login")}>Voltar ao login</UiButton><a href="mailto:suporte@blindspot.local">Falar com o suporte</a></div>}

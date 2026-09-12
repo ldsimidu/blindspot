@@ -1,4 +1,5 @@
 import { cloneElement, type ButtonHTMLAttributes, type HTMLAttributes, type ReactElement, type ReactNode, useId } from "react";
+import { createPortal } from "react-dom";
 
 type Tone = "primary" | "secondary" | "danger";
 type StatusTone = "confirmed" | "entry" | "partial" | "conflict" | "not-found" | "not-applicable" | "inferred";
@@ -48,7 +49,7 @@ export function UiCard({ as: Component = "section", className, raised = false, .
 
 export interface UiFieldProps {
   label: string;
-  children: ReactElement<{ id?: string; "aria-describedby"?: string }>;
+  children: ReactElement<{ id?: string; "aria-describedby"?: string; "aria-invalid"?: boolean }>;
   hint?: string;
   error?: string;
   id?: string;
@@ -58,7 +59,7 @@ export function UiField({ label, children, hint, error, id }: UiFieldProps) {
   const generatedId = useId();
   const controlId = id ?? generatedId;
   const descriptionId = error ? `${controlId}-error` : hint ? `${controlId}-hint` : undefined;
-  const control = cloneElement(children, { id: controlId, "aria-describedby": descriptionId });
+  const control = cloneElement(children, { id: controlId, "aria-describedby": descriptionId, "aria-invalid": error ? true : undefined });
 
   return (
     <div className="ui-field">
@@ -87,7 +88,7 @@ export interface UiToastProps {
 }
 
 export function UiToast({ message, onDismiss, title, tone }: UiToastProps) {
-  return (
+  const toast = (
     <aside className="ui-toast-region" aria-label="Notificações">
       <div className={classNames("ui-toast", `ui-toast--${tone}`)} role={tone === "error" ? "alert" : "status"} aria-live={tone === "error" ? "assertive" : "polite"}>
         <div>
@@ -98,6 +99,8 @@ export function UiToast({ message, onDismiss, title, tone }: UiToastProps) {
       </div>
     </aside>
   );
+
+  return typeof document === "undefined" ? toast : createPortal(toast, document.body);
 }
 
 interface UiStateProps extends HTMLAttributes<HTMLElement> {

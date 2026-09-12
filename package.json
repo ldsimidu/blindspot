@@ -21,6 +21,7 @@
     "verify:technical-search-facets": "tsx scripts/verify-technical-search-facets.ts",
     "verify:quality-policy": "tsx scripts/verify-quality-policy.ts",
     "verify:catalog-contract": "tsx scripts/verify-catalog-contract.ts",
+    "verify:cnpj": "tsx scripts/verify-cnpj-validation.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node --use-system-ca ./node_modules/drizzle-kit/bin.cjs migrate"
   },

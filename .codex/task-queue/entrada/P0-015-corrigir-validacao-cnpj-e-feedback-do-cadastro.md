@@ -1,4 +1,4 @@
-# ❌ Pendente — corrigir validação de CNPJ e feedback do cadastro
+# 🚧 Em execução — corrigir validação de CNPJ e feedback do cadastro
 
 > Prioridade: P0
 >
@@ -6,7 +6,7 @@
 >
 > Origem ou referência: `C:\Users\lucas\Downloads\evidencia-cadastrov3\screencapture-localhost-5173-2026-09-11-22_49_38.png` e `...22_49_49.png`; P1-038; PEK v0.9
 >
-> Arquitetura: `READY — aguarda APPROVED de Lucas antes de implementação.`
+> Arquitetura: `APPROVED — Lucas autorizou a implementação em 2026-09-11.`
 >
 > Triagem automática: `Material — fluxo público, dados de cadastro, validação cliente/servidor e componente transversal de feedback`
 >
@@ -110,15 +110,15 @@ Corrigir os problemas revelados pela evidência V3 do cadastro corporativo: o ma
 
 ### Architecture Gate
 
-`READY — Lucas precisa aprovar esta arquitetura antes de qualquer CSS, JSX, primitive, endpoint ou teste de implementação.`
+`APPROVED — Lucas autorizou a implementação em 2026-09-11.`
 
 ## Resultado do agente
 
-- Estado: `❌ Pendente`.
-- Arquitetura: `READY — aguarda APPROVED de Lucas`.
+- Estado: `🚧 Em execução`.
+- Arquitetura: `APPROVED — Lucas autorizou a implementação em 2026-09-11`.
 - Triagem automática: `Material — fluxo público, dados de cadastro, validação cliente/servidor e feedback transversal`.
 - Segurança: `Aplicável — revisão proporcional registrada`.
-- Implementação: ainda não iniciada.
-- Arquivos alterados: esta task.
-- Verificação: evidências V3, código de UI/API, Design System, contrato PEK, segurança e conformidade revisados; não houve execução de runtime nem alteração de código.
-- Próximo passo: Lucas aprovar, ajustar ou rejeitar a arquitetura; só `APPROVED` libera implementação.
+- Implementação: extraído contrato compartilhado de normalização, máscara e dígitos verificadores de CNPJ; frontend bloqueia avanço inválido em `blur`/`Continuar`, separa falha de operação da validação do campo e reserva espaço estável para recuperação; `UiToast` agora é portalizado no `document.body`; stepper usa marcadores de geometria fixa; endpoint reaplica a validação antes de qualquer processamento posterior.
+- Arquivos alterados: `packages/contracts/cnpj.ts`, `scripts/verify-cnpj-validation.ts`, `package.json`, `services/api/index.ts`, `apps/web/src/App.tsx`, `apps/web/src/ui/primitives.tsx`, `apps/web/src/design-system.css`, `apps/web/src/styles.css` e esta task.
+- Verificação: `npm run verify:cnpj`, `npm run typecheck` e `npm run build` passaram. A verificação de CNPJ inclui vetores válidos, inválidos, normalização/máscara e inspeção estática do uso autoritativo no endpoint. O smoke live do endpoint e os renderes 1440/768/390 permanecem pendentes pois o ambiente de browser/runtime local não está disponível nesta execução.
+- Próximo passo: obter evidência visual e smoke live quando o runtime local estiver disponível; então concluir os critérios restantes sem alterar o escopo.

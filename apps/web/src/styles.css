@@ -2281,7 +2281,7 @@ pre {
 }
 
 .access-task:has(> .registration-flow) .access-task-steps li { gap: 8px; font-size: 0.82rem; white-space: normal; line-height: 1.15; }
-.access-task:has(> .registration-flow) .access-task-steps span { width: 28px; height: 28px; font-size: 0.78rem; }
+.access-task:has(> .registration-flow) .access-task-steps span { flex: 0 0 28px; width: 28px; height: 28px; aspect-ratio: 1; font-size: 0.78rem; }
 .access-task:has(> .registration-flow) .access-progress { height: 5px; }
 .access-task:has(> .registration-flow) .access-actions { margin-top: 8px; }
 .access-task:has(> .registration-flow) .access-actions .ui-button,
@@ -2297,6 +2297,8 @@ pre {
 .access-task:has(> .registration-flow) .registration-review h3 { font-size: 1.05rem; }
 .access-task:has(> .registration-flow) .registration-review dd { font-size: 1rem; }
 .access-task:has(> .registration-flow) .registration-review__group-heading button { color: #d95805; font-size: 0.96rem; }
+.access-operation-feedback { width: 100%; min-height: 76px; display: grid; align-content: start; }
+.access-operation-feedback .access-error { margin: 0; }
 
 .access-task:has(> .approval-wait) .approval-wait { gap: 28px; }
 .access-task:has(> .approval-wait) .approval-timeline { padding: 28px; }
