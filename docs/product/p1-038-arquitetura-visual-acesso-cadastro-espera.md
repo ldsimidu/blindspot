@@ -289,3 +289,48 @@ O cabeçalho de tarefa mostra `Empresa · etapa 1 de 4`, título objetivo e ajud
 ### Decisão humana necessária
 
 `VISUAL_READY — arquitetura v2 pronta para revisão humana. Não implementar CSS/JSX, asset, animação ou componente novo até Lucas aprovar explicitamente esta v2.`
+
+---
+
+## 15. Arquitetura visual v3 — qualidade de estados e Liquid Glass
+
+> Estado: `VISUAL_READY — aguarda aprovação humana.` Esta v3 substitui a v2 para implementação. Ela nasce das capturas em `C:\Users\lucas\Downloads\evidencia-cadastrov2\` e da análise humana em `evidencia.txt`.
+
+### Achados confirmados
+
+1. A base preto/laranja/branco, a divisão 60/40 e os campos agrupados estão corretos, mas o painel de tarefa usa pouca densidade vertical: campos, labels e texto ficam pequenos diante da área disponível.
+2. A marca aparece como assinatura no canto inferior da mídia, enquanto a forma/orbe central fica sem responsabilidade. A referência `title-reference.png` indica uma assinatura central composta de logo, nome e subtítulo.
+3. O progresso está na mídia, porém ele orienta o preenchimento. Isso separa ação e contexto e deixa o painel de 40% sem uma âncora de etapa.
+4. A revisão perde contraste e não apresenta um resumo dedicado; a espera contém timeline correta semanticamente, mas sem gravidade visual suficiente para ser o objeto principal.
+5. O retorno de operação não tem componente global de toast; validação local, falha de operação e sucesso foram tratados de forma indistinta.
+6. O CNPJ aceita texto arbitrário no cliente. Isso é uma lacuna funcional e de integridade, não um ajuste visual: a regra precisa ser definida e alinhada entre cliente e servidor antes da implementação.
+
+### Decisões v3
+
+**Mídia e marca.** Remover assinatura do canto inferior. A orbe/placeholder vira suporte da assinatura central: logo BlindSpot, wordmark `BLINDSPOT` e subtítulo `Decisões estratégicas sem pontos cegos.`, com `sem` em laranja conforme a referência. A animação da orbe passa a ter amplitude perceptível, mas limitada a deslocamento/escala/gradiente do fundo; não toca texto, campos ou conteúdo factual e é estática em reduced motion.
+
+**Painel Liquid Glass.** O painel de tarefa deixa de ser branco opaco: usa fundo branco translúcido, `backdrop-filter` moderado, borda clara e sombra curta sobre a mídia. Há fallback integralmente opaco onde o blur não estiver disponível ou em contraste insuficiente. Inputs, alertas, revisão e timeline continuam em sub-superfícies opacas/contrastadas dentro do painel para não sacrificar leitura.
+
+**Progresso e escala.** O stepper compacto e o texto `Empresa · etapa 1 de 4` entram no topo do painel de tarefa, imediatamente antes do título. O texto de etapa usa label sem tracking expandido; o eyebrow de marca pode manter tracking. Campos passam a mínimo de 56 px, labels a 15–16 px, corpo a 16 px e CTA a 52 px. A área livre é convertida em ritmo vertical e estados dedicados, não preenchida com narrativa fictícia.
+
+**Revisão dedicada.** A etapa quatro recebe cabeçalho de confirmação, selo de prontidão e dois blocos de resumo: `Empresa` (nome/CNPJ) e `Responsável` (nome/e-mail). Cada bloco tem ação explícita `Editar` que retorna ao agrupamento correspondente sem expor senha. O CTA final fica separado por divisor e explica `Enviar solicitação para análise`. Erro de envio permanece junto do CTA e dispara toast vermelho; sucesso dispara toast verde e leva à espera factual.
+
+**Timeline dedicada.** Na espera, a timeline torna-se o maior elemento do painel: linha/coluna de maior espessura, marcos com ícone e descrição, estado atual em laranja e próximo passo semitransparente porém legível. O título apoia a timeline, não a domina. A confirmação de envio é persistente na tela; o toast verde é complementar e não afirma aprovação.
+
+**Toast.** Criar uma primitive global `UiToast`/`ToastRegion` para sucesso ou falha de operação confirmada. Validação de campo continua inline. Toast usa mensagem segura, não inclui CNPJ, e-mail, senha, token ou detalhes internos.
+
+**CNPJ.** Antes de codificar a validação, registrar a regra de negócio: normalização para dígitos, rejeição de formatos/checagens inválidas tanto no cliente quanto no endpoint e mensagem neutra. O cliente melhora retorno imediato; o servidor permanece a fonte de aceitação. Essa alteração exige reavaliar segurança e contrato do cadastro, pois o comportamento de um endpoint público muda.
+
+### Critérios de aceite v3
+
+- Desktop 1440 px prova painel translúcido legível e mídia com uma única assinatura central; não há logo/legenda redundante no canto.
+- A orbe apresenta movimento ambiental visível sem simular operação, e fica estática com reduced motion.
+- Progresso, título e campos estão juntos no painel de tarefa; label de etapa não tem espaçamento tipográfico excessivo.
+- Revisão contém dados fornecidos organizados por grupo, contraste suficiente, CTA final e rotas de edição; senha jamais é exibida.
+- Timeline domina a espera e diferencia enviado, atual e próximo passo por texto, forma, ordem e cor.
+- Sucesso/falha de operação mostram toast sem substituir feedback inline ou estado persistente.
+- Entrada de CNPJ arbitrária é recusada no cliente e no servidor por regra documentada e testada; não implementar este item sem Architecture Gate específico para o contrato.
+
+### Decisão humana necessária
+
+`VISUAL_READY — arquitetura v3 pronta para revisão humana. A P1-038 não recebe novo CSS/JSX até Lucas aprovar v3; a validação de CNPJ requer um gate técnico complementar.`

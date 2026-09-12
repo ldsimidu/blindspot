@@ -1,4 +1,4 @@
-# 🚧 Em execução — refatorar acesso, cadastro e espera
+# ❌ Pendente — refatorar acesso, cadastro e espera
 
 > Prioridade: P1
 >
@@ -6,7 +6,7 @@
 >
 > Origem ou referência: UX-BS-005; `docs/product/ux-ui-direcao-alvo-e-decisoes.md`
 >
-> Arquitetura: `APPROVED — Lucas autorizou a arquitetura visual v2 em 2026-09-11.`
+> Arquitetura: `TÉCNICA APPROVED; ARQUITETURA VISUAL V3 AGUARDA aprovação humana após evidência de 2026-09-11.`
 >
 > Triagem automática: `Material — autenticação e fluxo de dados pessoais`
 >
@@ -89,18 +89,18 @@ Antes de retomar esta task, aplicar `core/screen-design-architecture-contract.md
 
 Especificação completa: [`docs/product/p1-038-arquitetura-visual-acesso-cadastro-espera.md`](../../../docs/product/p1-038-arquitetura-visual-acesso-cadastro-espera.md).
 
-`APPROVED — Lucas autorizou a arquitetura visual v2 em 2026-09-11.` A arquitetura v2 substitui a composição editorial/tarefa 5/7 por mídia/tarefa 60/40, reintroduz a identidade laranja/preto/branco, separa a narrativa de boas-vindas do formulário e agrupa senha/confirmação na mesma tela.
+`REABERTA — as evidências v2 exigem a arquitetura visual v3.` A v3 preserva a identidade e a divisão mídia/tarefa, mas realoca marca e progresso, torna o painel Liquid Glass, amplia a densidade operacional e trata revisão/timeline como estados dedicados. A validação de CNPJ é uma lacuna funcional que pede gate complementar antes de alterar o endpoint público.
 
 Curadoria complementar: Magic UI, Velora UI, Spell UI, Cult UI, Skiper UI, Originkit, Cruip, Awwwards, Refero Styles e Inspora foram classificados na seção 10 da especificação. Para esta task, somente uma transição local reduzida entre etapas é proposta; nenhum pacote, template, conta, CLI, MCP ou código externo foi adotado.
 
 ## Resultado do agente
 
-- Estado: `🚧 Em execução — arquitetura visual v2 em implementação.`
-- Arquitetura: `APPROVED — Lucas autorizou a v2 em 2026-09-11.`
+- Estado: `❌ Pendente — reaberta por evidência humana do render v2.`
+- Arquitetura: `Técnica approved; arquitetura visual v3 aguarda aprovação humana.`
 - Triagem automática: `Material — autenticação e dados pessoais`.
 - Segurança: `Aplicável — revisão obrigatória`.
-- Implementação: a composição v1 foi substituída no acesso por mídia-placeholder/tarefa 60/40 em desktop e faixa de mídia/painel em compacto. A marca usa preto, branco e laranja; o slogan saiu do login/cadastro. O cadastro passou a quatro agrupamentos: empresa, responsável, acesso (senha, confirmação e aviso juntos) e revisão. As transições locais de progresso, interação e mídia respeitam `prefers-reduced-motion`; contratos de autenticação, mensagens neutras e o único envio final foram preservados.
+- Implementação: a composição v2 é um rascunho visual reprovado para evolução incremental. Seus acertos funcionais (quatro agrupamentos, senha/confirmação juntos, contrato de sessão) podem ser preservados, mas marca, progresso, painel, revisão, timeline e feedback precisam seguir a arquitetura v3 depois de aprovada.
 - Arquivos alterados: `apps/web/src/App.tsx`, `apps/web/src/styles.css` e esta task. Foram reutilizados `UiButton`, `UiField` e `UiStatus` da fundação P1-037.
-- Verificação executada: `npm run typecheck` e `npm run build` passaram. O checkpoint de primeira renderização compacta confirmou mídia escura com placeholder, painel de tarefa branco, CTA laranja, sem slogan e sem duplicidade de marca após o ajuste corretivo. A estrutura acessível confirma campos de login, CTA e troca para cadastro.
-- Verificação pendente: checkpoint desktop/tablet, cadastro com dados fictícios, revisão/espera, teclado e reduced motion em sessão de validação sem autenticação. A sessão existente não foi encerrada e nenhum cadastro real/credencial foi usado.
-- Próximo passo: concluir o checkpoint nos demais estados e viewports antes de marcar a task como concluída.
+- Verificação executada: as capturas de `C:\Users\lucas\Downloads\evidencia-cadastrov2\` e `evidencia.txt` foram revisadas. Elas aprovam direção de marca e agrupamento de senha, mas reprovam densidade, marca duplicada/fora da orbe, posicionamento do stepper, ausência de Liquid Glass, ênfase de timeline e revisão. Também revelam que CNPJ arbitrário passa na validação local.
+- Verificação pendente: aprovação humana da arquitetura v3; gate técnico de validação CNPJ; depois, render desktop/tablet/mobile, teclado, reduced motion, toast, revisão e espera com dados sanitizados.
+- Próximo passo: Lucas aprovar ou ajustar a v3 antes de retomar o código.

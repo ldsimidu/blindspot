@@ -314,6 +314,33 @@ Uma task que altera materialmente uma tela consulta este Design System e aplica 
 | 2026-09-11 | Design System passou a ser a especificação central de linguagem, componentes, grid, adoção PEK e checkpoints | Aprovado para documentação |
 | 2026-09-11 | Image System complementar formalizado | Aprovado para documentação |
 
+## Padrão de qualidade pós-render: densidade, feedback e estados de marco
+
+Captura visual não valida apenas que elementos “cabem” no viewport. Depois de cada render, a revisão deve responder se a superfície dedicada está usando sua área para a tarefa e se o estado de maior importância ganhou uma composição própria. Espaço vazio só é positivo quando sustenta imagem, foco, navegação ou ritmo explicitamente definido; não é uma aprovação automática de minimalismo.
+
+### Contrato de feedback de ação
+
+`Toast` é um componente transversal de retorno de uma ação que terminou e não pertence exclusivamente a um campo: sucesso de envio, falha de rede/envio, salvamento e alteração de estado confirmada. Ele deve ter título, mensagem curta, tom semântico, região `aria-live` apropriada, duração que permita leitura e opção de dispensar quando persistente. Verde comunica sucesso de operação; vermelho comunica falha de operação. Toast não substitui erro de validação associado ao campo, explicação de bloqueio ou estado persistente de página; esses continuam próximos ao objeto afetado.
+
+### Estados que exigem composição dedicada
+
+| Estado | Regra de composição | Reprova quando |
+| --- | --- | --- |
+| revisão antes de envio | resumo com identidade dos grupos preenchidos, valores legíveis, ação de editar por grupo quando aplicável e consequência explícita do envio | vira apenas um card pálido com labels/valores de baixo contraste |
+| espera/timeline | o estado atual é o objeto principal, com escala, sequência, conectores, texto e ação próximos | a timeline parece uma lista auxiliar abaixo de um título dominante ou não sustenta o olhar no estado atual |
+| erro de envio | alerta próximo à ação + toast de falha; os valores locais permanecem disponíveis | o retorno se perde em cor clara, só em toast ou apaga a tentativa da pessoa |
+| sucesso de envio | confirmação persistente da tela + toast de sucesso; próximo passo factual | confunde sucesso do envio com aprovação/acesso ou se reduz a uma notificação efêmera |
+
+### Regra de gravidade visual e densidade
+
+Em cada viewport, identificar `objeto primário`, `estado primário`, `ação primária` e `região de apoio`. A soma visual (área, contraste, tamanho de texto, proximidade e movimento) deve favorecer o objeto/estado primário. Um painel com 40% da tela que contém somente dois inputs pode aumentar tamanhos, ritmo vertical, material ou contexto operacional, mas não deve receber conteúdo inventado para “preencher”.
+
+Um label de progresso composto usa unidade tipográfica: `Empresa · etapa 1 de 4`, sem espaçamento artificial entre letras/palavras além do token normal de label. Tracking amplo é reservado a eyebrow curto em caixa alta, nunca a informação que a pessoa precisa ler rapidamente.
+
+### Marca no campo visual
+
+Quando uma mídia decorativa tiver uma forma central dominante (por exemplo, orbe/placeholder), a marca pode ocupar seu centro se houver contraste e finalidade de reconhecimento. Não duplicar a mesma marca em canto e centro. Logo, título e subtítulo formam uma unidade com escala definida; a etapa/progresso pertence ao painel de tarefa quando orienta o preenchimento.
+
 ## Componentes prioritários da refatoração
 
 1. `TopNavigation` e `SessionMenu`;

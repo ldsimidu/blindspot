@@ -49,6 +49,12 @@ Feedback humano posterior acompanhado de captura, fluxo observado ou referência
 
 No BlindSpot, isso inclui verificar explicitamente: a cor de marca não foi trocada pela cor de um status técnico; narrativa de aquisição não tomou o lugar de uma tarefa segura; campos que dependem de conferência mútua não foram separados por uma regra rígida de microetapa; e mídia/placeholder não comprime a tarefa nem afirma um veículo não comprovado.
 
+## Densidade e gravidade de estado
+
+Além de verificar colisão e largura, toda captura PEK do BlindSpot identifica qual é o objeto, o estado e a ação principal do viewport. Revisão, espera, sucesso, erro e timeline recebem composição própria, contraste e escala proporcionais; não podem virar card auxiliar pálido dentro de uma área vazia. A área livre só sustenta mídia, foco, navegação ou ritmo declarado — nunca justifica reduzir campo, label, valor ou estado decisório.
+
+O retorno de operação se divide em: validação junto ao campo; estado persistente no painel; e toast transversal para sucesso/falha confirmados. Toast não contém dado pessoal, não substitui estado de aprovação e não oculta o próximo passo factual.
+
 ## Regras de Domínio na Interface
 
 - `fonte_ref`, status, completude e conflito são informações decisórias; não podem aparecer apenas por cor, tooltip ou detalhe oculto.
