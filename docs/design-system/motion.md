@@ -27,6 +27,8 @@ Easings: `standard`, `enter`, `exit`, `emphasized` e `ambient`, definidos em `ap
 | `control.feedback` | hover, press e foco | `transform`, cor, borda, sombra leve |
 | `status.current` | estado pendente factual | halo discreto, sem métrica ou percentual |
 | `access.ambient` | canvas abstrato de acesso | `opacity`, `transform`, ciclos longos |
+| `view.neutral` | troca entre seções sem relação direcional | `opacity`, `translateY` até 6 px |
+| `technical.panel` | troca de aba já disponível | `opacity`, `translateY` até 6 px |
 
 ## Regras
 
@@ -35,6 +37,7 @@ Easings: `standard`, `enter`, `exit`, `emphasized` e `ambient`, definidos em `ap
 - Não instalar biblioteca de motion sem intake de dependência e Architecture Gate próprio.
 - Não usar movimento contínuo em dados técnicos, ficheiros, comparação ou estados de aprovação sem arquitetura específica.
 - `AccessVisual` é abstrato e decorativo; não representa veículo, pessoa, empresa, cadeado ou progresso técnico.
+- Superfícies autenticadas podem usar entrada curta de contexto para troca de visão, detalhe, aba e diálogo. O shell, dados, métricas, completude, fontes e conflitos não são animados como progresso factual.
 
 ## Guardrails de implementação
 
@@ -63,3 +66,7 @@ Easings: `standard`, `enter`, `exit`, `emphasized` e `ambient`, definidos em `ap
 ## QA
 
 Revisar 1440, 1024, 768 e 390 px; teclado, troca rápida de etapa, erro, loading, sucesso, refresh e reduced motion. Para cada estado animado, comparar também o estado estático/reduzido e confirmar que o shell, foco, valores, CTA e feedback persistente não mudaram. Capturas sanitizadas são obrigatórias para aprovação visual.
+
+## Implementação autenticada V11
+
+Em 2026-09-13, P1-055 conectou receitas locais a eventos reais: entrada neutra de seção, request → ficha completa (`forward`), retorno (`backward`), painel de aba técnica, diálogo de pesquisa e entrada única dos módulos do overview já confirmado. As implementações usam somente `opacity` e `transform`, respeitam `prefers-reduced-motion` e não adicionam dependência, loop, shimmer, contador animado ou representação de progresso técnico.

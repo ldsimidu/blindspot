@@ -1,4 +1,4 @@
-# ❌ Pendente — Multisearch e seleção explícita para comparar fichas
+# ✅ Concluída — Multisearch e seleção explícita para comparar fichas
 
 > Prioridade: P1
 >
@@ -6,6 +6,13 @@
 >
 > Origem ou referência: P1-017, P1-024 e P1-025; E03-02/E03-03
 >
+
+## Execução — 13/09/2026
+
+- A seleção A/B agora é mantida apenas no estado da sessão do cliente: pode atravessar Catálogo e Comparar, mas não usa `localStorage`, não sobrevive a recarga e é limpa no logout.
+- Catálogo e leitura exata separam `Abrir ficha exata` de `Adicionar à comparação`; a seleção aparece em uma faixa compacta, com retorno explícito para comparar.
+- A tela Comparar mostra slots X/Y selecionáveis, remoção explícita, limite de duas fichas e descoberta em galeria. Fichas com identidade divergente continuam sendo decididas pelo servidor; não foi criado bloqueio por mercado ou veículo diferente.
+- Verificação executada: `npm run typecheck`.
 > Arquitetura: `APPROVED — Lucas autorizou a implementação em 2026-09-09.`
 >
 > Triagem automática: `Material — altera a jornada de seleção e navegação na interface; não altera contrato de API, schema, IA ou persistência.`

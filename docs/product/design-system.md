@@ -41,6 +41,24 @@ O intake de dependência/componente externo precisa registrar finalidade, URL, v
 - **Ação por contexto:** pesquisar, comparar, exportar, reportar, gerir equipe e sair aparecem onde a decisão ocorre, com pré-requisitos e consequência explicados.
 - **Mobile preserva a tarefa:** não é apenas uma redução do desktop; a navegação, o contexto do veículo e ações críticas precisam continuar acessíveis.
 
+## North Star visual e composição de produto — 2026-09-12
+
+`docs/product/blindspot-visual-north-star.md` é a fonte canônica complementar deste Design System para composição, presença e hierarquia. Ele foi consolidado a partir das evidências de refactor visual aprovadas por Lucas. Antes de alterar shell, navegação, hero, ficha, catálogo, comparação, gestão ou grid, a task lê os dois documentos: North Star primeiro, Design System depois.
+
+Direção obrigatória: **veículo → identidade → resumo → decisão/qualidade → detalhe → evidência**. A conformidade com tokens não compensa uma tela que continue parecendo ERP, dashboard genérico, vitrine de venda ou planilha.
+
+### Placeholder de veículo sem provider
+
+Na ausência de asset automotivo exato aprovado, a tela usa `VehiclePlaceholder` local, abstrato e neutro. Ele não pode reproduzir ou sugerir o modelo exibido, usar imagem de banco, chamar API, hotlinking, geração por IA ou reintroduzir curadoria. Marca/modelo/versão/ano/mercado em texto seguem como identidade canônica. O placeholder deve ter fallback sem mídia e nunca ocupa espaço sem propósito.
+
+### Navegação compacta por ícones
+
+O estado padrão da navegação superior pode conter apenas ícones de destinos. Cada destino exige `aria-label`, tooltip em hover/foco, estado ativo perceptível além de cor e alvo mínimo de 42 px. Um gatilho com seta abre painel ancorado de rótulos completos, sem deslocar o conteúdo; o painel fecha por `Escape`, preserva foco e mostra item atual. Em mobile, o menu revela rótulos diretamente. Ícones não substituem rótulo acessível nem ocultam destinos elegíveis.
+
+### Qualidade sem remoção de sinal decisório
+
+Completude, fontes, campos ausentes, conflitos, status por atributo, `fonte_ref` e elegibilidade podem mudar de superfície, escala ou agrupamento, mas não podem sair da leitura. Hero mostra o resumo de qualidade com rótulo e valor; o atributo mantém valor/unidade/status/fonte próximos no detalhe. Cor, tooltip ou uma tab distante não são o único caminho para entender um limite.
+
 ## Recalibração de identidade e acesso — 2026-09-11
 
 > Esta decisão substitui, para as próximas telas e para a reabertura da P1-038, qualquer leitura anterior que associe a linguagem do BlindSpot a verde, serifas editoriais ou ao painel de acesso como peça publicitária. Ela não altera retroativamente o runtime; torna a direção anterior um estado a migrar.
@@ -136,7 +154,7 @@ Regras:
 |---|---|---|
 | Tokens semânticos | Implementada | `apps/web/src/design-system.css`: cor, tipografia, espaço, raio, borda, elevação, z-index, movimento e breakpoints documentados |
 | Aliases da interface atual | Migrados | `apps/web/src/styles.css`: `--bg-*`, `--text-*`, `--border-*` e `--accent-*` agora apontam para tokens semânticos, sem reescrever telas |
-| Primitives React | Implementadas | `apps/web/src/ui/primitives.tsx`: botão, card, campo, status e estados loading/empty/error |
+| Primitives React | Implementadas | `apps/web/src/ui/primitives.tsx`: botão com variantes/tamanhos/ícones/loading, textarea, card, campo, status e estados loading/empty/error |
 | Foco e movimento reduzido | Implementados | `design-system.css`: `:focus-visible` e `prefers-reduced-motion` globais |
 | Migração de tela | Pendente | P1-038 a P1-042 devem consumir primitives sem alterar contratos de domínio |
 
@@ -266,7 +284,8 @@ Todo componente novo ou alterado declara no mínimo: objetivo, pessoa/fluxo, con
 
 | Primitive implementada | Uso permitido agora | Fora do escopo |
 |---|---|---|
-| `UiButton` | ação primária/secundária/perigosa, loading e disabled | decidir autorização ou esconder pré-requisito de servidor |
+| `UiButton` | ação primária/secundária/perigosa, loading e disabled; variantes `primary`, `secondary`, `outline`, `ghost`, `danger`, `link`; tamanhos `sm`, `md`, `lg`, `icon` | decidir autorização ou esconder pré-requisito de servidor |
+| `UiTextarea` | texto factual editável com label/hint/erro por `UiField`; resize vertical, disabled e inválido | criar entrada apenas decorativa, validar domínio ou autoexpandir sem decisão própria |
 | `UiCard` | superfície agrupadora com elevação explícita | criar card apenas para preencher espaço |
 | `UiField` | label, hint/erro e associação acessível do controle | validar ou persistir dado de negócio |
 | `UiStatus` | texto + cor para estado de qualidade | converter estado técnico em decoração ou única fonte de verdade |
@@ -316,6 +335,8 @@ Uma task que altera materialmente uma tela consulta este Design System e aplica 
 | 2026-09-11 | Design System passou a ser a especificação central de linguagem, componentes, grid, adoção PEK e checkpoints | Aprovado para documentação |
 | 2026-09-11 | Image System complementar formalizado | Aprovado para documentação |
 | 2026-09-12 | Incorporados padrões de topografia estável de feedback, validação progressiva e invariantes geométricos a partir da evidência do cadastro P0-015 | Aprovado para documentação |
+| 2026-09-13 | Contrato local de Button e Textarea alinhado à semântica pública do shadcn/ui, sem dependências externas; primeira adoção na Nova Ficha | Implementado tecnicamente |
+| 2026-09-13 | P1-056 consolidou o padrão de biblioteca organizacional em galerias adaptativas e módulos de seleção sem dados fictícios; validação visual humana permanece obrigatória | Implementado tecnicamente |
 
 ## Padrão de qualidade pós-render: densidade, feedback e estados de marco
 
@@ -385,6 +406,11 @@ Quando uma mídia decorativa tiver uma forma central dominante (por exemplo, orb
 | DS-BS-002 | Navegação superior substitui a sidebar na refatoração | alinhamento com as referências e melhor hierarquia para o workspace | Aprovada para arquitetura; implementação por task |
 | DS-BS-003 | Comparação usa colunas X e Y por versão imutável | permite decisão lado a lado sem esconder qualidade e proveniência | Aprovada para arquitetura |
 | DS-BS-004 | Orientação é candidata a remoção | não há objetivo de produto comprovado; ajuda precisa ser contextual | Pendente de inventário de conteúdo |
+| DS-BS-005 | O shell autenticado não usa frame externo como cartão decorativo | a contenção visual pertence ao grid e aos módulos; uma borda de viewport não pode desperdiçar área ou forçar scroll | Aprovada para arquitetura V4 da Nova Ficha |
+| DS-BS-006 | Pesquisa de ficha é uma intenção sob demanda, separada da leitura inicial | o formulário não compete com identidade e qualidade; diálogo acessível preserva foco, valores e validação | Aprovada para arquitetura V4 da Nova Ficha |
+| DS-BS-007 | Biblioteca organizacional usa galeria progressiva de configuração → ficha → leitura | separa objetos que possuem escopo e ação diferentes, evita duplicar ficha técnica em um scroll e preserva seleção explícita | Implementada parcialmente na P1-056; checkpoint visual humano pendente |
+| DS-BS-008 | Módulos autenticados consomem a fundação `--app-*`, não superfícies legacy indistinguíveis do canvas | cards devem permanecer reconhecíveis como blocos de informação sem borda de viewport, sombra decorativa ou dados inventados | Implementada parcialmente na P1-056; promover após renders dark/light |
+| DS-BS-009 | Descoberta global usa um comando único e uma galeria como fonte de verdade; filtros detalhados são progressivos e recentes não são duplicados em rail | evita três regiões concorrendo pelo mesmo objeto, preserva a busca como ação principal e dá a cada ficha uma superfície acionável | Implementada tecnicamente na P1-041; checkpoint visual humano pendente |
 
 ## Verificação antes de implementar uma tela
 
@@ -394,3 +420,8 @@ Quando uma mídia decorativa tiver uma forma central dominante (por exemplo, orb
 - Desktop e mobile preservam ação, leitura e foco por teclado?
 - A referência externa foi traduzida em princípio, sem cópia?
 - A mudança recebeu Architecture Gate quando altera fluxo, contrato, dado, API ou comportamento?
+# Atualização P1-055 — foundation theme-capable (2026-09-13)
+
+O runtime possui agora uma fundação isolada para consumidores autenticados em `apps/web/src/ui/foundation.tsx` e `foundation.css`. Ela ainda não migra qualquer tela. `AppFrame`, `PageHeader`, `ModuleGrid`, `MetricTile`, `PriorityList` e `DataPanel` não acessam API, sessão, `localStorage`, RBAC ou dados de domínio.
+
+Os aliases `--app-*` possuem dois mapas semânticos equivalentes: o padrão dark e o mapa warm-light em `body.theme-light`. Os dois mantêm canvas, frame, superfície, texto, borda, ação, foco, raio e grade; modo não muda hierarquia, conteúdo, alvo de toque ou acessibilidade. O seletor e a preferência de tema existentes não foram modificados. A aceitação visual de qualquer consumidor continua pendente de render humano e de seu gate específico.

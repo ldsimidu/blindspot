@@ -1,7 +1,9 @@
-import { cloneElement, type ButtonHTMLAttributes, type HTMLAttributes, type ReactElement, type ReactNode, useId } from "react";
+import { cloneElement, forwardRef, type ButtonHTMLAttributes, type HTMLAttributes, type ReactElement, type ReactNode, type TextareaHTMLAttributes, useId } from "react";
 import { createPortal } from "react-dom";
 
 type Tone = "primary" | "secondary" | "danger";
+type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "danger" | "link";
+type ButtonSize = "sm" | "md" | "lg" | "icon";
 type StatusTone = "confirmed" | "entry" | "partial" | "conflict" | "not-found" | "not-applicable" | "inferred";
 type ToastTone = "success" | "error";
 
@@ -10,33 +12,59 @@ function classNames(...values: Array<string | undefined | false>): string {
 }
 
 export interface UiButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+  /** Compatibility prop for existing consumers. Prefer `variant` in new UI. */
   tone?: Tone;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  startIcon?: ReactNode;
+  endIcon?: ReactNode;
   isLoading?: boolean;
   loadingLabel?: string;
 }
 
-export function UiButton({
+export const UiButton = forwardRef<HTMLButtonElement, UiButtonProps>(function UiButton({
   children,
   className,
   disabled,
+  endIcon,
   isLoading = false,
   loadingLabel = "Carregando…",
-  tone = "primary",
+  size = "md",
+  startIcon,
+  tone,
   type = "button",
+  variant,
   ...props
-}: UiButtonProps) {
+}, ref) {
+  const resolvedVariant = variant ?? (tone === "danger" ? "danger" : tone === "secondary" ? "outline" : "primary");
+  const legacyTone = tone ?? (resolvedVariant === "danger" ? "danger" : resolvedVariant === "outline" ? "secondary" : "primary");
+
   return (
     <button
       {...props}
+      ref={ref}
       type={type}
-      className={classNames("ui-button", `ui-button--${tone}`, className)}
+      className={classNames("ui-button", `ui-button--${legacyTone}`, `ui-button--variant-${resolvedVariant}`, `ui-button--size-${size}`, isLoading && "ui-button--loading", className)}
       disabled={disabled || isLoading}
       aria-busy={isLoading || undefined}
     >
-      {isLoading ? loadingLabel : children}
+      <span className="ui-button__content" aria-hidden={isLoading || undefined}>
+        {startIcon ? <span className="ui-button__icon" aria-hidden="true">{startIcon}</span> : null}
+        <span className="ui-button__label">{children}</span>
+        {endIcon ? <span className="ui-button__icon" aria-hidden="true">{endIcon}</span> : null}
+      </span>
+      {isLoading ? <span className="ui-button__loading-label"><span className="ui-button__spinner" aria-hidden="true" />{loadingLabel}</span> : null}
     </button>
   );
+});
+
+export interface UiTextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
+  resize?: "none" | "vertical" | "both";
 }
+
+export const UiTextarea = forwardRef<HTMLTextAreaElement, UiTextareaProps>(function UiTextarea({ className, resize = "vertical", ...props }, ref) {
+  return <textarea {...props} ref={ref} className={classNames("ui-textarea", `ui-textarea--resize-${resize}`, className)} />;
+});
 
 export interface UiCardProps extends HTMLAttributes<HTMLElement> {
   as?: "article" | "section" | "div";

@@ -119,3 +119,76 @@ Esta task reorganiza JSX/CSS e estado local de interface. Não cria endpoint, fi
 - Verificação: `npm run typecheck` passou; `npm run build` passou; `git diff --check` passou. Captura atual do catálogo, referência específica, análise de referências visuais, Image System, Design System, P1-024/P1-025, fluxo canônico, contrato de facetas e APIs consumidoras foram revisados.
 - Pendências: executar checkpoint PEK com render sanitizado em 1440, 768 e 390 px; revisar teclado, filtros, paginação, vazio, erro, ficha sem versão, identidade incompatível e reduced motion. O navegador automatizado deste ambiente permanece indisponível, portanto build não constitui aprovação visual.
 - Próximo passo: Lucas fornecer/validar evidência renderizada; tratar os achados antes de concluir visualmente a task.
+
+## Reabertura V2 — galeria global de fichas (2026-09-13)
+
+### Evidência, problema e decisão
+
+- A nova captura humana mostra que a implementação anterior materializou o rail aprovado na arquitetura antiga, mas revelou sua limitação: o filtro permanente ocupa uma coluna inteira, o bloco central não parece uma galeria de objetos e o rail repete os mesmos resultados recentes. A leitura fica fragmentada, com muita área sem papel e duas portas equivalentes para a mesma ficha.
+- O Catálogo é uma descoberta global autenticada; não é a biblioteca da organização da P1-056. Sua responsabilidade é localizar uma configuração já persistida, confirmar sua identidade no servidor e abrir a ficha existente. Ele não pode apresentar itens como pessoais, recomendados, compatíveis ou pertencentes à organização.
+- Referências e decisões recentes do Design System pedem canvas útil, módulos explícitos por dado/ação, hierarquia forte, superfícies sem frame decorativo, CTA textual claro, modo claro/escuro equivalente e ausência de imagem não comprovada. Esta tela permanece `NO_IMAGE`.
+
+**Decisão:** substituir o layout fixo `filtros + resultados + rail` por uma única jornada de descoberta. A busca é a superfície de comando principal; filtros detalhados aparecem sob demanda dentro dela; o resultado é uma galeria real. `Recentes` é o estado padrão da mesma galeria, portanto não existe rail que replique dados. A ficha detalhada continua no workspace técnico real já reutilizado pelo fluxo, sempre após a confirmação de identidade atual.
+
+### Fluxo e arquitetura de informação
+
+1. Abrir Catálogo → título curto e uma superfície `Encontrar uma configuração` já deixam a ação primária clara.
+2. Buscar por identidade usa texto livre; `Filtros` expande os campos de marca, modelo, ano, mercado e versão. A pessoa pode trocar explicitamente para características técnicas, cuja explicação continua indicando fonte rastreável.
+3. Enviar pesquisa → a mesma região expõe critérios ativos e a galeria muda de `Fichas recentes` para `Resultados da busca` ou `Correspondências técnicas`.
+4. Cada card mostra somente identidade retornada, versão técnica, data e ação `Abrir ficha exata`. Sem versão técnica, o limite é textual e o card não abre.
+5. Abrir → callback existente confirma identidade; só então aparece o `TechnicalFichaWorkspace`. Voltar preserva consulta e filtros em memória. Relacionadas continuam determinísticas e explicitamente não são compatibilidade.
+
+### Especificação visual completa
+
+- **Canvas:** conteúdo ocupa a largura útil do shell autenticado, sem borda de viewport. Cabeçalho e comando usam no máximo a mesma largura da galeria; o vazio restante só surge quando não houver cards reais.
+- **Comando:** superfície elevada, uma coluna. No topo, tabs nativas `Por identidade` / `Por características`; abaixo, campo principal e CTA de busca na mesma linha em desktop. `Filtros` é um disclosure visível, não uma sidebar nem modal. Campos detalhados ocupam grade 2–5 colunas quando abertos; aplicar e limpar permanecem próximos aos controles.
+- **Galeria:** cards independentes e homogêneos em auto-fit (três colunas largas, duas em tablet, uma em mobile). Cada card tem título de identidade, versão, metadados, versão técnica e data em ordem de leitura; a ação é um `UiButton` e não um selo que se confunda com status de confiabilidade.
+- **Estados:** uma mensagem contextual aparece acima da galeria para erro de abertura; loading, vazio e erro de consulta ocupam o espaço da galeria. Nenhuma mensagem desloca o comando. Abertura em curso aparece no card/rodapé como status factual, sem progresso simulado.
+- **Tema e tokens:** usar exclusivamente `--app-*` na superfície autenticada; fundo, borda, texto e foco funcionam em dark e warm-light. Laranja é reservado à ação e à seleção, não a estado técnico. Sem glass, gradiente, imagem falsa, KPI ou gráfico inventado.
+- **Tipografia:** títulos usam display; títulos de cards e labels usam a família padrão, peso regular/semibold conforme hierarquia, sem eyebrow em caixa alta para substituir título legível.
+- **Responsividade e a11y:** 1024 reduz grid, 768 empilha campo/CTA e detalhamento, 390 mantém uma coluna. Os controles têm labels; `details/summary` funciona com teclado; cards são `article` e CTA é o único alvo de abertura. Ordem de foco: comando → filtros abertos → resultados → paginação. `prefers-reduced-motion` mantém apresentação estática.
+
+### Impacto, segurança e double-check
+
+- Altera somente `CatalogWorkspace.tsx`, `catalog-workspace.css`, documentação de Design System e esta task. Não muda API, autorização, escopo global, tipos, rotas, persistência, identidade confirmada, comparação ou exportação.
+- **Segurança: Não aplicável.** A mudança é composição local sobre os mesmos callbacks e respostas autenticadas. Reabrir avaliação caso o catálogo passe a receber novos filtros, URL de versão, dados de organização, persistência ou endpoint.
+- O rail antigo será removido, assim como sua segunda consulta, eliminando duplicação e reduzindo estado de carregamento/erro sem esconder informação factual.
+- Reprovar a renderização se a busca não for a primeira ação clara, se resultados voltarem a ser linhas sem superfícies próprias, se recentes duplicarem a galeria, se o card omitir identidade/mercado/versão, se a galeria ficar menor que a área útil sem motivo ou se o modo claro alterar a hierarquia.
+
+### Architecture Gate V2
+
+`APPROVED — Lucas autorizou arquitetura e implementação nesta mensagem em 2026-09-13.`
+
+### Resultado da implementação V2
+
+- Estado: `🚧 Em execução — aguardando checkpoint visual humano`.
+- Removidos o rail direito, sua segunda chamada de recentes e a composição fixa em três colunas. A galeria é agora a única origem visual dos recentes e dos resultados pesquisados.
+- `CatalogWorkspace` passou a ter comando de busca único, tabs de modo, filtro detalhado em disclosure nativo, galeria responsiva de cards e CTA `Abrir ficha exata`. Nenhum contrato de API, dado, escopo ou confirmação foi alterado.
+- Cada card explicita marca/modelo, versão, ano-modelo, mercado, versão técnica e data de atualização quando o servidor a retorna. Uma candidata sem versão técnica explica o limite e não oferece abertura.
+- A leitura detalhada mantém o `TechnicalFichaWorkspace` existente e as relacionadas continuam intituladas como relação por identidade, sem semântica de recomendação ou compatibilidade.
+- O Design System registra `DS-BS-009`, para que novos catálogos não recriem rails duplicados ou filtros laterais permanentes sem necessidade operacional.
+- Arquivos desta passagem: `apps/web/src/CatalogWorkspace.tsx`, `apps/web/src/catalog-workspace.css`, `docs/product/design-system.md` e esta task.
+- Verificação técnica: `npm run typecheck` passou; `npm run build` passou; `git diff --check` passou (com avisos preexistentes de normalização LF/CRLF). Não houve navegador automatizado neste ambiente, portanto falta captura humana em 1440, 1024/768, 390 e modos dark/light para concluir a aprovação visual PEK.
+
+## Reabertura V3 — verdade da busca aplicada e acabamento da galeria (2026-09-13)
+
+### Fatos e decisão
+
+- A captura desktop confirma a composição V2: comando único, galeria de fichas e ausência de rail duplicado. Ela também expõe dois riscos de verdade de estado: o título podia reagir ao filtro ainda não enviado e a troca para características podia manter cards de identidade na tela.
+- A largura do catálogo ainda é menor do que a largura útil do shell e seis itens formam uma grade `4 + 2`, menos estável que a composição `3 + 3`. O disclosure ainda exibe o marcador nativo do navegador.
+
+**Decisão:** manter os contratos e o fluxo, mas separar explicitamente valores em edição da última consulta aplicada. Ao entrar no modo técnico, a galeria anterior é removida e um estado orienta a definir critérios. A composição desktop passa a três colunas, usa a largura útil do shell e alinha CTA na base de cada card. O deep link versionado não entra nesta passagem: ele exigiria nova rota e avaliação de autorização.
+
+### Segurança, double-check e gate
+
+- Segurança e conformidade: `Não aplicável`. Não há endpoint, parâmetro aceito, escopo, dado ou persistência novos; o estado de consulta segue somente em memória.
+- A revisão reprova se a galeria disser que é resultado de uma busca ainda não enviada, se cards de identidade forem mostrados como correspondências técnicas, se títulos longos forem truncados silenciosamente ou se a grade perder legibilidade em tablet/mobile.
+- `APPROVED — Lucas autorizou a implementação em 2026-09-13.`
+
+### Resultado da implementação V3
+
+- Estado em memória agora separa controles em edição (`identity`, `technical`, `scope`) da última consulta efetivamente aplicada. Título, contador, chips e paginação usam exclusivamente a consulta aplicada.
+- Ao abrir `Por características`, resultados anteriores são removidos e aparece uma orientação neutra até que a busca técnica seja enviada; portanto nenhuma candidata por identidade pode parecer uma correspondência técnica.
+- A galeria ocupa toda a largura útil do shell, usa três colunas no desktop, duas até 1100 px e uma em mobile. CTAs alinham-se à base dos cards sem truncar títulos longos.
+- O disclosure de filtros usa indicador geométrico local, com foco visível e estado aberto/fechado; não depende mais do marcador padrão do navegador.
+- Verificação: `npm run typecheck`, `npm run build` e `git diff --check` passaram. O último comando mantém apenas avisos preexistentes de normalização LF/CRLF. A confirmação visual final requer nova captura humana dos estados identidade aplicada, técnico antes/depois da consulta e modo claro.

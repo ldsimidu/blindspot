@@ -82,6 +82,23 @@
   --breakpoint-compact: 680px;
   --breakpoint-medium: 1080px;
   --breakpoint-wide: 1440px;
+
+  /* P1-055: authenticated foundation aliases — dark map is the default mode. */
+  --app-canvas: #121212;
+  --app-frame: #191817;
+  --app-surface: #211f1d;
+  --app-surface-muted: #292623;
+  --app-ink: #f7f1e8;
+  --app-ink-muted: #c8c0b6;
+  --app-border: #413b35;
+  --app-accent: #f07a4c;
+  --app-accent-on: #21130d;
+  --app-focus: #ffb990;
+  --app-frame-radius: 32px;
+  --app-module-radius: 16px;
+  --app-control-radius: 12px;
+  --app-grid-gap: 20px;
+  --app-content-max: 1480px;
 }
 
 body.theme-light {
@@ -104,6 +121,18 @@ body.theme-light {
   --color-action-primary-soft: #9a3412;
   --color-action-on-primary: #ffffff;
   --color-focus-ring: #c2410c;
+
+  /* P1-055: warm-light map. Structure is identical to the default dark map. */
+  --app-canvas: #eee5d8;
+  --app-frame: #f7f2e9;
+  --app-surface: #fffdf9;
+  --app-surface-muted: #f6eee3;
+  --app-ink: #292522;
+  --app-ink-muted: #716a62;
+  --app-border: #dfd3c5;
+  --app-accent: #d95f32;
+  --app-accent-on: #fffaf4;
+  --app-focus: #9e3e1f;
 }
 
 .ui-card {
@@ -162,6 +191,52 @@ body.theme-light {
 
 .ui-button:not(:disabled):active {
   transform: translateY(0) scale(0.98);
+}
+
+/* Local foundation modelled after the public shadcn API, without importing its
+   Tailwind/Radix registry. Legacy `tone` classes above remain supported. */
+.ui-button--variant-primary { background: var(--color-action-primary); color: var(--color-action-on-primary); }
+.ui-button--variant-secondary { background: var(--color-surface-raised); border-color: var(--color-border-default); color: var(--color-text-primary); }
+.ui-button--variant-outline { background: transparent; border-color: var(--color-border-default); color: var(--color-text-primary); }
+.ui-button--variant-ghost { background: transparent; color: var(--color-text-primary); }
+.ui-button--variant-danger { background: var(--color-status-conflict-bg); border-color: var(--color-status-conflict-text); color: var(--color-status-conflict-text); }
+.ui-button--variant-link { background: transparent; border-color: transparent; color: var(--color-action-primary-soft); min-height: auto; padding-inline: 0; text-decoration: underline; text-underline-offset: 3px; }
+.ui-button--size-sm { min-height: 34px; padding: 6px var(--space-3); font-size: var(--type-label); }
+.ui-button--size-md { min-height: 42px; }
+.ui-button--size-lg { min-height: 48px; padding-inline: var(--space-5); }
+.ui-button--size-icon { min-height: 42px; padding: 0; width: 42px; }
+.ui-button__content,
+.ui-button__loading-label { align-items: center; display: inline-flex; gap: var(--space-2); justify-content: center; }
+.ui-button__content { min-width: 0; }
+.ui-button__icon { display: inline-flex; flex: 0 0 auto; }
+.ui-button__icon svg { display: block; height: 1em; width: 1em; }
+.ui-button--loading { position: relative; }
+.ui-button--loading .ui-button__content { visibility: hidden; }
+.ui-button__loading-label { inset: 0; position: absolute; }
+.ui-button__spinner { animation: ui-button-spin 700ms linear infinite; border: 2px solid currentColor; border-right-color: transparent; border-radius: 999px; height: 0.9em; width: 0.9em; }
+
+.ui-textarea {
+  background: var(--color-surface-raised);
+  border: var(--border-width-default) solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font: inherit;
+  line-height: 1.5;
+  min-height: 6.5rem;
+  padding: var(--space-3);
+  transition: border-color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard);
+  width: 100%;
+}
+
+.ui-textarea::placeholder { color: var(--color-text-muted); }
+.ui-textarea--resize-none { resize: none; }
+.ui-textarea--resize-vertical { resize: vertical; }
+.ui-textarea--resize-both { resize: both; }
+.ui-textarea:disabled { cursor: not-allowed; opacity: 0.6; }
+.ui-textarea[aria-invalid="true"] { border-color: var(--color-feedback-danger); }
+
+@keyframes ui-button-spin {
+  to { transform: rotate(360deg); }
 }
 
 .ui-field {

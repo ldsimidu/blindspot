@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { ApiRequestError, abrirFichaCatalogo, ativarConviteMembro, alterarPapelMembro, buscarCatalogo, cadastrarOrganizacao, convidarMembro, desativarMembro, entrar, exportarFicha, gerarFichaTecnica, obterAlertasConsumo, obterConsumo, obterEquipe, obterHistoricoFichas, obterRecomendacoesCatalogo, obterSessao, obterUltimaFichaTecnica, reconhecerAlertaConsumo, revogarConviteMembro, sair, salvarPoliticaConsumo } from "./api";
 import type { CatalogCandidate, CatalogEntryResult, CatalogSearchResult, FichaTecnicaHistoryItem, FichaTecnicaResponse, OrganizationMember, OrganizationMemberInvitation, OrganizationRole, UsageAlertSettings, UsageSummary, VehicleInput } from "./types";
 import logoBlindspot from "./assets/blindspot-mark.png";
@@ -9,11 +9,14 @@ import { TechnicalFichaWorkspace } from "./TechnicalFichaWorkspace";
 import { VehicleWorkspace } from "./VehicleWorkspace";
 import { TeamWorkspace, UsageWorkspace } from "./AdminWorkspaces";
 import { UiButton, UiCard, UiField, UiStatus, UiToast } from "./ui/primitives";
+import { AppFrame, DataPanel, MetricTile } from "./ui/foundation";
 
-type AppView = "request" | "catalog" | "workspace" | "comparison" | "history" | "team" | "usage";
+type AppView = "request" | "technical" | "catalog" | "workspace" | "comparison" | "history" | "team" | "usage";
+type ViewMotionDirection = "forward" | "backward" | "neutral";
 type ThemeMode = "dark" | "light";
 type AccessView = "login" | "registration" | "received" | "pending_review" | "rejected";
 type AccessVisualStage = "login" | "company" | "owner" | "access" | "review" | "pending";
+type ComparisonSelection = [CatalogCandidate | null, CatalogCandidate | null];
 
 const registrationFlow = [
   { phase: "Empresa", label: "Dados da empresa" },
@@ -90,6 +93,7 @@ function App() {
     return saved === "light" ? "light" : "dark";
   });
   const [activeView, setActiveView] = useState<AppView>("request");
+  const [viewMotionDirection, setViewMotionDirection] = useState<ViewMotionDirection>("neutral");
   const [isNavigationMenuOpen, setIsNavigationMenuOpen] = useState(false);
   const [isSessionMenuOpen, setIsSessionMenuOpen] = useState(false);
   const [form, setForm] = useState<FormState>(initialFormState);
@@ -97,6 +101,7 @@ function App() {
   const [loadingLatest, setLoadingLatest] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<FichaTecnicaResponse | null>(null);
+  const [isRequestDialogOpen, setIsRequestDialogOpen] = useState(false);
   const [history, setHistory] = useState<FichaTecnicaHistoryItem[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const [catalogQuery, setCatalogQuery] = useState("");
@@ -105,7 +110,7 @@ function App() {
   const [catalogResult, setCatalogResult] = useState<CatalogSearchResult | null>(null);
   const [catalogEntry, setCatalogEntry] = useState<CatalogEntryResult | null>(null);
   const [catalogRelated, setCatalogRelated] = useState<CatalogCandidate[]>([]);
-  const [comparisonSeed, setComparisonSeed] = useState<CatalogCandidate | null>(null);
+  const [comparisonSelection, setComparisonSelection] = useState<ComparisonSelection>([null, null]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const viewTitleRef = useRef<HTMLHeadingElement>(null);
@@ -113,6 +118,11 @@ function App() {
   const sessionToggleRef = useRef<HTMLButtonElement>(null);
   const navigationMenuRef = useRef<HTMLElement>(null);
   const sessionMenuRef = useRef<HTMLElement>(null);
+  const requestDialogRef = useRef<HTMLDialogElement>(null);
+  const requestTriggerRef = useRef<HTMLButtonElement>(null);
+  const requestFirstFieldRef = useRef<HTMLInputElement>(null);
+  const technicalDetailRef = useRef<HTMLElement>(null);
+  const technicalDetailTriggerRef = useRef<HTMLButtonElement>(null);
 
   const isFormValid = useMemo(() => {
     const hasRequiredText =
@@ -137,6 +147,30 @@ function App() {
 
     return asFichaTecnicaResponse(selectedHistory.response);
   }, [selectedHistory]);
+
+  const resultHistoryDates = useMemo(() => {
+    if (!result) return [];
+    const vehicle = result.veiculo_alvo;
+    return history
+      .filter((item) => item.vehicle && item.vehicle.marca === vehicle.marca && item.vehicle.modelo === vehicle.modelo && item.vehicle.versao === vehicle.versao && item.vehicle.ano_modelo === vehicle.ano_modelo && item.vehicle.mercado === vehicle.mercado)
+      .map((item) => item.finishedAt)
+      .filter((value) => !Number.isNaN(Date.parse(value)))
+      .sort((left, right) => Date.parse(left) - Date.parse(right));
+  }, [history, result]);
+
+  const featuredTechnicalFields = useMemo(() => {
+    if (!result) return [];
+    const candidates = [
+      { label: "Motorização", paths: ["motorizacao.tipo_motor", "motorizacao.motor_tipo"] },
+      { label: "Potência", paths: ["motorizacao.potencia_cv"] },
+      { label: "Torque", paths: ["motorizacao.torque_kgfm", "motorizacao.torque_nm"] }
+    ];
+
+    return candidates.flatMap((candidate) => {
+      const field = candidate.paths.map((path) => extractCampoStatusByPath(result.ficha_tecnica, path)).find((item) => item?.valor !== undefined && item.valor !== null);
+      return field ? [{ label: candidate.label, value: formatCampoValue(field), status: formatStatusLabel(field.status ?? "confirmado") }] : [];
+    });
+  }, [result]);
 
   useEffect(() => {
     document.body.classList.remove("theme-dark", "theme-light");
@@ -192,6 +226,22 @@ function App() {
   useEffect(() => () => {
     if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
   }, []);
+
+  useEffect(() => {
+    const dialog = requestDialogRef.current;
+    if (!dialog) return;
+
+    if (isRequestDialogOpen && !dialog.open) {
+      dialog.showModal();
+      window.requestAnimationFrame(() => requestFirstFieldRef.current?.focus());
+    }
+    if (!isRequestDialogOpen && dialog.open) dialog.close();
+  }, [isRequestDialogOpen]);
+
+  useEffect(() => {
+    if (activeView !== "technical") return;
+    window.requestAnimationFrame(() => technicalDetailRef.current?.focus());
+  }, [activeView]);
 
   useEffect(() => {
     if (authState !== "signed_in") {
@@ -253,6 +303,7 @@ function App() {
       setResult(response);
       await refreshHistory();
       setActiveView("request");
+      setIsRequestDialogOpen(false);
     } catch (err) {
       const message = formatTechnicalSheetGenerationError(err);
       setError(message);
@@ -303,14 +354,39 @@ function App() {
 
   function addCatalogCandidateToComparison(candidate: CatalogCandidate): void {
     if (!candidate.latestTechnicalSheetVersionId || (signedInRole !== "analyst" && signedInRole !== "admin")) return;
-    setComparisonSeed(candidate);
-    setActiveView("comparison");
+    setComparisonSelection((current) => {
+      if (current.some((item) => item?.latestTechnicalSheetVersionId === candidate.latestTechnicalSheetVersionId)) return current;
+      if (current[0] && current[1]) return current;
+      return current[0] ? [current[0], candidate] : [candidate, current[1]];
+    });
+  }
+
+  function setComparisonCandidate(candidate: CatalogCandidate, side: 0 | 1): void {
+    if (!candidate.latestTechnicalSheetVersionId) return;
+    setComparisonSelection((current) => {
+      const duplicateSide = current.findIndex((item) => item?.latestTechnicalSheetVersionId === candidate.latestTechnicalSheetVersionId);
+      if (duplicateSide === side) return current;
+      const next: ComparisonSelection = [...current];
+      if (duplicateSide >= 0) next[duplicateSide as 0 | 1] = null;
+      next[side] = candidate;
+      return next;
+    });
+  }
+
+  function removeComparisonCandidate(side: 0 | 1): void {
+    setComparisonSelection((current) => side === 0 ? [null, current[1]] : [current[0], null]);
   }
 
   function publishToast(tone: "success" | "error", title: string, message: string): void {
     if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
     setToast({ tone, title, message, isClosing: false });
     toastTimerRef.current = window.setTimeout(dismissToast, 6000);
+  }
+
+  function closeRequestDialog(): void {
+    if (loading) return;
+    setIsRequestDialogOpen(false);
+    window.requestAnimationFrame(() => requestTriggerRef.current?.focus());
   }
 
   function dismissToast(): void {
@@ -397,6 +473,7 @@ function App() {
       setLoginPassword("");
       setAccessView("login");
       setAuthState("signed_out");
+      setComparisonSelection([null, null]);
       setLogoutState("idle");
       publishToast("success", "Sessão encerrada", "Você saiu do BlindSpot com segurança.");
     } catch {
@@ -500,6 +577,7 @@ function App() {
   }
 
   function selectDashboardView(view: AppView): void {
+    if (view !== activeView) setViewMotionDirection("neutral");
     setActiveView(view);
     setIsNavigationMenuOpen(false);
     setIsSessionMenuOpen(false);
@@ -512,6 +590,7 @@ function App() {
     <div className="dashboard-page">
       {toast && <UiToast tone={toast.tone} title={toast.title} message={toast.message} isClosing={toast.isClosing} onDismiss={dismissToast} />}
       <a className="skip-link" href="#main-content">Pular para o conteúdo principal</a>
+      <AppFrame className="dashboard-frame">
       <header className="top-navigation">
         <div className="top-navigation__inner">
           <button type="button" className="top-navigation__brand" onClick={() => selectDashboardView("request")} aria-label="BlindSpot, ir para nova requisição">
@@ -519,17 +598,17 @@ function App() {
             <span>BLINDSPOT</span>
           </button>
           <nav className="top-navigation__links" aria-label="Seções do produto">
-            <button type="button" className={activeView === "request" ? "is-active" : ""} onClick={() => selectDashboardView("request")} aria-current={activeView === "request" ? "page" : undefined}>Nova ficha</button>
-            <button type="button" className={activeView === "workspace" ? "is-active" : ""} onClick={() => selectDashboardView("workspace")} aria-current={activeView === "workspace" ? "page" : undefined}>Workspace</button>
-            <button type="button" className={activeView === "catalog" ? "is-active" : ""} onClick={() => selectDashboardView("catalog")} aria-current={activeView === "catalog" ? "page" : undefined}>Catálogo</button>
-            <button type="button" className={activeView === "history" ? "is-active" : ""} onClick={() => selectDashboardView("history")} aria-current={activeView === "history" ? "page" : undefined}>Histórico</button>
-            {(signedInRole === "analyst" || signedInRole === "admin") ? <button type="button" className={activeView === "comparison" ? "is-active" : ""} onClick={() => selectDashboardView("comparison")} aria-current={activeView === "comparison" ? "page" : undefined}>Comparar</button> : null}
-            {signedInRole === "admin" ? <button type="button" className={activeView === "team" ? "is-active" : ""} onClick={() => selectDashboardView("team")} aria-current={activeView === "team" ? "page" : undefined}>Equipe</button> : null}
-            {signedInRole === "admin" ? <button type="button" className={activeView === "usage" ? "is-active" : ""} onClick={() => selectDashboardView("usage")} aria-current={activeView === "usage" ? "page" : undefined}>Consumo</button> : null}
+            <button type="button" title="Pesquisar por nova ficha técnica" aria-label="Pesquisar por nova ficha técnica" className={activeView === "request" ? "is-active" : ""} onClick={() => selectDashboardView("request")} aria-current={activeView === "request" ? "page" : undefined}><NavigationIcon name="search" /></button>
+            <button type="button" title="Workspace" aria-label="Workspace" className={activeView === "workspace" ? "is-active" : ""} onClick={() => selectDashboardView("workspace")} aria-current={activeView === "workspace" ? "page" : undefined}><NavigationIcon name="workspace" /></button>
+            <button type="button" title="Catálogo" aria-label="Catálogo" className={activeView === "catalog" ? "is-active" : ""} onClick={() => selectDashboardView("catalog")} aria-current={activeView === "catalog" ? "page" : undefined}><NavigationIcon name="catalog" /></button>
+            <button type="button" title="Histórico" aria-label="Histórico" className={activeView === "history" ? "is-active" : ""} onClick={() => selectDashboardView("history")} aria-current={activeView === "history" ? "page" : undefined}><NavigationIcon name="history" /></button>
+            {(signedInRole === "analyst" || signedInRole === "admin") ? <button type="button" title="Comparar" aria-label="Comparar" className={activeView === "comparison" ? "is-active" : ""} onClick={() => selectDashboardView("comparison")} aria-current={activeView === "comparison" ? "page" : undefined}><NavigationIcon name="comparison" /></button> : null}
+            {signedInRole === "admin" ? <button type="button" title="Equipe" aria-label="Equipe" className={activeView === "team" ? "is-active" : ""} onClick={() => selectDashboardView("team")} aria-current={activeView === "team" ? "page" : undefined}><NavigationIcon name="team" /></button> : null}
+            {signedInRole === "admin" ? <button type="button" title="Consumo" aria-label="Consumo" className={activeView === "usage" ? "is-active" : ""} onClick={() => selectDashboardView("usage")} aria-current={activeView === "usage" ? "page" : undefined}><NavigationIcon name="usage" /></button> : null}
           </nav>
           <div className="top-navigation__utilities">
             <button type="button" className="theme-toggle" onClick={() => setThemeMode((prev) => (prev === "dark" ? "light" : "dark"))} title={themeMode === "dark" ? "Ativar modo claro" : "Ativar modo escuro"} aria-label={themeMode === "dark" ? "Ativar modo claro" : "Ativar modo escuro"}><ThemeIcon mode={themeMode} /></button>
-            <button ref={navigationToggleRef} type="button" className="top-navigation__menu-toggle" onClick={() => { setIsNavigationMenuOpen((current) => !current); setIsSessionMenuOpen(false); }} aria-expanded={isNavigationMenuOpen} aria-controls="primary-navigation-menu">Menu</button>
+            <button ref={navigationToggleRef} type="button" className="top-navigation__menu-toggle" onClick={() => { setIsNavigationMenuOpen((current) => !current); setIsSessionMenuOpen(false); }} aria-expanded={isNavigationMenuOpen} aria-controls="primary-navigation-menu"><span>Explorar</span><NavigationIcon name="disclosure" /></button>
             <button ref={sessionToggleRef} type="button" className="top-navigation__session-toggle" onClick={() => { setIsSessionMenuOpen((current) => !current); setIsNavigationMenuOpen(false); }} aria-expanded={isSessionMenuOpen} aria-controls="session-menu">Conta</button>
           </div>
         </div>
@@ -545,74 +624,68 @@ function App() {
 
       <main id="main-content" className="dashboard-content" tabIndex={-1}>
         <p className="sr-only" role="status" aria-live="polite">{statusAnnouncement}</p>
+        <div key={`${activeView}-${activeView === "request" && result ? `${result.veiculo_alvo.marca}-${result.veiculo_alvo.modelo}-${result.veiculo_alvo.versao}-${result.veiculo_alvo.ano_modelo}-${result.veiculo_alvo.mercado}` : "empty"}`} className={`app-view-transition app-view-transition--${viewMotionDirection}`}>
         {activeView === "request" ? (
           <>
-            <section className="panel">
-              <h1 ref={viewTitleRef} tabIndex={-1}>Nova requisicao</h1>
-              <p>Informe o veiculo para gerar a ficha tecnica validada por schema.</p>
+            <section className="request-dashboard" aria-label="Ficha técnica">
+              <header className="request-dashboard__header">
+                <div>
+                  <h1 ref={viewTitleRef} tabIndex={-1}>Pesquisar por nova ficha técnica</h1>
+                  <p>{result ? "Visão inicial da configuração selecionada." : "Pesquise uma configuração para iniciar a leitura técnica."}</p>
+                </div>
+              </header>
 
-              <form onSubmit={handleSubmit} className="form-grid">
-                <label>
-                  Marca
-                  <input
-                    value={form.marca}
-                    onChange={(event) => setForm((prev) => ({ ...prev, marca: event.target.value }))}
-                    required
-                  />
-                </label>
+              <section className="request-command-surface" aria-labelledby="request-command-title">
+                <div><h2 id="request-command-title">Pesquise uma configuração exata</h2><p>Informe a configuração para gerar uma ficha técnica validada por schema.</p><ul aria-label="Critérios da pesquisa"><li>Marca</li><li>Modelo</li><li>Versão</li><li>Ano-modelo</li><li>Mercado</li></ul></div>
+                <UiButton ref={requestTriggerRef} type="button" variant="primary" size="lg" startIcon={<NavigationIcon name="search" />} className="request-action-button request-action-button--lg" onClick={() => setIsRequestDialogOpen(true)}>Pesquisar por nova ficha técnica</UiButton>
+              </section>
 
-                <label>
-                  Modelo
-                  <input
-                    value={form.modelo}
-                    onChange={(event) => setForm((prev) => ({ ...prev, modelo: event.target.value }))}
-                    required
-                  />
-                </label>
+              {loadingLatest ? <p className="request-dashboard__loading" role="status">Carregando última resposta salva…</p> : null}
 
-                <label>
-                  Versao
-                  <input
-                    value={form.versao}
-                    onChange={(event) => setForm((prev) => ({ ...prev, versao: event.target.value }))}
-                    required
-                  />
-                </label>
-
-                <label>
-                  Ano modelo
-                  <input
-                    type="number"
-                    min={1900}
-                    max={2100}
-                    value={form.ano_modelo}
-                    onChange={(event) => setForm((prev) => ({ ...prev, ano_modelo: event.target.value }))}
-                    required
-                  />
-                </label>
-
-                <label>
-                  Mercado
-                  <input
-                    value={form.mercado}
-                    onChange={(event) => setForm((prev) => ({ ...prev, mercado: event.target.value }))}
-                    required
-                  />
-                </label>
-
-                <button className="primary-button" disabled={loading || !isFormValid} type="submit">
-                  {loading ? "Gerando..." : "Gerar ficha tecnica"}
-                </button>
-              </form>
-
-              {error ? <div className="error-box" role="alert">{error}</div> : null}
-              {loadingLatest ? <p className="status-text" role="status">Carregando ultima resposta salva...</p> : null}
+              {result ? (
+                <>
+                  <div className="request-dashboard__latest-divider" aria-labelledby="latest-ficha-title"><p id="latest-ficha-title">Última ficha pesquisada</p></div>
+                  <section className="request-overview" aria-label="Resumo da ficha atual">
+                    <DataPanel className="request-overview__vehicle" title={`${result.veiculo_alvo.marca} ${result.veiculo_alvo.modelo}`} description={`${result.veiculo_alvo.versao} · ${result.veiculo_alvo.ano_modelo} · ${result.veiculo_alvo.mercado}`}>
+                      <p className="request-overview__message">Ficha disponível para leitura técnica com evidência rastreável.</p>
+                    </DataPanel>
+                    <DataPanel className="request-overview__completeness" title="Completude" description={`${String(result.resumo_completude.preenchidas ?? "—")} / ${String(result.resumo_completude.total_variaveis ?? "—")} campos preenchidos`}>
+                      {typeof result.resumo_completude.preenchidas === "number" && typeof result.resumo_completude.total_variaveis === "number" && result.resumo_completude.total_variaveis > 0 ? (
+                        <div className="request-overview__completion-ring" style={{ "--completion": `${Math.min(100, Math.max(0, (result.resumo_completude.preenchidas / result.resumo_completude.total_variaveis) * 100))}%` } as CSSProperties}><strong>{Math.round(Math.min(100, Math.max(0, (result.resumo_completude.preenchidas / result.resumo_completude.total_variaveis) * 100)))}%</strong><span>coberta</span></div>
+                      ) : <p className="request-overview__unavailable">Completude indisponível.</p>}
+                    </DataPanel>
+                    <section className="request-overview__metrics" aria-label="Indicadores de qualidade e atualidade">
+                      <MetricTile label="Fontes" value={result.fontes_utilizadas.length} detail="referências usadas" />
+                      <MetricTile label="Sem informação" value={String(result.resumo_completude.nao_encontradas ?? "—")} detail="campos sem dado" />
+                      <MetricTile label="Conflitos" value={String(result.resumo_completude.conflitantes ?? "—")} detail="campos a revisar" />
+                      <section className="request-overview__history-inline" aria-label="Fatos de histórico da configuração">{resultHistoryDates.length > 0 ? <><article className="request-overview__history-fact"><p>Pesquisas</p><strong>{resultHistoryDates.length}</strong></article><article className="request-overview__history-fact"><p>Primeira pesquisa</p><strong>{formatDate(resultHistoryDates[0])}</strong></article><article className="request-overview__history-fact"><p>Última atualização</p><strong>{formatDate(resultHistoryDates[resultHistoryDates.length - 1])}</strong></article></> : <article className="request-overview__history-fact request-overview__history-fact--unavailable"><p>Histórico desta configuração indisponível.</p></article>}</section>
+                    </section>
+                    {featuredTechnicalFields.length > 0 ? <section className="request-overview__technical" aria-label="Leitura técnica rápida">{featuredTechnicalFields.map((field) => <article key={field.label}><p>{field.label}</p><strong>{field.value}</strong><span>{field.status}</span></article>)}</section> : null}
+                    <section className="request-overview__footer" aria-label="Atualidade e próxima ação">
+                      <UiButton ref={technicalDetailTriggerRef} type="button" variant="outline" onClick={() => { setViewMotionDirection("forward"); setActiveView("technical"); }}>Abrir ficha completa</UiButton>
+                    </section>
+                  </section>
+                </>
+              ) : !loadingLatest ? <section className="request-dashboard__empty"><h2>Nenhuma ficha em contexto</h2><p>Use “Pesquisar ficha” para informar uma configuração e iniciar a geração técnica.</p></section> : null}
             </section>
 
-            {result ? <FichaDashboard title="Ultima ficha validada" ficha={result} showTraceability={false} /> : null}
+            <dialog ref={requestDialogRef} className="request-dialog" aria-labelledby="request-dialog-title" onCancel={(event) => { event.preventDefault(); closeRequestDialog(); }} onClose={() => { if (isRequestDialogOpen) setIsRequestDialogOpen(false); }}>
+              <form onSubmit={handleSubmit} className="request-dialog__form">
+                <header><h2 id="request-dialog-title">Pesquisar ficha</h2><p>Informe a configuração exata para gerar uma ficha validada por schema.</p></header>
+                <div className="request-dialog__fields">
+                  <label>Marca<input ref={requestFirstFieldRef} value={form.marca} onChange={(event) => setForm((prev) => ({ ...prev, marca: event.target.value }))} required /></label>
+                  <label>Modelo<input value={form.modelo} onChange={(event) => setForm((prev) => ({ ...prev, modelo: event.target.value }))} required /></label>
+                  <label>Versão<input value={form.versao} onChange={(event) => setForm((prev) => ({ ...prev, versao: event.target.value }))} required /></label>
+                  <label>Ano-modelo<input type="number" min={1900} max={2100} value={form.ano_modelo} onChange={(event) => setForm((prev) => ({ ...prev, ano_modelo: event.target.value }))} required /></label>
+                  <label>Mercado<input value={form.mercado} onChange={(event) => setForm((prev) => ({ ...prev, mercado: event.target.value }))} required /></label>
+                </div>
+                {error ? <div className="error-box" role="alert">{error}</div> : null}
+                <footer><UiButton type="button" variant="outline" onClick={closeRequestDialog} disabled={loading}>Cancelar</UiButton><UiButton disabled={!isFormValid} isLoading={loading} loadingLabel="Gerando ficha técnica…" type="submit">Gerar ficha técnica</UiButton></footer>
+              </form>
+            </dialog>
           </>
-        ) : activeView === "catalog" ? <CatalogWorkspace entry={catalogEntry} entryError={catalogError} isOpening={catalogLoading} related={catalogRelated} canCompare={signedInRole === "analyst" || signedInRole === "admin"} onOpen={(entry) => void openCatalogEntry(entry.id, entry.vehicle)} onBack={() => { setCatalogEntry(null); setCatalogRelated([]); setCatalogError(null); }} onCompare={addCatalogCandidateToComparison} onExport={(versionId, format) => void exportarFicha(versionId, format)} /> : activeView === "workspace" ? <VehicleWorkspace /> : activeView === "comparison" && (signedInRole === "analyst" || signedInRole === "admin") ? (
-          <ComparisonPanel initialCandidate={comparisonSeed} onInitialCandidateConsumed={() => setComparisonSeed(null)} />
+        ) : activeView === "technical" ? <section ref={technicalDetailRef} className="request-detail-page" aria-label="Ficha técnica completa" tabIndex={-1}><UiButton type="button" variant="outline" onClick={() => { setViewMotionDirection("backward"); setActiveView("request"); window.requestAnimationFrame(() => technicalDetailTriggerRef.current?.focus()); }}>Voltar à última ficha</UiButton>{result ? <FichaDashboard title="Ficha técnica" ficha={result} showTraceability={false} /> : <p className="request-detail-page__empty" role="status">Nenhuma ficha está disponível para abertura.</p>}</section> : activeView === "catalog" ? <CatalogWorkspace entry={catalogEntry} entryError={catalogError} isOpening={catalogLoading} related={catalogRelated} canCompare={signedInRole === "analyst" || signedInRole === "admin"} comparisonSelection={comparisonSelection} onOpen={(entry) => void openCatalogEntry(entry.id, entry.vehicle)} onBack={() => { setCatalogEntry(null); setCatalogRelated([]); setCatalogError(null); }} onAddToComparison={addCatalogCandidateToComparison} onRemoveFromComparison={(candidate) => { const side = comparisonSelection.findIndex((item) => item?.latestTechnicalSheetVersionId === candidate.latestTechnicalSheetVersionId); if (side >= 0) removeComparisonCandidate(side as 0 | 1); }} onGoToComparison={() => { setViewMotionDirection("forward"); setActiveView("comparison"); }} onExport={(versionId, format) => void exportarFicha(versionId, format)} /> : activeView === "workspace" ? <VehicleWorkspace /> : activeView === "comparison" && (signedInRole === "analyst" || signedInRole === "admin") ? (
+          <ComparisonPanel selected={comparisonSelection} onSelectCandidate={setComparisonCandidate} onRemoveCandidate={removeComparisonCandidate} />
         ) : activeView === "team" && signedInRole === "admin" ? (
           <TeamPanel />
         ) : activeView === "usage" && signedInRole === "admin" ? (
@@ -674,7 +747,9 @@ function App() {
             </section>
           </section>
         )}
+        </div>
       </main>
+      </AppFrame>
     </div>
   );
 }
@@ -1388,6 +1463,21 @@ function ThemeIcon({ mode }: { mode: ThemeMode }) {
       />
     </svg>
   );
+}
+
+function NavigationIcon({ name }: { name: "request" | "search" | "workspace" | "catalog" | "history" | "comparison" | "team" | "usage" | "disclosure" }) {
+  if (name === "disclosure") return <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m7 10 5 5 5-5" /></svg>;
+  const paths = {
+    request: <><path d="M5 4h10l4 4v12H5z" /><path d="M15 4v5h5M8 13h8M8 17h5" /></>,
+    search: <><circle cx="10.8" cy="10.8" r="5.8" /><path d="m15.2 15.2 4.3 4.3" /></>,
+    workspace: <><rect x="4" y="4" width="6" height="6" rx="1" /><rect x="14" y="4" width="6" height="6" rx="1" /><rect x="4" y="14" width="6" height="6" rx="1" /><rect x="14" y="14" width="6" height="6" rx="1" /></>,
+    catalog: <><path d="M4 6h16M4 12h16M4 18h16" /><circle cx="7" cy="6" r="1" fill="currentColor" /><circle cx="7" cy="12" r="1" fill="currentColor" /><circle cx="7" cy="18" r="1" fill="currentColor" /></>,
+    history: <><path d="M4 12a8 8 0 1 0 3-6.25" /><path d="M4 5v4h4M12 8v5l3 2" /></>,
+    comparison: <><path d="M7 4v16M17 4v16M4 7h6M14 17h6" /><path d="m10 7 2-2 2 2M10 17l2 2 2-2" /></>,
+    team: <><circle cx="9" cy="8" r="3" /><path d="M3 20c.5-4 3-6 6-6s5.5 2 6 6M15 6a3 3 0 0 1 3 5M17 14c2.2.5 3.6 2.4 4 5" /></>,
+    usage: <><path d="M5 19V9M12 19V5M19 19v-7" /><path d="M3 19h18" /></>
+  };
+  return <svg aria-hidden="true" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>;
 }
 
 export default App;
