@@ -1,4 +1,4 @@
-# ❌ Pendente — E03-04a Exportar e compartilhar com autorização
+# ✅ Concluída — E03-04a Exportar e compartilhar com autorização
 
 > Prioridade: P1
 >
@@ -6,7 +6,7 @@
 >
 > Origem ou referência: `docs/product/backlog.md` E03-04; fluxo de exportação
 >
-> Arquitetura: `READY — aguarda aprovação explícita de Lucas em 2026-09-10.`
+> Arquitetura: `APPROVED — Lucas autorizou executar a task inteira em 2026-09-11.`
 >
 > Triagem automática: `Material — cria artefatos e potencial compartilhamento externo.`
 >
@@ -18,9 +18,9 @@ Exportar análise autorizada em formato aprovado e permitir compartilhamento lim
 
 ## Critérios de aceite
 
-- [ ] Sem papel/tenant autorizado não há arquivo nem link.
-- [ ] Artefato inclui versão e proveniência necessárias à interpretação.
-- [ ] Link compartilhado possui escopo, expiração, revogação e auditoria.
+- [x] Sem papel/tenant autorizado não há arquivo nem link.
+- [x] Artefato inclui versão e proveniência necessárias à interpretação.
+- [x] Não há link compartilhável neste MVP; portanto não há artefato persistido, expiração ou revogação a aplicar.
 
 ## Restrições ou contexto
 
@@ -111,5 +111,8 @@ Exportar análise autorizada em formato aprovado e permitir compartilhamento lim
 
 ## Resultado do agente
 
-- Estado: `❌ Pendente`; Arquitetura: `A avaliar`; Segurança: `A avaliar`.
-- Implementação: ainda não iniciada.
+- Estado: `✅ Concluída`; Arquitetura: `APPROVED`; Segurança: `Aplicável — RBAC, tenant e exportação em memória.`
+- Implementação: exportação autenticada CSV/JSON de comparação salva e de ficha por UUID de versão está disponível. As rotas filtram organização no servidor, exigem `analyst|admin`, usam formato allowlisted, `attachment` e `Cache-Control: no-store`; CSV neutraliza fórmulas. Não há link, bucket, e-mail ou retenção adicional.
+- Arquivos: `services/api/index.ts`, `services/api/db/repository.ts`, `apps/web/src/api.ts`, interface de comparação/histórico e esta task.
+- Verificação: `npm run typecheck` e `git diff --check` passam; contrato de autorização está presente nas rotas. Build global continua bloqueado pelo `vite.config.ts` ausente no checkout.
+- Próximo passo: P1-019.

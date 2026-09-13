@@ -6,7 +6,7 @@
 >
 > Origem ou referência: UX-BS-005; `docs/product/ux-ui-direcao-alvo-e-decisoes.md`
 >
-> Arquitetura: `TÉCNICA APPROVED; ARQUITETURA VISUAL V5 READY — aguarda APPROVED explícito de Lucas.`
+> Arquitetura: `TÉCNICA APPROVED; ARQUITETURA VISUAL V5 APPROVED por Lucas em 2026-09-12.`
 >
 > Triagem automática: `Material — autenticação e fluxo de dados pessoais`
 >
@@ -116,18 +116,32 @@ Especificação V5: [`docs/product/p1-038-arquitetura-visual-acesso-cadastro-esp
 
 Deliberações: preservar assinatura editorial grande no canvas por instrução humana anterior; remover somente a barra linear, manter stepper; ampliar conteúdo do painel; alinhar cadastro à esquerda; simplificar revisão; separar próxima ação da timeline; manter `NO_IMAGE`. Mostrar/ocultar senha e link de privacidade não entram sem destino/decisão e gate próprios.
 
-`READY — Lucas precisa aprovar explicitamente a arquitetura V5 antes de CSS/JSX.`
+`APPROVED — Lucas autorizou a implementação da arquitetura V5 em 2026-09-12.`
+
+### Correção de regressão visual V6 — 2026-09-12
+
+As evidências em `C:\Users\lucas\Downloads\evidencia-cadastro-v6\` confirmam uma regressão localizada, sem mudança de fluxo, contrato ou composição do shell: o segundo `span` introduzido para o label do stepper herdou a caixa circular fixa de `.access-phase-list span`; e o checkbox herdou `flex-direction: column` do `label` global. O estado concluído da timeline também não apresenta check explícito.
+
+**Decisão.** Corrigir somente a geometria e os estados desses componentes. Em desktop, o stepper terá quatro colunas equivalentes, marcador fixo, label abaixo, conectores alinhados e palavras íntegras. Em tablet ele migra para uma lista horizontal compacta; em mobile exibe o contexto da etapa e marcadores resumidos, sem quatro labels esmagados. O checkbox volta a uma linha alinhada à esquerda. A timeline recebe check semântico/visível para `Cadastro enviado`.
+
+**Limites.** Não alterar o shell 60/40, a identidade cromática, revisão, espera, API, CNPJ, sessão, privacidade, credenciais ou dados. Show/hide de senha, Motion System, ambient motion, transformação narrativa do painel esquerdo e imagery ficam fora desta correção e exigem tasks/gates próprios.
+
+**Double-check.** A solução deixa de depender de selectors genéricos para label/marker, preserva distinção por texto e cor, não inventa progresso técnico, mantém a informação legível sem animação e não adiciona dependência. A revisão de segurança/conformidade da task permanece válida porque não há nova coleta, armazenamento ou trânsito de dados.
+
+`APPROVED — Lucas autorizou a implementação da correção visual V6 em 2026-09-12.`
 
 ## Resultado do agente
 
-- Estado: `🚧 Em execução — composição V4 implementada; evidência de render pendente.`
-- Arquitetura: `Técnica approved; visual V5 READY — aguarda APPROVED explícito de Lucas.`
+- Estado: `🚧 Em execução — arquitetura visual V5 implementada; evidência de render pendente.`
+- Arquitetura: `Técnica approved; visual V5 APPROVED por Lucas em 2026-09-12.`
 - Triagem automática: `Material — autenticação e dados pessoais`.
 - Segurança: `Aplicável — revisão obrigatória`.
 - Implementação V4: a mídia/orbe agora é canvas integral e o painel Liquid Glass de `clamp(480px, 40vw, 640px)` flutua à direita. A assinatura usa símbolo grande à esquerda, wordmark `BLINDSPOT` em uma linha com escala editorial e tracking compacto, e subtítulo abaixo. Em tablet o painel sobrepõe centralizado; em mobile volta ao fluxo para preservar leitura e teclado. Stepper, revisão, timeline, toast e regras de credenciais V3 foram preservados.
 - Refinamento local: após feedback humano, o painel abandonou Liquid Glass e usa gradiente branco opaco, borda clara e sombra curta. O subtítulo da assinatura foi ampliado em todos os breakpoints.
+- Implementação V5: a barra linear de progresso foi removida; o stepper permanece como única orientação de etapa e exibe conclusão por check. Cadastro e espera agora usam 500 px de largura útil e alinhamento operacional à esquerda. O formulário reserva uma região de feedback antes das ações finais, o checkbox ganhou alvo mínimo de 42 px e o CTA primário do login usa laranja. A revisão deixou de ter cartões aninhados e passou a usar seções planas separadas por divisores. A espera contém somente `Cadastro enviado` e `Em análise` na timeline, com `Próxima ação` como bloco separado.
+- Implementação V6: concluída — o stepper possui agora marcador e label desacoplados, quatro colunas equivalentes e conectores alinhados em desktop; em mobile conserva somente os marcadores e o contexto já exposto no texto `etapa X de 4`. O checkbox declara explicitamente orientação em linha/alinhamento à esquerda. A timeline apresenta check visível e anúncio textual de conclusão em `Cadastro enviado`.
 - Arquivos desta revisão: `apps/web/src/styles.css`, a especificação visual e esta task. Não houve alteração de API, schema, CNPJ, sessão, cookie, senha, contrato ou dependência externa.
 - Verificação executada: as capturas de `C:\Users\lucas\Downloads\evidencia-cadastrov2\` e `evidencia.txt` foram revisadas. Elas aprovam direção de marca e agrupamento de senha, mas reprovam densidade, marca duplicada/fora da orbe, posicionamento do stepper, ausência de Liquid Glass, ênfase de timeline e revisão. Também revelam que CNPJ arbitrário passa na validação local.
-- Verificação executada: `npm run build` em `apps/web` passou em produção após permissão de leitura do Vite. `git diff --check` passou. A automação de navegador local não iniciou (`os error 3` no runtime da ferramenta), por isso não há alegação de aprovação visual.
-- Verificação pendente: render desktop/tablet/mobile, teclado, reduced motion, toast, revisão e espera com dados sanitizados; gate técnico específico antes de validar CNPJ no cliente e no endpoint.
-- Próximo passo: Lucas aprovar, ajustar ou rejeitar a V5; somente então implementar, capturar renderes e fechar a task.
+- Verificação executada: `npm run typecheck` passou; `npm run build` em produção passou após permissão de leitura do Vite; `git diff --check` passou. A inspeção estática confirma que credenciais e dados de cadastro não são gravados em `localStorage`/`sessionStorage`; os únicos usos locais do arquivo são tema e onboarding.
+- Verificação pendente: render desktop/tablet/mobile, teclado, reduced motion, toast, revisão e espera com dados sanitizados. A automação de navegador local não iniciou (`os error 3` no runtime da ferramenta), portanto não há alegação de aprovação visual. As evidências v6 anteriores à correção registram a regressão; uma nova captura deve confirmar a geometria corrigida. O gate técnico de CNPJ já foi tratado na P0-015; esta task apenas consome essa validação existente.
+- Próximo passo: capturar e revisar evidências reais das vistas de cadastro e espera; só então marcar os critérios visuais como concluídos e fechar a task.

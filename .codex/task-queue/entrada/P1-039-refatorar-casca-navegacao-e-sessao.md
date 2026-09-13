@@ -1,4 +1,4 @@
-# ❌ Pendente — refatorar casca, navegação e sessão
+# 🚧 Em execução — refatorar casca, navegação e sessão
 
 > Prioridade: P1
 >
@@ -6,7 +6,7 @@
 >
 > Origem ou referência: UX-BS-001; Design System; P0-011
 >
-> Arquitetura: `READY — arquitetura de navegação e sessão registrada em 2026-09-12; aguarda aprovação humana.`
+> Arquitetura: `APPROVED — Lucas autorizou a implementação em 2026-09-12.`
 >
 > Triagem automática: `Material — estrutura global e sessão`
 >
@@ -109,15 +109,17 @@ Substituir a sidebar autenticada por uma casca de navegação superior responsiv
 
 ### Architecture Gate
 
-`READY — a arquitetura está completa; aguarda APPROVED explícito de Lucas antes de qualquer alteração de JSX, CSS ou primitive.`
+`APPROVED — Lucas autorizou a implementação em 2026-09-12.`
 
 ## Resultado do agente
 
-- Estado: `❌ Pendente`
-- Arquitetura: `READY — aguarda APPROVED explícito de Lucas`.
+- Estado: `🚧 Em execução`
+- Arquitetura: `APPROVED — Lucas autorizou a implementação em 2026-09-12`.
 - Triagem automática: `Material — estrutura global e sessão`.
 - Segurança: `Aplicável — revisão proporcional`.
-- Implementação: ainda não iniciada; esta ativação produziu somente a arquitetura e as revisões proporcionais.
-- Arquivos alterados: esta task.
-- Verificação: código atual de navegação/sessão, direção UX/UI, Design System, PEK v0.10 e fontes oficiais de LGPD/ANPD revisados; não houve alteração de runtime.
-- Próximo passo: Lucas aprovar, ajustar ou rejeitar a arquitetura; somente `APPROVED` libera implementação.
+- Implementação: a sidebar foi substituída por `TopNavigation` responsiva. Desktop expõe marca, destinos autorizados, tema e `Conta`; compacto troca a linha por menu focável. O menu de sessão exibe somente nome, papel textual e `Sair`. `Escape`, clique externo e retorno de foco ao gatilho fecham os menus; a seleção fecha o menu e preserva o foco programático já existente no título da view.
+- Guards e sessão: `comparison` continua restrita a `analyst`/`admin`; `team` e `usage`, a `admin`; os controles continuam sendo apenas orientação visual, sem alteração dos controles de servidor. `handleLogout` permanece inalterado: só limpa identidade após `sair()` confirmar sucesso; erro mantém a sessão, mantém o menu aberto e ocupa slot local reservado. Não foram criados endpoint, token, armazenamento de sessão, dependência ou telemetria.
+- Arquivos alterados: `apps/web/src/App.tsx`, `apps/web/src/styles.css` e esta task. As alterações paralelas de `VehicleWorkspace` e seus pontos de integração foram preservadas, sem serem assumidas por esta task.
+- Verificação: `npm run typecheck`, `npm run build` e `git diff --check` passaram. Inspeção estática confirmou que os únicos usos de `localStorage` no arquivo são tema e onboarding, não sessão ou credenciais.
+- Verificação pendente: render sanitizado em desktop/tablet/mobile, navegação por teclado com menu aberto, logout com fixture autorizada e estado de erro real. A automação local segue indisponível (`os error 3`), portanto a task não declara aprovação visual nem fecha critérios dependentes de render.
+- Próximo passo: receber/revisar as capturas da casca autenticada ou retomar o checkpoint quando o runtime de automação estiver disponível.

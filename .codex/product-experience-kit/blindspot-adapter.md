@@ -39,9 +39,19 @@ Magic UI, Velora UI, Spell UI, Cult UI, Skiper UI, Originkit, Cruip, Awwwards, R
 
 No BlindSpot, movimento só pode orientar troca de contexto, progresso local já confirmado ou feedback de interface. Ele não pode simular pesquisa, geração, aprovação ou confiança de fonte; loops, partículas, typing, brilho contínuo, 3D/tilt e efeitos de cursor não entram em ficha, cadastro, estados de espera ou dados técnicos sem uma exceção explicitamente aprovada.
 
+### Consumo do Motion System local
+
+`docs/design-system/motion.md` é a referência concreta do BlindSpot para tokens, recipes e QA de movimento. Antes de uma task PEK alterar ou introduzir movimento, registrar: evento real que o dispara, estado estático equivalente, direção contextual quando existir, região que permanece estável e comportamento de `prefers-reduced-motion`.
+
+No fluxo de acesso, transições podem acompanhar login, cadastro, avanço, retorno, revisão e espera já confirmada; direção é estado efêmero de apresentação, não dado persistido nem previsão do servidor. O shell, valores digitados, ação primária e foco devem sobreviver à transição. Cada canvas editorial mantém no máximo uma camada ambiente ativa, abstrata e de baixa atenção.
+
+Stepper, timeline, checkbox, ícone e outros sinais de forma usam elemento/classe próprios e geometria explícita. Não usar selectors genéricos que alcancem `span`, `label` ou descendentes internos e deformem marcadores, capturem rótulos ou alterem o alvo de toque.
+
 ## Checkpoint de primeira renderização
 
 Depois de uma arquitetura visual aprovada e antes de acabamento, animação, asset ou conclusão da task, renderizar a estrutura mínima no viewport da evidência atual e nos breakpoints definidos. Avaliar canvas, largura útil da tarefa, propósito de cada região, colisão/truncamento de labels e dados, hierarquia em cinco segundos e reorganização mobile. Uma reprovação é retorno obrigatório à arquitetura visual; typecheck, build ou componente reutilizado não a compensam.
+
+Quando houver movimento, comparar também o estado estático/reduzido: a transição não pode deslocar feedback, desmontar a tarefa, apagar valores, trocar ordem de foco ou criar aparência de progresso factual. Registrar se uma camada ambiente anterior foi substituída/desligada para evitar loops concorrentes.
 
 ## Feedback humano e reabertura
 
