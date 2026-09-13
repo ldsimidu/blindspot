@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="title desc">
+  <title id="title">Protótipo estático da Nova Ficha no shell autenticado BlindSpot</title>
+  <desc id="desc">Frame claro e quente, navegação compacta, composer, representação abstrata não-identitária do veículo, métricas de qualidade e resumo técnico.</desc>
+  <defs>
+    <linearGradient id="canvas" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fbf7f0"/><stop offset="1" stop-color="#efe7da"/></linearGradient>
+    <linearGradient id="stage" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fffdf9"/><stop offset="1" stop-color="#ece1d2"/></linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%"><feDropShadow dx="0" dy="10" stdDeviation="20" flood-color="#48362a" flood-opacity=".08"/></filter>
+    <style>
+      text{font-family:Manrope,Arial,sans-serif;fill:#2c2926}.muted{fill:#777069}.cap{font-size:12px;font-weight:700;letter-spacing:1.2px}.small{font-size:14px}.body{font-size:16px}.label{font-size:13px;font-weight:700}.title{font-size:38px;font-weight:800;letter-spacing:-1.5px}.display{font-size:50px;font-weight:800;letter-spacing:-2.4px}.value{font-size:30px;font-weight:800;letter-spacing:-1px}.line{stroke:#e5dbcf;stroke-width:1}.orange{fill:#e96c3d}.green{fill:#4d9b72}.amber{fill:#c88a2d}.red{fill:#c25c51}
+    </style>
+  </defs>
+  <rect width="1600" height="1000" fill="#c9684a"/>
+  <rect x="10" y="10" width="1580" height="980" rx="38" fill="url(#canvas)"/>
+  <g transform="translate(54 42)">
+    <rect width="42" height="42" rx="13" fill="#2c2926"/><path d="M11 29 21 14l10 15h-5l-5-8-5 8z" fill="#fffaf2"/>
+    <text x="54" y="28" font-size="25" font-weight="800" letter-spacing="-1.2">BLINDSPOT</text>
+    <text x="55" y="44" class="small muted">inteligência automotiva</text>
+  </g>
+  <g transform="translate(646 43)">
+    <rect width="40" height="40" rx="20" fill="#f5dfd5"/><circle cx="20" cy="17" r="3" fill="#e96c3d"/><circle cx="13" cy="24" r="3" fill="#e96c3d"/><circle cx="27" cy="24" r="3" fill="#e96c3d"/>
+    <rect x="52" width="40" height="40" rx="20" fill="#fffdf9" stroke="#e7ddd2"/><path d="M65 23h14M69 18h6M69 28h6" stroke="#5e5750" stroke-width="2" stroke-linecap="round"/>
+    <rect x="104" width="40" height="40" rx="20" fill="#fffdf9" stroke="#e7ddd2"/><path d="m117 24 7-8 7 8-7 8z" fill="none" stroke="#5e5750" stroke-width="2"/>
+    <rect x="156" width="40" height="40" rx="20" fill="#fffdf9" stroke="#e7ddd2"/><path d="M169 15h14v18h-14zM172 20h8M172 25h8" fill="none" stroke="#5e5750" stroke-width="2"/>
+    <rect x="208" width="40" height="40" rx="20" fill="#fffdf9" stroke="#e7ddd2"/><path d="m217 17 11 7-11 7z" fill="none" stroke="#5e5750" stroke-width="2"/>
+    <rect x="262" y="7" width="100" height="28" rx="14" fill="#fffdf9" stroke="#e7ddd2"/><text x="280" y="26" class="small">Expandir</text><path d="m339 18 5 5 5-5" fill="none" stroke="#5e5750" stroke-width="2"/>
+  </g>
+  <g transform="translate(1410 42)"><rect width="42" height="42" rx="21" fill="#fffdf9" stroke="#e7ddd2"/><circle cx="19" cy="18" r="7" fill="none" stroke="#514b45" stroke-width="2"/><path d="m25 25 6 6" stroke="#514b45" stroke-width="2"/><rect x="54" width="42" height="42" rx="21" fill="#fffdf9" stroke="#e7ddd2"/><circle cx="75" cy="18" r="7" fill="#e9a086"/><path d="M65 34c2-8 18-8 20 0" fill="#514b45"/></g>
+  <g transform="translate(54 135)">
+    <text class="title">Nova ficha</text><text y="28" dy="22" class="body muted">Configure o veículo e inicie uma análise técnica rastreável.</text>
+    <g transform="translate(1250 -14)"><rect width="180" height="44" rx="15" fill="#2c2926"/><text x="23" y="28" font-size="14" font-weight="800" fill="#fffaf2">Ver histórico</text><path d="m145 18 7 5-7 5" fill="none" stroke="#fffaf2" stroke-width="2"/></g>
+  </g>
+  <g transform="translate(54 220)" filter="url(#shadow)">
+    <rect width="1492" height="96" rx="22" fill="#fffdf9" stroke="#e6dccf"/>
+    <g transform="translate(24 18)"><text class="cap muted">CONFIGURAÇÃO EXATA</text><text y="46" class="value">Defina o veículo</text></g>
+    <g transform="translate(310 18)"><text class="cap muted">MARCA</text><rect y="20" width="160" height="40" rx="12" fill="#f8f2e9"/><text x="15" y="46" class="body">Ford</text><path d="m132 37 5 5 5-5" fill="none" stroke="#5e5750" stroke-width="2"/></g>
+    <g transform="translate(490 18)"><text class="cap muted">MODELO</text><rect y="20" width="180" height="40" rx="12" fill="#f8f2e9"/><text x="15" y="46" class="body">Ranger</text></g>
+    <g transform="translate(690 18)"><text class="cap muted">VERSÃO</text><rect y="20" width="190" height="40" rx="12" fill="#f8f2e9"/><text x="15" y="46" class="body">Raptor</text></g>
+    <g transform="translate(900 18)"><text class="cap muted">ANO / MERCADO</text><rect y="20" width="190" height="40" rx="12" fill="#f8f2e9"/><text x="15" y="46" class="body">2025 · Brasil</text></g>
+    <g transform="translate(1220 26)"><rect width="244" height="48" rx="14" fill="#e96c3d"/><text x="58" y="30" font-size="15" font-weight="800" fill="#fffaf2">Gerar ficha técnica</text></g>
+  </g>
+  <g transform="translate(54 340)" filter="url(#shadow)">
+    <rect width="690" height="394" rx="28" fill="url(#stage)" stroke="#e6dccf"/>
+    <text x="28" y="38" class="cap muted">CONTEXTO DO VEÍCULO</text><text x="28" y="78" class="display">Ford Ranger</text><text x="29" y="105" class="body muted">Raptor · 2025 · Brasil</text>
+    <rect x="28" y="133" width="205" height="30" rx="15" fill="#f3dfd5"/><text x="44" y="153" class="label orange">PLACEHOLDER LOCAL</text>
+    <g transform="translate(138 185)" opacity=".95"><path d="M80 125c25-50 61-74 126-74h155c56 0 108 25 137 74l38 8c13 3 22 14 22 28v31c0 17-13 30-30 30h-24c-5 32-32 57-65 57s-60-25-65-57H220c-5 32-32 57-65 57s-60-25-65-57H70c-17 0-30-13-30-30v-25c0-21 16-38 37-41z" fill="#d8c3b2"/><path d="M218 58 177 123h96V58zM322 58v65h124l-42-65z" fill="#f9f4ec"/><circle cx="155" cy="221" r="42" fill="#4a4541"/><circle cx="155" cy="221" r="20" fill="#d5c2b0"/><circle cx="414" cy="221" r="42" fill="#4a4541"/><circle cx="414" cy="221" r="20" fill="#d5c2b0"/></g>
+    <text x="28" y="360" class="small muted">Representação abstrata; a identidade canônica é textual.</text>
+  </g>
+  <g transform="translate(768 340)">
+    <g filter="url(#shadow)"><rect width="230" height="128" rx="22" fill="#fffdf9" stroke="#e6dccf"/><text x="20" y="30" class="label muted">COMPLETUDE</text><text x="20" y="79" class="value">109 / 194</text><text x="20" y="105" class="small green">Campos confirmados</text></g>
+    <g transform="translate(250)" filter="url(#shadow)"><rect width="230" height="128" rx="22" fill="#fffdf9" stroke="#e6dccf"/><text x="20" y="30" class="label muted">FONTES</text><text x="20" y="79" class="value">6</text><text x="20" y="105" class="small muted">Com evidência vinculada</text></g>
+    <g transform="translate(0 148)" filter="url(#shadow)"><rect width="230" height="128" rx="22" fill="#fffdf9" stroke="#e6dccf"/><text x="20" y="30" class="label muted">SEM INFORMAÇÃO</text><text x="20" y="79" class="value">78</text><text x="20" y="105" class="small amber">Requer análise</text></g>
+    <g transform="translate(250 148)" filter="url(#shadow)"><rect width="230" height="128" rx="22" fill="#fffdf9" stroke="#e6dccf"/><text x="20" y="30" class="label muted">CONFLITOS</text><text x="20" y="79" class="value">1</text><text x="20" y="105" class="small red">Revisar evidência</text></g>
+  </g>
+  <g transform="translate(1272 340)" filter="url(#shadow)"><rect width="274" height="394" rx="28" fill="#fffdf9" stroke="#e6dccf"/><text x="22" y="35" class="label muted">PRIORIDADES FACTUAIS</text><text x="22" y="63" font-size="18" font-weight="800">Próximos pontos</text>
+    <g transform="translate(22 88)"><circle cx="7" cy="8" r="5" class="red"/><text x="24" y="7" class="label">Torque</text><text x="24" y="27" class="small muted">Conflito entre fontes</text><line y1="46" x2="230" y2="46" class="line"/></g>
+    <g transform="translate(22 154)"><circle cx="7" cy="8" r="5" class="amber"/><text x="24" y="7" class="label">78 campos</text><text x="24" y="27" class="small muted">Sem informação vinculada</text><line y1="46" x2="230" y2="46" class="line"/></g>
+    <g transform="translate(22 220)"><circle cx="7" cy="8" r="5" class="green"/><text x="24" y="7" class="label">Fontes</text><text x="24" y="27" class="small muted">Disponíveis para consulta</text></g>
+    <rect x="22" y="330" width="230" height="42" rx="13" fill="#f8f2e9"/><text x="42" y="357" class="label">Abrir evidências</text><path d="m205 348 6 5-6 5" fill="none" stroke="#514b45" stroke-width="2"/>
+  </g>
+  <g transform="translate(54 758)" filter="url(#shadow)"><rect width="1492" height="180" rx="26" fill="#fffdf9" stroke="#e6dccf"/><text x="26" y="36" class="label muted">RESUMO TÉCNICO</text><g transform="translate(26 61)"><rect width="139" height="35" rx="17" fill="#f4dfd4"/><text x="31" y="23" class="label orange">Resumo</text><text x="183" y="23" class="label muted">Especificações</text><text x="328" y="23" class="label muted">Fontes</text><text x="413" y="23" class="label muted">Histórico</text><text x="510" y="23" class="label muted">Conflitos</text></g><line x1="26" x2="1466" y1="112" y2="112" class="line"/>
+    <g transform="translate(26 138)"><text class="cap muted">MOTOR</text><text y="24" class="body">Não informado</text></g><g transform="translate(330 138)"><text class="cap muted">POTÊNCIA</text><text y="24" class="body">Confirmado · fonte vinculada</text></g><g transform="translate(740 138)"><text class="cap muted">TORQUE</text><text y="24" class="body">Conflito · revisar evidência</text></g><g transform="translate(1120 138)"><text class="cap muted">ORIGEM</text><text y="24" class="body">Rastreável</text></g>
+  </g>
+</svg>

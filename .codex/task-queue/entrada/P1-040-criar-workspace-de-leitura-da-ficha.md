@@ -125,3 +125,29 @@ Ao trocar de aba, `VehicleIdentityHero`, qualidade e ações permanecem no mesmo
 - Verificação: compilação isolada de `TechnicalFichaWorkspace.tsx` passou; `npm run typecheck` passou; `npm run build` passou; `git diff --check` passou. A evidência atual da ficha e a análise completa das referências foram revisadas; Design System, fluxo de refatoração, PEK/adapter, contrato de arquitetura visual e contratos de motion/checkpoint foram consultados.
 - Pendências: realizar primeiro render sanitizado nos viewports definidos e revisão de teclado/estados antes de concluir visualmente a task. O navegador automatizado deste ambiente permanece indisponível; build e typecheck não substituem a captura.
 - Próximo passo: Lucas fornecer/validar evidência renderizada; corrigir achados de composição e só então fechar o checkpoint visual da P1-040.
+
+## Reabertura de arquitetura visual v2 — 2026-09-12
+
+Feedback e novas evidências em `C:\Users\lucas\Downloads\visual-refactor` substituem a hipótese visual anterior de hero sem mídia e navegação textual fixa. A especificação completa está em `docs/product/p1-040-nova-ficha-arquitetura-visual-v2.md`; a direção durável foi consolidada em `docs/product/blindspot-visual-north-star.md` e em `docs/product/design-system.md`.
+
+- Decisão de mídia: `VehiclePlaceholder` local, abstrato e não-identitário; não há provider, curadoria, asset externo ou imagem de banco.
+- Decisão de navegação: ícones no estado compacto, com seta que abre painel ancorado de rótulos completos e acessíveis; em mobile, rótulos são exibidos no menu.
+- Invariante: status, completude, conflito, `fonte_ref` e elegibilidade podem ser redesenhados, porém permanecem presentes e compreensíveis.
+- Estado visual: `VISUAL_READY — aguarda aprovação explícita de Lucas antes de qualquer mudança adicional em JSX/CSS`.
+
+### Implementação da composição v2 — 2026-09-12
+
+- Estado: `🚧 Em execução — implementação estrutural entregue; checkpoint visual pendente`.
+- Implementado: `TechnicalFichaWorkspace` agora compõe identidade, placeholder local abstrato e não-identitário, quatro métricas reais de qualidade, tabs persistentes e resumo técnico com fonte vinculada quando disponível. O composer de Nova ficha passou a ser uma superfície compacta e clara. A navegação principal usa ícones no desktop; a seta abre os nomes completos no painel ancorado já acessível e mobile preserva o menu textual.
+- Preservado: payload, schema, busca, API, RBAC, sessão, elegibilidade, fontes, conflito, histórico e os callbacks de leitura. Nenhum provider, asset externo, busca de imagem ou curadoria foi adicionado.
+- Arquivos: `apps/web/src/TechnicalFichaWorkspace.tsx`, `apps/web/src/technical-ficha-workspace.css`, `apps/web/src/App.tsx`, `apps/web/src/styles.css` e `apps/web/src/design-system.css`.
+- Verificação executada: `npm run typecheck`, `npm run build` e `git diff --check` passaram. O build precisou de ambiente autorizado porque o esbuild não consegue ler `vite.config.ts` dentro do sandbox.
+- Verificação pendente: checkpoint PEK de primeira renderização em 1440/1024/768/390, teclado e reduced motion. A automação de navegador local não inicia (`os error 3`); build/typecheck não substituem evidência visual sanitizada.
+
+### Rollback por feedback humano — 2026-09-12
+
+- Estado: `❌ Pendente — arquitetura visual reaberta`.
+- Decisão: Lucas reprovou a composição implementada. Foram removidos integralmente o placeholder visual, a alteração do composer, a navegação desktop por ícones/seta e os tokens/CSS de runtime associados. Nenhum contrato funcional foi alterado durante a reversão.
+- Preservado: evidências, North Star, Design System e a especificação v2 como registro de decisões e hipótese a revisar — não como autorização para repetir a implementação.
+- Verificação: busca estrutural confirmou a ausência de referências da implementação revertida; `npm run typecheck` e `git diff --check` passaram.
+- Próximo passo: coletar feedback/capturas do estado desejado, reabrir a arquitetura visual da tela e obter nova aprovação antes de qualquer JSX/CSS.

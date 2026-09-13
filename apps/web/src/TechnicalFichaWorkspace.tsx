@@ -132,14 +132,14 @@ export function TechnicalFichaWorkspace({
         })}
       </div>
 
-      <div id={`technical-panel-${activeTab}`} role="tabpanel" aria-labelledby={`technical-tab-${activeTab}`} className="technical-workspace__panel">
+      <div id={`technical-panel-${activeTab}`} role="tabpanel" aria-labelledby={`technical-tab-${activeTab}`} className="technical-workspace__panel"><div key={activeTab} className="technical-workspace__panel-motion">
         {activeTab === "summary" ? <SummaryPanel fields={summaryFields} /> : null}
         {activeTab === "specifications" ? <SpecificationsPanel sections={sections} openSections={openSections} onToggle={(key) => setOpenSections((current) => ({ ...current, [key]: !current[key] }))} sourcesById={sourcesById} technicalSheetVersionId={technicalSheetVersionId} /> : null}
         {activeTab === "sources" ? <SourcesPanel sources={ficha.fontes_utilizadas} /> : null}
         {activeTab === "history" ? historyContent ?? <UnavailablePanel title="Histórico indisponível neste contexto" message="A leitura preserva a ficha atual. O histórico será exibido quando a origem da abertura fornecer versões autorizadas." /> : null}
         {activeTab === "research" ? researchContent ?? <UnavailablePanel title="Impacto de pesquisa indisponível neste contexto" message="Selecione uma ficha e uma sessão autorizada no workspace do veículo para ler o impacto factual da pesquisa." /> : null}
         {activeTab === "conflicts" ? conflictContent ?? <UnavailablePanel title="Conflitos detalhados indisponíveis neste contexto" message="Os atributos conflitantes continuam identificados pelo status. A explicação detalhada depende dos dados já autorizados pela origem da ficha." /> : null}
-      </div>
+      </div></div>
     </section>
   );
 }

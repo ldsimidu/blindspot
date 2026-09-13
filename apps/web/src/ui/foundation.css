@@ -1,0 +1,46 @@
+/* P1-055 foundation: scoped primitives only. No product screen consumes this layer yet. */
+.app-frame {
+  width: 100%;
+  min-width: 0;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--app-ink);
+}
+
+.app-frame--compact { min-height: auto; padding: 20px; }
+
+.app-page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
+.app-page-header__copy { max-width: 75ch; }
+.app-page-header h1, .app-page-header p, .app-data-panel h2, .app-data-panel p, .app-priority-list h2, .app-priority-list p, .app-metric-tile p { margin: 0; }
+.app-page-header h1 { font-size: clamp(2rem, 4vw, 3.7rem); line-height: 1; letter-spacing: -0.04em; }
+.app-page-header__copy p { margin-top: 10px; color: var(--app-ink-muted); line-height: 1.5; }
+.app-page-header__actions { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: 8px; }
+
+.app-module-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--app-grid-gap); }
+.app-module-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.app-module-grid--8 { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+
+.app-metric-tile, .app-priority-list, .app-data-panel { min-width: 0; border-radius: var(--app-module-radius); background: var(--app-surface); color: var(--app-ink); }
+.app-metric-tile { display: grid; align-content: start; gap: 8px; min-height: 140px; padding: 20px; }
+.app-metric-tile__label { color: var(--app-ink-muted); font-size: .78rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.app-metric-tile__value { font-size: clamp(1.7rem, 3vw, 2.5rem); letter-spacing: -0.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+.app-metric-tile__detail { color: var(--app-ink-muted); font-size: .88rem; line-height: 1.4; }
+.app-priority-list__item--confirmed .app-priority-list__indicator { background: var(--color-feedback-success); }
+.app-priority-list__item--partial .app-priority-list__indicator { background: var(--color-feedback-warning); }
+.app-priority-list__item--conflict .app-priority-list__indicator { background: var(--color-feedback-danger); }
+
+.app-priority-list, .app-data-panel { padding: 22px; }
+.app-priority-list h2, .app-data-panel h2 { font-size: 1rem; letter-spacing: -0.01em; }
+.app-priority-list ul { display: grid; gap: 0; margin: 14px 0 0; padding: 0; list-style: none; }
+.app-priority-list__item { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 13px 0; border-top: 1px solid var(--app-border); }
+.app-priority-list__indicator { width: 8px; height: 8px; margin-top: 5px; border-radius: 50%; background: var(--app-ink-muted); }
+.app-priority-list__item strong { display: block; font-size: .92rem; }.app-priority-list__item p, .app-priority-list__empty, .app-data-panel__header p { margin-top: 4px; color: var(--app-ink-muted); font-size: .88rem; line-height: 1.45; }
+.app-priority-list__action { margin-left: 8px; }.app-priority-list__empty { margin-top: 14px; }
+.app-data-panel__header { display: flex; justify-content: space-between; gap: 20px; align-items: flex-start; }.app-data-panel__content { margin-top: 18px; }
+
+@media (max-width: 1080px) { .app-module-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); } }
+@media (max-width: 680px) { .app-page-header, .app-data-panel__header { flex-direction: column; gap: 14px; }.app-page-header__actions { width: 100%; }.app-module-grid, .app-module-grid--8 { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }.app-metric-tile, .app-priority-list, .app-data-panel { padding: 18px; }.app-priority-list__item { grid-template-columns: 10px minmax(0, 1fr); }.app-priority-list__action { grid-column: 2; margin-left: 0; } }

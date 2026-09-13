@@ -6,6 +6,11 @@
 >
 > Origem ou referência: UX-BS-003; P1-017; referência de comparação em `evidence/ux-ui/references/inspiracoes-gerais/`
 >
+
+## Execução da Fase A — 13/09/2026
+
+- Implementada a seleção compartilhada e transitória de duas fichas, com slots X/Y, descoberta em galeria e CTA só habilitado quando a dupla está completa.
+- A próxima fase permanece limitada ao redesenho da análise salva em camadas; contratos da API, histórico, exportações e critérios do servidor não foram alterados nesta fase.
 > Arquitetura: `APPROVED — Lucas autorizou a composição revisada em 2026-09-12`
 >
 > Triagem automática: `Material — elegibilidade e leitura comparativa`
@@ -201,3 +206,80 @@ Esta task altera somente apresentação, organização e estado efêmero da inte
 - Arquivos: `apps/web/src/ComparisonPanel.tsx`, `apps/web/src/comparison-workspace.css` e esta task.
 - Verificações: `npm run typecheck`, `npm run build` e `git diff --check` passaram em 2026-09-12.
 - Pendência: capturas reais de 1440, 768 e 390 px e smoke de teclado, reduced motion, bloqueio 422, ausência, conflito, fonte/observação, filtros, accordion e exportação. Sem elas, não há aceitação visual nem conclusão da task.
+
+## Reabertura V3 — comparação como decisão técnica progressiva (2026-09-13)
+
+### Evidência atual e problemas observados
+
+- As capturas humanas atuais mostram dois estados reais: seleção vazia e análise salva. Elas têm precedência sobre a arquitetura V2 e reprovam sua composição.
+- Na seleção, os slots X/Y são grandes mas informacionalmente vazios; `VS`, CTA e explicação ficam soltos; a descoberta usa lista compacta de linhas enquanto análises salvas ocupam um rail alto com somente datas genéricas. A pessoa não consegue escanear “o que escolhi, o que falta e qual é o próximo passo” em uma única sequência.
+- Na análise salva, a informação continua tecnicamente correta, mas está concentrada em uma faixa estreita do viewport. Há muito canvas sem responsabilidade, botões nativos claros, métricas em superfícies claras desconectadas do tema e uma tabela longa que parece planilha, embora a tarefa seja compreender diferenças antes de auditar campos.
+- `ComparisonPanel` confirma que o contrato já retorna apenas o que a interface pode afirmar: identidades X/Y, campos, unidades, estados, fontes, diferenças, avisos e análise privada. Não retorna imagem aprovada, importância, vencedor, confiança percentual, categoria canônica, nome de comparação ou metadados de veículo para a lista de salvas.
+
+### Princípios e decisão de produto
+
+- A referência de comparação ensina **simetria X / VS / Y**, nunca vencedora, preço, foto genérica ou estética de concessionária. O North Star e as telas Nova ficha/Catálogo aprovadas ensinam largura útil, blocos com responsabilidade, identidade primeiro, resumo factual e detalhe progressivo.
+- Esta tela é `NO_IMAGE`: a identidade textual exata é a representação honesta das duas versões até haver asset aprovado para cada configuração.
+- **Decisão:** dividir claramente a superfície em dois estados visuais com o mesmo sistema: `Montar comparação` e `Ler análise salva`. A seleção se torna uma sequência única de slots → descoberta → salvar; as análises privadas deixam de disputar uma coluna fixa. A leitura salva usa toda a largura útil do shell, começa por identidade e resumo factual e só então expõe grupos técnicos e evidência.
+
+### Fluxo alvo
+
+1. Abrir Comparar → ver dois slots equivalentes e qual lado está ativo; escolher X ou Y é explícito e não cria comparação.
+2. Usar a descoberta para localizar uma versão já persistida; cada candidata anuncia `Adicionar como ficha X` ou `Adicionar como ficha Y` e preserva versão/mercado.
+3. Com dois slots preenchidos, `Comparar e salvar análise` fica imediatamente abaixo deles, com a consequência correta: o servidor valida e salva uma análise privada. Bloqueio permanece junto da ação e mantém as duas identidades visíveis.
+4. Análises privadas existentes aparecem como seção secundária compacta, abaixo da descoberta, com data real e ação de abrir; sem UUID como título, sem fingir metadados indisponíveis e sem ocupar altura quando não são o objeto atual.
+5. Após resposta válida, a leitura mostra X, VS e Y; resumo factual filtrável; diferenças em foco sem ranking; busca/filtros locais; grupos expansíveis; e evidências sob demanda. Exportar só é oferecido para análise salva autorizada.
+
+### Especificação visual
+
+#### Montar comparação
+
+- **Canvas:** largura integral do conteúdo autenticado, sem contêiner menor que o shell nem borda de viewport. Cabeçalho com `Comparar fichas técnicas` e uma frase curta, em vez de narrativa duplicada.
+- **Slots:** grade de duas regiões equivalentes e um separador `VS` compacto. Cada slot é um bloco de identidade: rótulo `Ficha X/Y`, nome/versão/ano/mercado/versão técnica quando preenchido; vazio usa instrução curta. A seleção ativa é distinguida por borda e texto, não só laranja. Trocar/remover é ação secundária local.
+- **Ação:** uma faixa curta imediatamente abaixo dos slots contém o CTA primário e a condição factual. Não há botão solto no centro de uma área vazia.
+- **Descoberta:** superfície de comando no padrão do Catálogo (identidade primária, filtros progressivos, escopo de versões) seguida por galeria de candidatas em três/duas/uma colunas. Não usar seis linhas técnicas pequenas para objetos que exigem conferência de identidade. Cada card apresenta somente dados retornados e uma ação para o slot ativo.
+- **Salvas:** seção horizontal após a descoberta. Usa auto-fit de cartões densos com data e `Abrir análise`; se houver poucas, elas não criam rail vazio. Não expor identificador, criador, organização, validade ou conteúdo que a listagem não retorna.
+
+#### Ler análise salva
+
+- **Contexto persistente:** topo compacto com `Nova comparação`, identidade X e Y simétricas, mercados, versões técnicas e exportações CSV/JSON agrupadas visualmente. Avisos do servidor aparecem abaixo desse contexto e antes de qualquer resumo.
+- **Resumo:** uma superfície principal de leitura com total de especificações e cinco filtros métricos reais (`Iguais`, `Diferentes`, `Ausentes`, `Conflitos`, `Não aplicáveis`). Todos usam `--app-*`, rótulo explícito e estados de botão acessíveis; não há cartões brancos, percentuais ou qualidade inventada.
+- **Diferenças em foco:** no máximo quatro atributos em grid responsivo, seguindo a ordem estável do contrato. Cada item mostra rótulo e valores X/Y; a seção declara que não é ranking nem recomendação.
+- **Exploração:** toolbar com busca e filtros locais no mesmo vocabulário do resumo. Em desktop, fica sticky dentro da área de leitura sem cobrir conteúdo; em mobile, volta ao fluxo normal.
+- **Detalhe:** grupos expansíveis em superfícies discretas. Desktop usa quatro colunas legíveis (atributo, valor X, valor Y, diferença/evidência); tablet reduz metadados; mobile torna cada atributo um bloco X/Y com nomes de lado visíveis. Fonte, status, unidade e observação permanecem conectados ao valor; cor é suplementar.
+
+### Tema, acessibilidade e movimento
+
+- Todos os módulos autenticados usam `--app-canvas`, `--app-surface`, `--app-surface-muted`, `--app-border`, `--app-ink` e `--app-ink-muted`; dark e warm-light mantêm a mesma hierarquia. O laranja é ação/foco/seleção, não o significado de diferença ou qualidade.
+- Botões de seleção, CTA, exportação, filtro e abertura reutilizam `UiButton`; campos preservam labels e foco visível. Não restam controles HTML sem o tratamento do sistema nesta superfície.
+- Ordem de teclado: cabeçalho → slots → ação → descoberta → salvas → resumo → toolbar → grupos → evidências → exportação. Acordeons e evidências usam botões reais e `aria-expanded`.
+- Movimento fica limitado a `control.feedback`, entrada neutra de bloco e abertura/fechamento de accordion já disponíveis; sem animar resultados, contadores, métricas ou progresso de validação. `prefers-reduced-motion` conserva todo o conteúdo estático.
+
+### Escopo técnico, segurança e verificação
+
+- Arquivos previstos: `apps/web/src/ComparisonPanel.tsx`, `apps/web/src/comparison-workspace.css`, possivelmente adaptador visual de `FichaDiscovery`, `docs/product/design-system.md` e esta task. Não alterar `api.ts`, `types.ts`, serviços, schema, tenant, RBAC, exportação ou contrato de comparação.
+- **Segurança e conformidade: não aplicáveis neste recorte.** Apenas reorganização local dos mesmos dados e callbacks autorizados. Reabrir ambos se for necessário obter identidade adicional de análises salvas, URL compartilhável, novos formatos, persistência, endpoint, escopo ou ação.
+- Verificar: seleção de X/Y, troca, remoção, terceira candidata, bloqueio 422, alertas de contexto, zero diferenças, ausente, conflito, não aplicável, fonte/observação, filtros, accordion, exportação autorizada, teclado, 1440/1024/768/390, dark/light e reduced motion.
+
+### Double-check da arquitetura
+
+- Não há comparação antes da ação explícita nem evidência de análise antes da resposta salva; os slots preservam somente candidatas retornadas pelo catálogo.
+- Nenhuma métrica vira recomendação, score de qualidade, “melhor veículo” ou ordem de importância. Diferenças em foco são limitadas e declaradamente estáveis.
+- A transformação resolve o vazio e a compressão observados sem inventar imagem, categorias persistidas, dados da análise salva ou novo contrato.
+- Reprovar se seleção e descoberta voltarem a competir numa mesma coluna, se a tabela usar cores/superfícies incompatíveis com o tema, se X/Y perderem simetria, se uma análise bloqueada renderizar resumo ou se mobile exigir scroll horizontal para confrontar atributos.
+
+### Architecture Gate V3
+
+`READY — aguarda aprovação explícita de Lucas para iniciar a implementação.`
+
+## Análise profunda complementar — 2026-09-13
+
+A proposta completa foi consolidada em [`docs/product/p1-042-proposta-profunda-de-comparacao.md`](../../../docs/product/p1-042-proposta-profunda-de-comparacao.md). Ela acrescenta à V3:
+
+- reconciliação entre a semântica histórica e o runtime atual: mercado/motorização são avisos, enquanto identidade persistida contraditória é o bloqueio real;
+- diagnóstico de jornada, carga cognitiva, superfície, estado, evidência, histórico e responsividade;
+- dependência explícita da P1-026 para seleção A/B compartilhada entre Catálogo, ficha e Comparar;
+- decisão de não tratar os primeiros campos diferentes como destaque de importância e de não inventar identidade para análises salvas;
+- plano por fases, estados próprios, limites de contrato e critérios de aceite verificáveis.
+
+`READY — aguarda aprovação explícita de Lucas para implementar a Fase A.`
