@@ -1,4 +1,4 @@
-# ❌ Pendente — E01-03 Validar e disponibilizar logout na experiência atual
+# 🚧 Em execução — E01-03 Validar e disponibilizar logout na experiência atual
 
 > Prioridade: P0
 >
@@ -81,11 +81,12 @@ Pessoa usuária: membro autenticado que precisa encerrar acesso compartilhado ou
 
 ## Resultado do agente
 
-- Estado: `🚧 Em execução`
+- Estado: `🚧 Implementação concluída; smoke autenticado e evidência visual pendentes.`
 - Arquitetura: `APPROVED — Lucas autorizou a implementação em 2026-09-11.`
 - Triagem automática: `Material` — autenticação, sessão, endpoint público e UI.
 - Segurança: `Aplicável` — autenticação, credenciais, sessão, dados pessoais, API e logs.
-- Implementação: em andamento.
-- Arquivos alterados: task refinada; código ainda não alterado nesta etapa.
-- Verificação: análise estática confirmou endpoint e cliente existentes; smoke autenticado pendente de ambiente configurado.
-- Próximo passo: implementar estados de logout no cliente e executar verificações proporcionais.
+- Implementação: concluída no commit `1fa9b83` (`feat(auth): improve logout feedback`). O botão textual `Sair` está no rodapé da navegação autenticada, comunica `Encerrando sessão…`, permanece desabilitado durante a solicitação e só limpa o estado local após sucesso da revogação remota. Em falha, mantém a sessão local e apresenta uma mensagem neutra para nova tentativa.
+- Arquivos alterados: `apps/web/src/App.tsx`, `apps/web/src/styles.css` e esta task.
+- Verificação técnica: `npm run typecheck` e `npm run build` concluídos com sucesso durante a implementação. A inspeção do runtime local em 2026-09-11 confirmou que a aplicação está disponível, mas sem sessão autenticada aberta.
+- Smoke autenticado: pendente. Não foram criadas credenciais nem simulada uma sessão; o próximo teste deve usar uma conta de teste legítima, acionar `Sair`, confirmar o retorno à entrada e registrar capturas desktop/mobile sanitizadas em `evidence/ux-ui/`.
+- Handoff: com o smoke aprovado, marcar os critérios correspondentes, anexar somente as capturas sanitizadas e alterar o estado para `✅ Concluída`.

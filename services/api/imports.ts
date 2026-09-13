@@ -3,7 +3,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { getDatabase } from "./db/client";
 import { auditEvents, importRunItems, importRuns, technicalSheetVersions, vehicleConfigurations } from "./db/schema";
 import { persistTechnicalSheetInTransaction } from "./db/repository";
-import { readTechnicalSearchFacetPolicy } from "./runtime-assets";
+import { readFieldStatePolicy, readTechnicalSearchFacetPolicy } from "./runtime-assets";
 import type { AuthContext } from "./authentication";
 import { HttpError, type FichaTecnicaResponse, type ImportDryRunItem, type ImportItemResult, type ImportItemState, type ImportRunResult } from "./types";
 
@@ -55,7 +55,7 @@ export async function createImportDryRun(idempotencyKey: string, payloadSha256: 
 
 export async function confirmImportRun(id: string, outputSchema: Record<string, unknown>, actor: AuthContext, requestId: string): Promise<ImportRunResult> {
   const db = requireDatabase();
-  const facetPolicy = await readTechnicalSearchFacetPolicy();
+  const [facetPolicy, fieldStatePolicy] = await Promise.all([readTechnicalSearchFacetPolicy(), readFieldStatePolicy()]);
   const result = await db.transaction(async (tx) => {
     const [run] = await tx.select().from(importRuns).where(and(eq(importRuns.id, id), eq(importRuns.organizationId, actor.organizationId))).limit(1);
     if (!run) throw new HttpError(404, "Importacao nao encontrada.");
@@ -64,7 +64,7 @@ export async function confirmImportRun(id: string, outputSchema: Record<string, 
     if (run.invalidItems > 0 || run.collisionItems > 0) throw new HttpError(409, "Importacao possui itens invalidos ou colisoes e nao pode ser confirmada.");
     for (const row of rows) {
       if (row.state !== "valid") continue;
-      await persistTechnicalSheetInTransaction(tx, { requestId: `import:${id}:${row.itemIndex}`, provider: asProvider(row.provider), vehicle: row.vehicle as any, response: row.response as FichaTecnicaResponse, outputSchema, finalPrompt: `import:${row.payloadSha256}`, actor }, facetPolicy);
+      await persistTechnicalSheetInTransaction(tx, { requestId: `import:${id}:${row.itemIndex}`, provider: asProvider(row.provider), vehicle: row.vehicle as any, response: row.response as FichaTecnicaResponse, outputSchema, finalPrompt: `import:${row.payloadSha256}`, actor }, facetPolicy, fieldStatePolicy);
     }
     const [confirmed] = await tx.update(importRuns).set({ status: "confirmed", confirmedAt: new Date() }).where(eq(importRuns.id, id)).returning();
     await tx.insert(auditEvents).values({ organizationId: actor.organizationId, accountId: actor.accountId, memberId: actor.memberId, action: "import.confirmed", resourceType: "import_run", resourceId: confirmed.id, outcome: "allowed", requestId });

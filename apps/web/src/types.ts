@@ -127,3 +127,72 @@ export type CatalogRecommendationsResult =
 export interface TechnicalComparison { contract_version: string; result_sha256: string; compatibility_warnings: Array<{ code: "market_mismatch" | "motorization_mismatch" | "motorization_not_confirmed"; message: string }>; left: { technical_sheet_version_id: string; version_number: number; vehicle: VehicleInput; sources: Array<{ id: string; title: string; type: string }> }; right: { technical_sheet_version_id: string; version_number: number; vehicle: VehicleInput; sources: Array<{ id: string; title: string; type: string }> }; fields: Array<{ path: string; label: string; left: ComparisonCell | null; right: ComparisonCell | null; difference: "equal" | "different" | "missing_on_left" | "missing_on_right" | "conflicting" | "not_applicable" }>; }
 export interface ComparisonCell { value: unknown; unit: string | null; status: string; source_refs: string[]; observation: string | null; }
 export interface SavedComparison { id: string; created_at: string; comparison: TechnicalComparison; }
+
+export interface ResearchSessionSummary {
+  id: string;
+  focus: string;
+  state: string;
+  runtime_contract_version: string;
+  research_plan_version: string;
+  research_plan: { target_count?: number; task_count?: number; source_strategy?: string; exhaustion_reason?: string | null } | null;
+  budget: { max_tasks?: number; max_provider_calls?: number; provider_calls?: number; mode?: string } | null;
+  stop_reason: string | null;
+  created_at: string;
+  finished_at: string | null;
+}
+
+export interface QualityMetric {
+  numerator: number;
+  denominator: number;
+  rate: number;
+}
+
+export interface ResearchSessionImpact {
+  research_session_id: string;
+  base_revision_id: string;
+  result_revision_id: string | null;
+  policy_version: string;
+  outcome_kind: "published" | "partial_published" | "research_exhausted" | "failed" | "cancelled" | "needs_rebase";
+  before: Record<string, QualityMetric>;
+  after: Record<string, QualityMetric> | null;
+  delta: Record<string, { numerator_delta: number; denominator_delta: number; rate_delta: number }> | { state: "not_applicable" };
+  recommendation: { focus?: string; reason?: string; expected_impact?: string; alternative: "not_execute" };
+  updated_at: string;
+}
+
+export interface VehicleWorkspaceSheet {
+  id: string;
+  state: "active" | "stale" | "archived";
+  is_default: boolean;
+  is_primary: boolean;
+  origin_revision_id: string | null;
+  created_at: string;
+  tags: Array<{ tag: string; origin: "derived" | "manual"; reason: string; created_at?: string }>;
+  latest_revision: { id: string; number: number; created_at: string } | null;
+}
+
+export interface VehicleWorkspaceOption extends VehicleInput {
+  id: string;
+  technical_sheet_count: number;
+}
+
+export interface VehicleWorkspaceData {
+  workspace_contract_version: string;
+  vehicle: VehicleInput & { id: string };
+  latest_kind: "temporal";
+  recommended: { state: "not_available"; reason: string };
+  primary: { technical_sheet_id: string; scope: "organization" } | null;
+  available_actions: { create_sheet: boolean; continue_research: boolean; manage_primary: boolean; manage_lifecycle: boolean };
+  sheets: VehicleWorkspaceSheet[];
+}
+
+export interface FieldExplanation {
+  technical_sheet_version_id: string;
+  field_path: string;
+  state: "confirmed" | "partial" | "inferred" | "calculated" | "user_provided" | "unknown" | "not_found" | "not_applicable" | "conflicting" | "research_exhausted" | "pending" | "blocked";
+  state_version: string;
+  reason_codes: string[];
+  evidence_refs: string[];
+  evidence: Array<{ source_ref: string; source_title: string; source_type: string; observed_at: string }>;
+  alternatives: Array<{ ordinal: number; value: unknown; evidence_refs: string[] }>;
+}

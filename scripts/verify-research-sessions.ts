@@ -1,0 +1,5 @@
+import { readFile } from "node:fs/promises";
+const root = new URL("../", import.meta.url);
+const [schema, service, api, migration] = await Promise.all(["services/api/db/schema.ts", "services/api/research-sessions.ts", "services/api/index.ts", "drizzle/0020_research_sessions.sql"].map((path) => readFile(new URL(path, root), "utf8")));
+const checks: Array<[string, boolean]> = [["schema", schema.includes('pgTable("research_sessions"')], ["idempotency", migration.includes('research_sessions_org_sheet_idempotency_key')], ["tenant scope", service.includes('eq(technicalSheets.organizationId, input.actor.organizationId)')], ["allowlisted focus", service.includes('researchFocuses') && api.includes('parseResearchSessionInput')], ["no real provider", !service.includes('callLLM(')], ["directed plan", service.includes('buildResearchPlan') && service.includes('researchSessionTasks')], ["audit", api.includes('research_session.created')]];
+const failed = checks.filter(([, ok]) => !ok).map(([name]) => name); if (failed.length) throw new Error(`RESEARCH_SESSION_CONTRACT=FAIL: ${failed.join(", ")}`); console.log("RESEARCH_SESSION_CONTRACT=PASS");

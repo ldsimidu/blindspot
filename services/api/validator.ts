@@ -10,6 +10,8 @@ import type { FieldPolicy } from "./runtime-assets";
 import { validateFieldPolicy } from "./field-policy-validator";
 import type { QualityPolicy } from "./runtime-assets";
 import { validateQualityPolicy } from "./quality-policy-validator";
+import type { FieldStatePolicy } from "./runtime-assets";
+import { projectFieldState } from "./field-state";
 
 interface ValidationContext {
   vehicle: VehicleInput;
@@ -20,6 +22,7 @@ interface ValidationContext {
   normalizationFailureMode?: NormalizationFailureMode;
   fieldPolicy?: FieldPolicy;
   qualityPolicy?: QualityPolicy;
+  fieldStatePolicy?: FieldStatePolicy;
 }
 
 export function validateResponse(
@@ -39,6 +42,7 @@ export function validateResponse(
   rejectUnauthorizedInputProvenance(normalizedResponse);
   if (context?.fieldPolicy) validateFieldPolicy(normalizedResponse, context.fieldPolicy);
   if (context?.qualityPolicy) validateQualityPolicy(normalizedResponse, context.qualityPolicy);
+  if (context?.fieldStatePolicy) validateFieldStates(normalizedResponse, context.fieldStatePolicy);
   enrichResumoCompletude(normalizedResponse, outputSchema, context?.fieldPolicy, structurallyCompletedFields);
   if (context) classifySourcePolicy(normalizedResponse, context);
   validateWithAjv(normalizedResponse, outputSchema);
@@ -48,6 +52,11 @@ export function validateResponse(
   }
 
   return normalizedResponse as FichaTecnicaResponse;
+}
+
+function validateFieldStates(candidateResponse: unknown, policy: FieldStatePolicy): void {
+  if (!isObject(candidateResponse) || !isObject(candidateResponse.ficha_tecnica)) return;
+  walkStatusFields(candidateResponse.ficha_tecnica, "", (field) => { projectFieldState(field, policy); });
 }
 
 function validateVehicleIdentity(candidateResponse: unknown, requestedVehicle: VehicleInput): void {

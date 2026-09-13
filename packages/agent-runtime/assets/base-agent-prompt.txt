@@ -163,6 +163,7 @@ field_templates:
     valor: null
     status: conflitante
     fonte_ref[2+]: F1,F2
+    alternativas[2+]: [{ valor: <valor da fonte>, fonte_ref: [F1] }, { valor: <valor distinto>, fonte_ref: [F2] }]
     obs_ref: CF1
   nao_encontrado:
     valor: null

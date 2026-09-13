@@ -1,14 +1,15 @@
-import { readFieldPolicy, readNormalizationPolicy, readQualityPolicy, readRuntimeMockResponse, readRuntimeSchema, readSourcePolicy } from "../services/api/runtime-assets";
+import { readFieldPolicy, readFieldStatePolicy, readNormalizationPolicy, readQualityPolicy, readRuntimeMockResponse, readRuntimeSchema, readSourcePolicy } from "../services/api/runtime-assets";
 import { ValidationError, type VehicleInput } from "../services/api/types";
 import { validateResponse } from "../services/api/validator";
 
 const vehicle: VehicleInput = { marca: "Ford", modelo: "Ranger", versao: "Raptor", ano_modelo: 2025, mercado: "Brasil" };
-const [schema, sourcePolicy, normalizationPolicy, fieldPolicy, qualityPolicy, mock] = await Promise.all([
+const [schema, sourcePolicy, normalizationPolicy, fieldPolicy, qualityPolicy, fieldStatePolicy, mock] = await Promise.all([
   readRuntimeSchema(),
   readSourcePolicy(),
   readNormalizationPolicy(),
   readFieldPolicy(),
   readQualityPolicy(),
+  readFieldStatePolicy(),
   readRuntimeMockResponse()
 ]);
 
@@ -33,7 +34,7 @@ expectError(repeatedSourceConflict, "conflict_requires_distinct_sources");
 console.log("QUALITY_POLICY_CHECK=PASS");
 
 function validate(candidate: unknown): void {
-  validateResponse(candidate, schema, { vehicle, provider: "simulated", sourcePolicy, normalizationPolicy, fieldPolicy, qualityPolicy });
+  validateResponse(candidate, schema, { vehicle, provider: "simulated", sourcePolicy, normalizationPolicy, fieldPolicy, qualityPolicy, fieldStatePolicy });
 }
 
 function setConflict(candidate: Record<string, unknown>, sources: string[]): void {
@@ -41,6 +42,7 @@ function setConflict(candidate: Record<string, unknown>, sources: string[]): voi
   field.valor = null;
   field.status = "conflitante";
   field.fonte_ref = sources;
+  field.alternativas = sources.map((source, index) => ({ valor: `${210 + index} cv`, fonte_ref: [source] }));
   field.obs_ref = "CF1";
   delete field.observacoes;
 }

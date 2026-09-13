@@ -28,3 +28,18 @@ Data: `2026-09-11`
 ## Bloqueios e próximo passo
 
 - Nenhum bloqueio de implementação. Uma geração manual futura, se autorizada pelo operador, deve confirmar a presença do resumo no evento local; esta revisão não realiza chamada real ao provider.
+
+## Complemento P1-027 — classe de fonte por vínculo (2026-09-11)
+
+- Mudança: acrescentar contagens por `official`, `partner` e `other` ao `result_summary.source_usage`, incluindo somente fontes publicadas/referenciadas e campos com vínculo ou vínculo resolvido.
+- Controle principal: `official` não é um rótulo aceito do provider. Ele exige simultaneamente `avaliacao_politica.na_lista_aprovada` produzida pelo servidor e um tipo presente na política de fontes carregada pelo runtime. A lista serve somente em memória durante a sanitização e não é serializada.
+- Segurança e dados: classes e números são allowlisted; tipos, IDs, URLs, títulos, valores, chaves arbitrárias e conteúdo externo continuam ausentes do evento. Configuração/payload ausente ou malformado degrada para `other`, sem falhar a geração.
+- Verificação: `npm run verify:telemetry-sanitization` e `npm run typecheck` aprovados localmente; o teste cobre fonte oficial aprovada, parceira aprovada, tipo não classificado e injeção de texto/ID. Build e uma geração manual comparável permanecem como próximos checks.
+- Risco residual: a métrica mostra uso de classe de proveniência, não autenticidade factual de um campo. Lucas aceita esse risco residual para fins de auditoria.
+
+## Correção de estágio — resumo validado (2026-09-11)
+
+- Achado: `llm_execution` era gravado antes de `validateResponse`; por isso, a telemetria de classe não podia refletir a avaliação de política server-owned aplicada à ficha persistida.
+- Decisão: manter `llm_execution` limitado a métricas do provider e adicionar `validated_technical_sheet_result` após validação, com `request_id` existente e o mesmo resumo agregado/sanitizado.
+- Controle: a chamada ocorre em `try/catch` não bloqueante antes da persistência. Falha de arquivo de log não modifica a ficha, resposta, política, busca ou disponibilidade. Nenhum conteúdo do provider, ID de fonte, URL, título ou tipo declarado é emitido.
+- Verificação: teste de sanitização, typecheck e build precisam confirmar o contrato; uma geração manual equivalente deve confirmar a ordem observável dos dois eventos. Risco residual e responsável permanecem os mesmos.

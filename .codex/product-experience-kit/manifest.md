@@ -2,7 +2,7 @@
 
 | Campo | Valor |
 | --- | --- |
-| Versao do PEK | `0.4.0` |
+| Versao do PEK | `0.10.0` |
 | Fonte canônica | `C:\Users\lucas\Documents\bedrock\tools\product-experience-kit` |
 | Adapter local | BlindSpot |
 | Estado da instalação | Opt-in configurado |
@@ -13,7 +13,13 @@ Use o PEK somente quando Lucas invocar `:pek`, mencionar UX/UI como escopo expl�
 
 `--auto` só lê o alvo explicitamente indicado, declara modo, confiança, evidências e lacunas. Ele não altera o repositório, instala dependências, abre serviços ou explora a aplicação sem autorização específica.
 
-O core v0.4 inclui o contrato de governança de Design System. Tokens, componentes e direção visual concretos continuam pertencendo ao consumidor; o PEK padroniza apenas a evidência, a precedência, as decisões e as verificações.
+O core v0.10 inclui governança de Design System, Image System, arquitetura visual por tela, curadoria de movimento/UI externa, checkpoint de primeira renderização, loop de reabertura por feedback humano, avaliação de densidade/gravidade de estados, topografia estável de feedback, geometria de sinais visuais e validação progressiva. Tokens, componentes e direção visual concretos continuam pertencendo ao consumidor; o PEK padroniza a evidência, a precedência, as decisões, a composição revisável e as verificações.
+
+Para uma task de design material, `core/screen-design-architecture-contract.md` é obrigatório antes do código: ele confronta tela atual, referência específica, referências gerais, regras do produto e composição alvo. Quando houver asset visual, aplicar também `core/image-system-and-asset-curation-contract.md` e o Image System local.
+
+Quando uma task considerar elemento animado, biblioteca, template ou galeria, aplicar antes `core/motion-and-external-ui-curation-contract.md` e `core/component-intake.md`. Curadoria não autoriza instalar, conectar MCP, criar conta, baixar template ou copiar código.
+
+Após aprovação e primeiro JSX/CSS estrutural, `core/first-render-composition-checkpoint.md` é obrigatório antes de polir a tela ou concluir o fluxo. Capturas sanitizadas em desktop/mobile (e tablet quando aplicável) precisam aprovar canvas, largura, regiões, hierarquia e legibilidade; reprovação retorna à arquitetura visual. Feedback humano posterior que sinalize identidade, propósito, fluxo, agrupamento de campos ou composição também invalida a aprovação visual e exige uma nova arquitetura antes de qualquer polimento.
 
 ## Atualizações
 

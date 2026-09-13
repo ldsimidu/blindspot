@@ -13,7 +13,12 @@ import type {
   OrganizationRole,
   UsageSummary,
   UsageAlertSettings,
-  SavedComparison
+  SavedComparison,
+  ResearchSessionImpact,
+  ResearchSessionSummary,
+  VehicleWorkspaceData,
+  VehicleWorkspaceOption,
+  FieldExplanation
 } from "./types";
 
 const API_ENDPOINT = "/api/ficha-tecnica";
@@ -196,6 +201,63 @@ export async function listarComparacoes(): Promise<{ comparisons: Array<{ id: st
 export async function obterComparacao(id: string): Promise<SavedComparison> { const response = await fetch(`/api/comparacoes/${encodeURIComponent(id)}`, { credentials: "same-origin" }); if (!response.ok) throw await apiError(response, "Erro ao abrir comparacao"); return (await response.json()) as SavedComparison; }
 export async function exportarComparacao(id: string, format: "csv" | "json"): Promise<void> { const response = await fetch(`/api/comparacoes/${encodeURIComponent(id)}/export?format=${format}`, { credentials: "same-origin" }); if (!response.ok) throw await apiError(response, "Erro ao exportar comparacao"); const url = URL.createObjectURL(await response.blob()); const link = document.createElement("a"); link.href = url; link.download = `comparacao-${id}.${format}`; link.click(); URL.revokeObjectURL(url); }
 export async function exportarFicha(id: string, format: "csv" | "json"): Promise<void> { const response = await fetch(`/api/ficha-tecnica/versoes/${encodeURIComponent(id)}/export?format=${format}`, { credentials: "same-origin" }); if (!response.ok) throw await apiError(response, "Erro ao exportar ficha"); const url = URL.createObjectURL(await response.blob()); const link = document.createElement("a"); link.href = url; link.download = `ficha-${id}.${format}`; link.click(); URL.revokeObjectURL(url); }
+
+export async function obterWorkspaceVeiculo(id: string): Promise<VehicleWorkspaceData> {
+  const response = await fetch(`/api/configuracoes-veiculo/${encodeURIComponent(id)}/workspace`, { credentials: "same-origin" });
+  if (!response.ok) throw await apiError(response, "Workspace indisponível");
+  return (await response.json()) as VehicleWorkspaceData;
+}
+
+export async function listarConfiguracoesWorkspace(): Promise<VehicleWorkspaceOption[]> {
+  const response = await fetch("/api/workspace/configuracoes-veiculo", { credentials: "same-origin" });
+  if (!response.ok) throw await apiError(response, "Não foi possível listar os veículos da organização");
+  const payload = await response.json() as { configurations: VehicleWorkspaceOption[] };
+  return payload.configurations;
+}
+
+export async function listarSessoesPesquisa(sheetId: string): Promise<ResearchSessionSummary[]> {
+  const response = await fetch(`/api/technical-sheets/${encodeURIComponent(sheetId)}/research-sessions`, { credentials: "same-origin" });
+  if (!response.ok) throw await apiError(response, "Histórico de pesquisas indisponível");
+  const payload = await response.json() as { sessions: ResearchSessionSummary[] };
+  return payload.sessions;
+}
+
+export async function obterImpactoSessao(sessionId: string): Promise<ResearchSessionImpact> {
+  const response = await fetch(`/api/research-sessions/${encodeURIComponent(sessionId)}/impacto`, { credentials: "same-origin" });
+  if (!response.ok) throw await apiError(response, "Impacto da pesquisa indisponível");
+  return (await response.json()) as ResearchSessionImpact;
+}
+
+export async function obterFichaTecnicaPorVersao(versionId: string): Promise<FichaTecnicaResponse> {
+  const response = await fetch(`/api/ficha-tecnica/versoes/${encodeURIComponent(versionId)}/export?format=json`, { credentials: "same-origin" });
+  if (!response.ok) throw await apiError(response, "Ficha indisponível");
+  const payload = await response.json() as { technical_sheet?: { vehicle?: VehicleInput; completeness?: FichaTecnicaResponse["resumo_completude"]; data?: Record<string, unknown>; sources?: FichaTecnicaResponse["fontes_utilizadas"] } };
+  const sheet = payload.technical_sheet;
+  if (!sheet?.vehicle || !sheet.data || !sheet.completeness || !sheet.sources) throw new ApiRequestError("Ficha indisponível");
+  return { veiculo_alvo: sheet.vehicle, metadados_coleta: {}, resumo_completude: sheet.completeness, ficha_tecnica: sheet.data, fontes_utilizadas: sheet.sources };
+}
+
+export async function obterExplicacaoVariavel(versionId: string, path: string): Promise<FieldExplanation> {
+  const params = new URLSearchParams({ path });
+  const response = await fetch(`/api/ficha-tecnica/versoes/${encodeURIComponent(versionId)}/explicacao-variavel?${params.toString()}`, { credentials: "same-origin" });
+  if (!response.ok) throw await apiError(response, "Explicação da variável indisponível");
+  return (await response.json()) as FieldExplanation;
+}
+
+export async function definirFichaPrimaria(sheetId: string, reason: "organization_reference" | "reviewed_selection" | "restore_previous_reference"): Promise<void> {
+  const response = await fetch(`/api/technical-sheets/${encodeURIComponent(sheetId)}/primary`, { method: "PUT", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ reason }) });
+  if (!response.ok) throw await apiError(response, "Não foi possível definir a ficha primária");
+}
+
+export async function removerFichaPrimaria(sheetId: string): Promise<void> {
+  const response = await fetch(`/api/technical-sheets/${encodeURIComponent(sheetId)}/primary`, { method: "DELETE", credentials: "same-origin" });
+  if (!response.ok) throw await apiError(response, "Não foi possível remover a ficha primária");
+}
+
+export async function alterarCicloFicha(sheetId: string, state: "active" | "stale" | "archived", reason: "freshness_policy" | "manual_review" | "superseded" | "restored_after_review"): Promise<void> {
+  const response = await fetch(`/api/technical-sheets/${encodeURIComponent(sheetId)}/lifecycle`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "same-origin", body: JSON.stringify({ state, reason }) });
+  if (!response.ok) throw await apiError(response, "Não foi possível alterar o ciclo de vida da ficha");
+}
 
 async function apiError(response: Response, fallback: string): Promise<ApiRequestError> {
   const errorPayload = (await safeJson(response)) as ApiErrorResponse | null;

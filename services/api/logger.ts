@@ -1,5 +1,6 @@
 import { appendFile, copyFile, mkdir, readdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+import type { SourcePolicy } from "./runtime-assets";
 import type { VehicleInput } from "./types";
 
 const LOGS_DIR = path.resolve(process.cwd(), "var", "logs");
@@ -140,7 +141,6 @@ export async function logLLMExecution(entry: ClaudeExecutionEntry): Promise<stri
   const documentReader = sanitizeDocumentReader(entry.runtimeConfig);
   const openRouterPasses = sanitizeOpenRouterPassTelemetry(entry.runtimeConfig);
   const researchMode = sanitizeResearchMode(entry.runtimeConfig);
-  const resultSummary = sanitizeLLMResultSummary(entry.result);
   const event = {
     event: "llm_execution",
     at: entry.finishedAt,
@@ -155,8 +155,7 @@ export async function logLLMExecution(entry: ClaudeExecutionEntry): Promise<stri
     ...(researchDocumentDiscovery ? { research_document_discovery: researchDocumentDiscovery } : {}),
     ...(sourceTrustBootstrap ? { source_trust_bootstrap: sourceTrustBootstrap } : {}),
     ...(documentReader ? { document_reader: documentReader } : {}),
-    ...(openRouterPasses ? { openrouter_passes: openRouterPasses } : {}),
-    ...(resultSummary ? { result_summary: resultSummary } : {})
+    ...(openRouterPasses ? { openrouter_passes: openRouterPasses } : {})
   };
   await appendFile(LLM_EVENT_LOG_FILE, `${JSON.stringify(event)}\n`, "utf-8");
   return LLM_EVENT_LOG_FILE;
@@ -169,12 +168,19 @@ export function sanitizeResearchMode(runtimeConfig: Record<string, unknown> | un
 
 type FieldStatus = "confirmado" | "parcial" | "inferido_minimamente" | "nao_encontrado" | "nao_aplicavel" | "conflitante" | "informado_na_entrada";
 type SourceAdherence = "exata" | "compativel" | "ambigua" | "divergente" | "nao_verificada";
+type SourceClass = "official" | "partner" | "other";
 type StatusCounts = Partial<Record<FieldStatus, number>>;
 type SourceUsageGroup = {
   fields_with_source_ref: number;
   referenced_source_count: number;
   fields_with_single_source_ref: number;
   fields_with_multiple_source_refs: number;
+};
+type SourceUsageClass = {
+  published_source_count: number;
+  referenced_source_count: number;
+  field_reference_count: number;
+  resolved_field_reference_count: number;
 };
 
 export type SanitizedLLMResultSummary = {
@@ -197,6 +203,8 @@ export type SanitizedLLMResultSummary = {
   source_usage: {
     referenced_source_count: number;
     invalid_field_reference_count: number;
+    fields_with_multiple_source_classes: number;
+    by_source_class: Record<SourceClass, SourceUsageClass>;
     groups: Record<string, SourceUsageGroup>;
   };
 };
@@ -205,18 +213,32 @@ export type SanitizedLLMResultSummary = {
  * Keeps audit telemetry useful without retaining LLM values, source URLs, titles,
  * prompts, evidence excerpts, or any arbitrary provider-controlled strings.
  */
-export function sanitizeLLMResultSummary(result: unknown): SanitizedLLMResultSummary | null {
+export function sanitizeLLMResultSummary(result: unknown, runtimeConfig?: Record<string, unknown>): SanitizedLLMResultSummary | null {
   const root = asRecord(result);
   const technicalSheet = asRecord(root?.ficha_tecnica);
   if (!technicalSheet) return null;
 
   const rawSources = Array.isArray(root?.fontes_utilizadas) ? root.fontes_utilizadas.slice(0, 50) : [];
+  const officialSourceTypes = sanitizeSourceTypeSet(runtimeConfig?.sourcePolicyOfficialTypes);
+  const partnerSourceTypes = sanitizeSourceTypeSet(runtimeConfig?.sourcePolicyPartnerTypes);
   const publishedSourceIds = new Set<string>();
+  const sourceClassById = new Map<string, SourceClass>();
+  const referencedSourceIdsByClass = new Map<SourceClass, Set<string>>([
+    ["official", new Set<string>()],
+    ["partner", new Set<string>()],
+    ["other", new Set<string>()],
+  ]);
+  const sourceUsageByClass = createSourceUsageByClass();
   const byAdherence: Partial<Record<SourceAdherence, number>> = {};
   for (const rawSource of rawSources) {
     const source = asRecord(rawSource);
     const sourceId = asSourceId(source?.id);
-    if (sourceId) publishedSourceIds.add(sourceId);
+    if (sourceId && !publishedSourceIds.has(sourceId)) {
+      const sourceClass = classifySourceClass(source, officialSourceTypes, partnerSourceTypes);
+      publishedSourceIds.add(sourceId);
+      sourceClassById.set(sourceId, sourceClass);
+      sourceUsageByClass[sourceClass].published_source_count += 1;
+    }
     const adherence = asSourceAdherence(source?.avaliacao_aderencia && asRecord(source?.avaliacao_aderencia)?.status);
     if (adherence) byAdherence[adherence] = (byAdherence[adherence] ?? 0) + 1;
   }
@@ -227,6 +249,7 @@ export function sanitizeLLMResultSummary(result: unknown): SanitizedLLMResultSum
   const referencedSourceIds = new Set<string>();
   let fieldsWithSourceRef = 0;
   let invalidFieldReferenceCount = 0;
+  let fieldsWithMultipleSourceClasses = 0;
   let visited = 0;
 
   const countStatus = (target: StatusCounts, status: FieldStatus) => {
@@ -261,7 +284,18 @@ export function sanitizeLLMResultSummary(result: unknown): SanitizedLLMResultSum
           sourceUsage.fields_with_source_ref += 1;
           if (sourceIds.length === 1) sourceUsage.fields_with_single_source_ref += 1;
           else sourceUsage.fields_with_multiple_source_refs += 1;
-          for (const sourceId of sourceIds) referencedSourceIds.add(sourceId);
+          const fieldSourceClasses = new Set<SourceClass>();
+          for (const sourceId of sourceIds) {
+            referencedSourceIds.add(sourceId);
+            const sourceClass = sourceClassById.get(sourceId) ?? "other";
+            fieldSourceClasses.add(sourceClass);
+            referencedSourceIdsByClass.get(sourceClass)?.add(sourceId);
+          }
+          for (const sourceClass of fieldSourceClasses) {
+            sourceUsageByClass[sourceClass].field_reference_count += 1;
+            if (isResolvedFieldStatus(status)) sourceUsageByClass[sourceClass].resolved_field_reference_count += 1;
+          }
+          if (fieldSourceClasses.size > 1) fieldsWithMultipleSourceClasses += 1;
         }
       }
       return;
@@ -279,6 +313,9 @@ export function sanitizeLLMResultSummary(result: unknown): SanitizedLLMResultSum
     collectReferencedSourceIds(technicalSheet[group], publishedSourceIds, groupSourceIds);
     sourceUsage.referenced_source_count = groupSourceIds.size;
   }
+  for (const sourceClass of sourceClasses()) {
+    sourceUsageByClass[sourceClass].referenced_source_count = referencedSourceIdsByClass.get(sourceClass)?.size ?? 0;
+  }
 
   return {
     completeness: sanitizeCompletenessSummary(root?.resumo_completude),
@@ -289,6 +326,8 @@ export function sanitizeLLMResultSummary(result: unknown): SanitizedLLMResultSum
     source_usage: {
       referenced_source_count: referencedSourceIds.size,
       invalid_field_reference_count: invalidFieldReferenceCount,
+      fields_with_multiple_source_classes: fieldsWithMultipleSourceClasses,
+      by_source_class: sourceUsageByClass,
       groups: sourceUsageGroups,
     },
   };
@@ -327,6 +366,67 @@ function isSafeTelemetryKey(value: string): boolean {
 
 function asSourceId(value: unknown): string | null {
   return typeof value === "string" && /^F[0-9]+$/.test(value) ? value : null;
+}
+
+export async function logValidatedTechnicalSheetResult(entry: {
+  requestId: string;
+  provider: LLMProvider;
+  result: unknown;
+  sourcePolicy: Pick<SourcePolicy, "officialSourceTypes" | "partnerSourceTypes">;
+}): Promise<string | null> {
+  const resultSummary = sanitizeLLMResultSummary(entry.result, {
+    sourcePolicyOfficialTypes: entry.sourcePolicy.officialSourceTypes,
+    sourcePolicyPartnerTypes: entry.sourcePolicy.partnerSourceTypes,
+  });
+  if (!resultSummary) return null;
+
+  const event = {
+    event: "validated_technical_sheet_result",
+    at: new Date().toISOString(),
+    request_id: entry.requestId,
+    provider: entry.provider,
+    result_summary: resultSummary,
+  };
+  await ensureLogsDir();
+  await appendFile(LLM_EVENT_LOG_FILE, `${JSON.stringify(event)}\n`, "utf-8");
+  return LLM_EVENT_LOG_FILE;
+}
+
+function sourceClasses(): SourceClass[] {
+  return ["official", "partner", "other"];
+}
+
+function createSourceUsageByClass(): Record<SourceClass, SourceUsageClass> {
+  return {
+    official: { published_source_count: 0, referenced_source_count: 0, field_reference_count: 0, resolved_field_reference_count: 0 },
+    partner: { published_source_count: 0, referenced_source_count: 0, field_reference_count: 0, resolved_field_reference_count: 0 },
+    other: { published_source_count: 0, referenced_source_count: 0, field_reference_count: 0, resolved_field_reference_count: 0 },
+  };
+}
+
+function sanitizeSourceTypeSet(value: unknown): ReadonlySet<string> {
+  if (!Array.isArray(value)) return new Set<string>();
+  return new Set(value.slice(0, 40).flatMap((item) => (
+    typeof item === "string" && /^[a-z][a-z0-9_]{0,79}$/.test(item) ? [item] : []
+  )));
+}
+
+function classifySourceClass(source: Record<string, unknown> | null, officialSourceTypes: ReadonlySet<string>, partnerSourceTypes: ReadonlySet<string>): SourceClass {
+  const policyStatus = asSourcePolicyStatus(asRecord(source?.avaliacao_politica)?.status);
+  const sourceType = typeof source?.tipo === "string" ? source.tipo : "";
+  if (policyStatus !== "na_lista_aprovada") return "other";
+  if (officialSourceTypes.has(sourceType)) return "official";
+  if (partnerSourceTypes.has(sourceType)) return "partner";
+  return "other";
+}
+
+function asSourcePolicyStatus(value: unknown): "na_lista_aprovada" | "fora_da_lista_aprovada" | "nao_rastreavel_com_seguranca" | "sem_politica_para_mercado" | "fonte_simulada_local" | null {
+  return value === "na_lista_aprovada" || value === "fora_da_lista_aprovada" || value === "nao_rastreavel_com_seguranca" ||
+    value === "sem_politica_para_mercado" || value === "fonte_simulada_local" ? value : null;
+}
+
+function isResolvedFieldStatus(status: FieldStatus): boolean {
+  return status === "confirmado" || status === "parcial" || status === "inferido_minimamente";
 }
 
 function sanitizeFieldSourceReferences(value: unknown, publishedSourceIds: ReadonlySet<string>): string[] | null {

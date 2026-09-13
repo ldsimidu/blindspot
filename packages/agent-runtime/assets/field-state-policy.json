@@ -1,0 +1,22 @@
+{
+  "version": "field-state-v1",
+  "states": ["confirmed", "partial", "inferred", "calculated", "user_provided", "unknown", "not_found", "not_applicable", "conflicting", "research_exhausted", "pending", "blocked"],
+  "legacyStatusMap": {
+    "confirmado": "confirmed",
+    "parcial": "partial",
+    "inferido_minimamente": "inferred",
+    "informado_na_entrada": "user_provided",
+    "nao_encontrado": "not_found",
+    "nao_aplicavel": "not_applicable",
+    "conflitante": "conflicting"
+  },
+  "valueStates": ["confirmed", "partial", "inferred", "calculated", "user_provided"],
+  "researchStates": ["research_exhausted", "pending", "blocked"],
+  "confirmedRequiresEvidence": true,
+  "calculatedRequires": ["formula_version", "input_paths"],
+  "conflict": { "requiresNullValue": true, "minimumAlternatives": 2, "automaticWinner": "forbidden" },
+  "explanation": {
+    "allowedFields": ["state", "state_version", "reason_codes", "evidence_refs", "observed_at", "source_title", "source_type", "alternatives"],
+    "forbiddenFields": ["url", "excerpt", "prompt", "query", "model", "agent", "token", "raw_content", "internal_metadata"]
+  }
+}

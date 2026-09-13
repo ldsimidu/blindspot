@@ -6,6 +6,7 @@ import {
   logHttpRequest,
   logServerError,
   logValidationFailure,
+  logValidatedTechnicalSheetResult,
   readRecentLLMResponses,
   readLatestLLMResponseSnapshot,
   saveLLMResponseSnapshot
@@ -14,21 +15,29 @@ import { callLLM } from "./llm";
 import { getPersistenceMode } from "./db/client";
 import { readLearnedSourceTrustAnchors, recordSourceTrustCandidates } from "./db/source-trust-repository";
 import { checkReadiness } from "./readiness";
-import { persistTechnicalSheet, readCatalogEntryExact, readCatalogRecommendations, readLatestTechnicalSheet, readTechnicalSheetExport, readTechnicalSheetHistory, searchCatalog, searchTechnicalCatalog } from "./db/repository";
+import { createWorkspaceSheet, listOrganizationVehicleWorkspaces, persistTechnicalSheet, readCatalogEntryExact, readCatalogRecommendations, readLatestTechnicalSheet, readTechnicalSheetExport, readTechnicalSheetHistory, readVehicleWorkspace, searchCatalog, searchTechnicalCatalog } from "./db/repository";
 import { confirmImportRun, createImportDryRun, hashImportPayload, readImportRun, type PreparedImportItem } from "./imports";
 import { login, logout, readAuthenticationContext, readCurrentSession, sessionCookieName, sessionCookieOptions, type AuthContext, type OrganizationRole } from "./authentication";
 import { recordAudit, type AuditAction, type AuditResourceType } from "./audit";
 import { activateOrganizationMemberInvitation, changeOrganizationMemberRole, deactivateOrganizationMember, inviteOrganizationMember, listOrganizationPeople, revokeOrganizationMemberInvitation } from "./members";
 import { acknowledgeUsageAlert, evaluateUsagePolicy, parseUsagePeriod, readUsageAlerts, readUsageSummary, recordUsageFailure, updateUsagePolicy } from "./usage";
 import { createSavedComparison, listSavedComparisons, readSavedComparison } from "./comparisons";
+import { cancelResearchSession, createResearchSession, executeResearchSession, listResearchSessions, researchFocuses, type ResearchFocus } from "./research-sessions";
+import { createQualityReport, decideQualityReport } from "./quality-reports";
+import { readResearchSessionQualityImpact } from "./research-session-quality-impact";
+import { readResearchSessionHistory, startResearchSessionHistoryRetentionSweep } from "./research-session-history";
+import { readFieldExplanation } from "./field-explanation";
+import { clearTechnicalSheetPrimary, revokeManualTechnicalSheetTag, setManualTechnicalSheetTag, setTechnicalSheetPrimary, transitionTechnicalSheetLifecycle } from "./technical-sheet-governance";
+import { isValidCnpj, normalizeCnpj } from "../../packages/contracts/cnpj";
 import { activateInitialAdmin, decideOrganizationRequest, issueInitialAdminInvitation, listPendingOrganizationRequests, registerOrganization, revokeInitialAdminInvitation, submitOrganizationRequest } from "./organizations";
 import { buildVehiclePayload, composeFinalPrompt, readBaseAgentPrompt, readOutputSchema } from "./prompt-builder";
-import { readFieldPolicy, readNormalizationPolicy, readQualityPolicy, readResearchCapabilityPolicy, readResearchDocumentPolicy, readSourceEvidencePolicy, readSourcePolicy, readSourceTrustBootstrapPolicy, readTechnicalSearchFacetPolicy, type TechnicalSearchFacetPolicy } from "./runtime-assets";
+import { readFieldPolicy, readFieldStatePolicy, readNormalizationPolicy, readQualityPolicy, readResearchCapabilityPolicy, readResearchDocumentPolicy, readSourceEvidencePolicy, readSourcePolicy, readSourceTrustBootstrapPolicy, readTechnicalSearchFacetPolicy, type TechnicalSearchFacetPolicy } from "./runtime-assets";
 import { FichaTecnicaHistoryItem, HttpError, ValidationError, VehicleInput } from "./types";
 import { validateResponse } from "./validator";
 
 const app = express();
 const port = Number(process.env.PORT ?? 3001);
+startResearchSessionHistoryRetentionSweep();
 
 app.use(cors());
 app.use(express.json({ limit: "1mb" }));
@@ -183,6 +192,26 @@ app.post("/api/comparacoes", requireRole("comparison.denied", "saved_comparison"
   try { res.status(201).json(await createSavedComparison(authorizationContext(req), parseComparisonVersionIds(req.body), requestIdOf(res))); } catch (error) { next(error); }
 });
 
+app.post("/api/technical-sheets/:id/research-sessions", requireRole("research_session.denied", "research_session", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => {
+  try { const input = parseResearchSessionInput(req.body); const result = await createResearchSession({ sheetId: parseCatalogId(req.params.id), ...input, actor: authorizationContext(req), requestId: requestIdOf(res) }); await recordAudit({ actor: authorizationContext(req), action: "research_session.created", resourceType: "research_session", resourceId: result.id, outcome: "allowed", requestId: requestIdOf(res) }); res.status(201).json(result); } catch (error) { next(error); }
+});
+app.get("/api/technical-sheets/:id/research-sessions", requireRole("research_session.denied", "research_session", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => { try { res.status(200).json({ sessions: await listResearchSessions(parseCatalogId(req.params.id), authorizationContext(req)) }); } catch (error) { next(error); } });
+app.post("/api/research-sessions/:id/executar", requireRole("research_session.denied", "research_session", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => { try { res.status(200).json(await executeResearchSession(parseCatalogId(req.params.id), authorizationContext(req), requestIdOf(res))); } catch (error) { next(error); } });
+app.post("/api/research-sessions/:id/cancelar", requireRole("research_session.denied", "research_session", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => { try { const actor = authorizationContext(req); const result = await cancelResearchSession(parseCatalogId(req.params.id), actor); await recordAudit({ actor, action: "research_session.cancelled", resourceType: "research_session", resourceId: result.id, outcome: "allowed", requestId: requestIdOf(res) }); res.status(200).json(result); } catch (error) { next(error); } });
+  app.get("/api/research-sessions/:id/impacto", requireRole("research_session.denied", "research_session", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => { try { const actor = authorizationContext(req); const id = parseCatalogId(req.params.id); const impact = await readResearchSessionQualityImpact(id, actor); await recordAudit({ actor, action: "research_session.impact_read", resourceType: "research_session_quality_impact", resourceId: id, outcome: "allowed", requestId: requestIdOf(res) }); res.status(200).json(impact); } catch (error) { next(error); } });
+  app.get("/api/research-sessions/:id/historico", requireRole("research_session.denied", "research_session", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => { try { const actor = authorizationContext(req); const id = parseCatalogId(req.params.id); const history = await readResearchSessionHistory(id, actor); await recordAudit({ actor, action: "research_session.history_read", resourceType: "research_session", resourceId: id, outcome: "allowed", requestId: requestIdOf(res) }); res.status(200).json(history); } catch (error) { next(error); } });
+app.get("/api/ficha-tecnica/versoes/:id/explicacao-variavel", requireRole("technical_sheet.denied", "technical_sheet", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => { try { const actor = authorizationContext(req); const versionId = parseCatalogId(req.params.id); const fieldPath = parseFieldPath(req.query.path); const explanation = await readFieldExplanation(versionId, fieldPath, actor); await recordAudit({ actor, action: "field_resolution.explanation_read", resourceType: "field_resolution", resourceId: `${versionId}:${fieldPath}`, outcome: "allowed", requestId: requestIdOf(res) }); res.status(200).json(explanation); } catch (error) { next(error); } });
+  app.get("/api/workspace/configuracoes-veiculo", requireAuthenticated, async (req: Request, res: Response, next: NextFunction) => { try { res.status(200).json({ configurations: await listOrganizationVehicleWorkspaces(authorizationContext(req)) }); } catch (error) { next(error); } });
+  app.get("/api/configuracoes-veiculo/:id/workspace", requireAuthenticated, async (req: Request, res: Response, next: NextFunction) => { try { const workspace = await readVehicleWorkspace(parseCatalogId(req.params.id), authorizationContext(req)); if (!workspace) throw new HttpError(404, "Workspace indisponivel."); res.status(200).json(workspace); } catch (error) { next(error); } });
+app.post("/api/configuracoes-veiculo/:id/fichas", requireRole("technical_sheet.denied", "technical_sheet", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => { try { const actor = authorizationContext(req); const base = isObject(req.body) && typeof req.body.origin_revision_id === "string" ? parseCatalogId(req.body.origin_revision_id) : undefined; const created = await createWorkspaceSheet(parseCatalogId(req.params.id), actor, base); await recordAudit({ actor, action: "technical_sheet.created", resourceType: "technical_sheet", resourceId: created.id, outcome: "allowed", requestId: requestIdOf(res) }); res.status(201).json(created); } catch (error) { next(error); } });
+app.put("/api/technical-sheets/:id/primary", requireRole("technical_sheet.denied", "technical_sheet", "admin"), async (req: Request, res: Response, next: NextFunction) => { try { const actor = authorizationContext(req); const result = await setTechnicalSheetPrimary(parseCatalogId(req.params.id), parseGovernanceReason(req.body, "primary"), actor); await recordAudit({ actor, action: "technical_sheet.primary_set", resourceType: "technical_sheet_primary", resourceId: result.technical_sheet_id, outcome: "allowed", requestId: requestIdOf(res) }); res.status(200).json(result); } catch (error) { next(error); } });
+app.delete("/api/technical-sheets/:id/primary", requireRole("technical_sheet.denied", "technical_sheet", "admin"), async (req: Request, res: Response, next: NextFunction) => { try { const actor = authorizationContext(req); const result = await clearTechnicalSheetPrimary(parseCatalogId(req.params.id), actor); await recordAudit({ actor, action: "technical_sheet.primary_cleared", resourceType: "technical_sheet_primary", resourceId: result.technical_sheet_id, outcome: "allowed", requestId: requestIdOf(res) }); res.status(200).json(result); } catch (error) { next(error); } });
+app.post("/api/technical-sheets/:id/lifecycle", requireRole("technical_sheet.denied", "technical_sheet", "admin"), async (req: Request, res: Response, next: NextFunction) => { try { const actor = authorizationContext(req); const lifecycle = parseLifecycleInput(req.body); const result = await transitionTechnicalSheetLifecycle(parseCatalogId(req.params.id), lifecycle.state, lifecycle.reason, actor); await recordAudit({ actor, action: "technical_sheet.lifecycle_changed", resourceType: "technical_sheet_lifecycle", resourceId: result.technical_sheet_id, outcome: "allowed", requestId: requestIdOf(res) }); res.status(200).json(result); } catch (error) { next(error); } });
+app.post("/api/technical-sheets/:id/tags", requireRole("technical_sheet.denied", "technical_sheet", "admin"), async (req: Request, res: Response, next: NextFunction) => { try { const actor = authorizationContext(req); const tag = parseManualTag(req.body); const result = await setManualTechnicalSheetTag(parseCatalogId(req.params.id), tag, actor); await recordAudit({ actor, action: "technical_sheet.manual_tag_set", resourceType: "technical_sheet_tag", resourceId: `${result.technical_sheet_id}:${result.tag}`, outcome: "allowed", requestId: requestIdOf(res) }); res.status(201).json(result); } catch (error) { next(error); } });
+app.delete("/api/technical-sheets/:id/tags/:tag", requireRole("technical_sheet.denied", "technical_sheet", "admin"), async (req: Request, res: Response, next: NextFunction) => { try { const actor = authorizationContext(req); const tag = parseManualTag({ tag: req.params.tag }); const result = await revokeManualTechnicalSheetTag(parseCatalogId(req.params.id), tag, actor); await recordAudit({ actor, action: "technical_sheet.manual_tag_revoked", resourceType: "technical_sheet_tag", resourceId: `${result.technical_sheet_id}:${result.tag}`, outcome: "allowed", requestId: requestIdOf(res) }); res.status(200).json(result); } catch (error) { next(error); } });
+app.post("/api/ficha-tecnica/versoes/:id/reportes", requireRole("technical_sheet.denied", "technical_sheet", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => { try { if (!isObject(req.body) || typeof req.body.reason !== "string" || !["incorrect","missing","conflicting"].includes(req.body.reason) || typeof req.body.note !== "string" || req.body.note.length < 3 || req.body.note.length > 500) throw new HttpError(400, "Reporte invalido."); res.status(201).json(await createQualityReport({ versionId: parseCatalogId(req.params.id), fieldPath: typeof req.body.field_path === "string" && /^[a-z_]+\.[a-z_]+$/.test(req.body.field_path) ? req.body.field_path : undefined, reason: req.body.reason, note: req.body.note.trim(), actor: authorizationContext(req) })); } catch (error) { next(error); } });
+app.post("/api/reportes-qualidade/:id/decisao", requireRole("technical_sheet.denied", "technical_sheet", "admin"), async (req: Request, res: Response, next: NextFunction) => { try { if (!isObject(req.body) || (req.body.state !== "under_review" && req.body.state !== "corrected" && req.body.state !== "not_confirmed") || typeof req.body.note !== "string" || req.body.note.length < 3 || req.body.note.length > 500) throw new HttpError(400, "Decisao invalida."); res.status(200).json(await decideQualityReport(parseCatalogId(req.params.id), req.body.state, req.body.note.trim(), authorizationContext(req))); } catch (error) { next(error); } });
+
 app.get("/api/comparacoes", requireRole("comparison.denied", "saved_comparison", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => {
   try { res.status(200).json(await listSavedComparisons(authorizationContext(req))); } catch (error) { next(error); }
 });
@@ -205,7 +234,7 @@ app.get("/api/comparacoes/:id/export", requireRole("comparison.denied", "saved_c
 });
 
 app.get("/api/ficha-tecnica/versoes/:id/export", requireRole("technical_sheet.denied", "technical_sheet", "analyst", "admin"), async (req: Request, res: Response, next: NextFunction) => {
-  try { const format = req.query.format === "csv" || req.query.format === "json" ? req.query.format : null; if (!format) throw new HttpError(400, "Formato de exportacao invalido."); const item = await readTechnicalSheetExport(parseCatalogId(req.params.id)); if (!item) throw new HttpError(404, "Ficha indisponivel."); const content = format === "json" ? JSON.stringify(item, null, 2) : technicalSheetCsv(item as any); res.setHeader("Content-Type", format === "json" ? "application/json; charset=utf-8" : "text/csv; charset=utf-8"); res.setHeader("Content-Disposition", `attachment; filename="ficha-${req.params.id}.${format}"`); res.setHeader("Cache-Control", "no-store"); res.status(200).send(content); } catch (error) { next(error); }
+  try { const format = req.query.format === "csv" || req.query.format === "json" ? req.query.format : null; if (!format) throw new HttpError(400, "Formato de exportacao invalido."); const item = await readTechnicalSheetExport(parseCatalogId(req.params.id), authorizationContext(req)); if (!item) throw new HttpError(404, "Ficha indisponivel."); const content = format === "json" ? JSON.stringify(item, null, 2) : technicalSheetCsv(item as any); res.setHeader("Content-Type", format === "json" ? "application/json; charset=utf-8" : "text/csv; charset=utf-8"); res.setHeader("Content-Disposition", `attachment; filename="ficha-${req.params.id}.${format}"`); res.setHeader("Cache-Control", "no-store"); res.status(200).send(content); } catch (error) { next(error); }
 });
 
 app.get("/api/catalogo/fichas", requireAuthenticated, async (req: Request, res: Response, next: NextFunction) => {
@@ -270,7 +299,7 @@ app.post("/api/ficha-tecnica", requireRole("technical_sheet.denied", "technical_
     usageActor = authorizationContext(req);
     const vehicleInput = parseVehicleInput(req.body);
 
-    const [baseAgentPrompt, outputSchema, sourcePolicy, sourceEvidencePolicy, researchCapabilityPolicy, researchDocumentPolicy, sourceTrustBootstrapPolicy, normalizationPolicy, fieldPolicy, qualityPolicy] = await Promise.all([
+    const [baseAgentPrompt, outputSchema, sourcePolicy, sourceEvidencePolicy, researchCapabilityPolicy, researchDocumentPolicy, sourceTrustBootstrapPolicy, normalizationPolicy, fieldPolicy, qualityPolicy, fieldStatePolicy] = await Promise.all([
       readBaseAgentPrompt(),
       readOutputSchema(),
       readSourcePolicy(),
@@ -280,7 +309,8 @@ app.post("/api/ficha-tecnica", requireRole("technical_sheet.denied", "technical_
       readSourceTrustBootstrapPolicy(),
       readNormalizationPolicy(),
       readFieldPolicy(),
-      readQualityPolicy()
+      readQualityPolicy(),
+      readFieldStatePolicy()
     ]);
     const vehiclePayload = buildVehiclePayload(vehicleInput);
     const finalPrompt = composeFinalPrompt({
@@ -292,7 +322,8 @@ app.post("/api/ficha-tecnica", requireRole("technical_sheet.denied", "technical_
       researchCapabilityPolicy,
       normalizationPolicy,
       fieldPolicy,
-      qualityPolicy
+      qualityPolicy,
+      fieldStatePolicy
     });
 
     usageAttempted = true;
@@ -320,8 +351,19 @@ app.post("/api/ficha-tecnica", requireRole("technical_sheet.denied", "technical_
       normalizationPolicy,
       normalizationFailureMode: "downgrade",
       fieldPolicy,
-      qualityPolicy
+      qualityPolicy,
+      fieldStatePolicy
     });
+    try {
+      await logValidatedTechnicalSheetResult({
+        requestId,
+        provider: snapshotProvider,
+        result: validatedResponse,
+        sourcePolicy,
+      });
+    } catch (logError) {
+      console.warn("Falha ao salvar resumo validado da ficha tecnica:", logError);
+    }
     if (getPersistenceMode() === "postgres") {
       await persistTechnicalSheet({ requestId, provider: snapshotProvider, vehicle: vehicleInput, response: validatedResponse, outputSchema, finalPrompt, actor: usageActor, auditAction: "technical_sheet.generated" });
       await evaluateUsagePolicy(usageActor).catch(() => undefined);
@@ -339,7 +381,7 @@ app.post("/api/ficha-tecnica", requireRole("technical_sheet.denied", "technical_
 app.get("/api/ficha-tecnica/latest", requireAuthenticated, async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const outputSchema = await readOutputSchema();
-    const latestSnapshot = getPersistenceMode() === "postgres" ? await readLatestTechnicalSheet() : await readLatestLLMResponseSnapshot();
+    const latestSnapshot = getPersistenceMode() === "postgres" ? await readLatestTechnicalSheet(authorizationContext(_req)) : await readLatestLLMResponseSnapshot();
 
     if (!latestSnapshot) {
       res.status(404).json({
@@ -362,7 +404,7 @@ app.get("/api/ficha-tecnica/history", requireAuthenticated, async (req: Request,
     const limit = Number.isInteger(requestedLimit) && requestedLimit > 0 ? requestedLimit : 2;
 
     const outputSchema = await readOutputSchema();
-    const recentResponses = getPersistenceMode() === "postgres" ? await readTechnicalSheetHistory(limit) : await readRecentLLMResponses(limit);
+    const recentResponses = getPersistenceMode() === "postgres" ? await readTechnicalSheetHistory(limit, authorizationContext(req)) : await readRecentLLMResponses(limit);
 
     const history: FichaTecnicaHistoryItem[] = recentResponses.map((entry) => {
       try {
@@ -586,7 +628,7 @@ function parseOrganizationRequest(body: unknown) {
   if (!isObject(body)) throw new HttpError(400, "Solicitacao invalida.");
   const companyName = requiredBoundedText(body.company_name, 2, 160, "company_name"); const contactName = requiredBoundedText(body.contact_name, 2, 120, "contact_name"); const contactEmail = requiredBoundedText(body.contact_email, 5, 254, "contact_email").toLowerCase(); const privacyNoticeVersion = requiredBoundedText(body.privacy_notice_version, 1, 40, "privacy_notice_version");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) throw new HttpError(400, "Solicitacao invalida.");
-  const cnpj = typeof body.cnpj === "string" ? body.cnpj.replace(/\D/g, "") : ""; if (!/^\d{14}$/.test(cnpj)) throw new HttpError(400, "Solicitacao invalida.");
+  const cnpj = normalizeCnpj(body.cnpj); if (!isValidCnpj(cnpj)) throw new HttpError(400, "Solicitacao invalida.");
   return { companyName, cnpj, contactName, contactEmail, privacyNoticeVersion };
 }
 function parseOrganizationRegistration(body: unknown) {
@@ -603,6 +645,11 @@ function parseInvitationActivation(body: unknown): { displayName: string; passwo
 function parseMemberInvitation(body: unknown): { email: string; role: OrganizationRole } { if (!isObject(body)) throw new HttpError(400, "Convite indisponivel."); const email = requiredBoundedText(body.email, 5, 254, "email").toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new HttpError(400, "Convite indisponivel."); return { email, role: parseOrganizationRole(body) }; }
 function parseUsagePolicy(body: unknown): { thresholdUnits: number; isActive: boolean } { if (!isObject(body) || typeof body.threshold_units !== "number" || !Number.isSafeInteger(body.threshold_units) || body.threshold_units < 1 || typeof body.is_active !== "boolean") throw new HttpError(400, "Politica de consumo invalida."); return { thresholdUnits: body.threshold_units, isActive: body.is_active }; }
 function parseComparisonVersionIds(body: unknown): [string, string] { if (!isObject(body) || !Array.isArray(body.technical_sheet_version_ids) || body.technical_sheet_version_ids.length !== 2 || body.technical_sheet_version_ids.some((id) => typeof id !== "string")) throw new HttpError(400, "Comparacao invalida."); const ids = body.technical_sheet_version_ids.map((id) => parseCatalogId(id)); if (ids[0] === ids[1]) throw new HttpError(400, "Comparacao invalida."); return [ids[0], ids[1]]; }
+function parseResearchSessionInput(body: unknown): { idempotencyKey: string; focus: ResearchFocus; category?: string; variables?: string[] } { if (!isObject(body) || typeof body.idempotency_key !== "string" || !/^[A-Za-z0-9._:-]{16,128}$/.test(body.idempotency_key) || typeof body.focus !== "string" || !researchFocuses.includes(body.focus as ResearchFocus)) throw new HttpError(400, "Sessao de pesquisa invalida."); const category = typeof body.category === "string" && /^[a-z_]{1,80}$/.test(body.category) ? body.category : undefined; const variables = Array.isArray(body.variables) && body.variables.length <= 100 && body.variables.every((item) => typeof item === "string" && /^[a-z_]+\.[a-z_]+$/.test(item)) ? body.variables : undefined; if ((body.category !== undefined && !category) || (body.variables !== undefined && !variables) || (body.focus === "CATEGORY" && !category) || (body.focus === "VARIABLES" && !variables)) throw new HttpError(400, "Sessao de pesquisa invalida."); return { idempotencyKey: body.idempotency_key, focus: body.focus as ResearchFocus, category, variables }; }
+function parseFieldPath(value: unknown): string { if (typeof value !== "string" || !/^[a-z_]+\.[a-z_]+$/.test(value)) throw new HttpError(400, "Variavel invalida."); return value; }
+function parseGovernanceReason(body: unknown, kind: "primary"): string { if (!isObject(body) || typeof body.reason !== "string" || !["organization_reference", "reviewed_selection", "restore_previous_reference"].includes(body.reason)) throw new HttpError(400, "Motivo de governanca invalido."); return body.reason; }
+function parseLifecycleInput(body: unknown): { state: string; reason: string } { if (!isObject(body) || typeof body.state !== "string" || typeof body.reason !== "string" || !["active", "stale", "archived"].includes(body.state) || !["manual_review", "freshness_policy", "superseded_by_review", "reactivated_after_review"].includes(body.reason)) throw new HttpError(400, "Transicao de ciclo de vida invalida."); return { state: body.state, reason: body.reason }; }
+function parseManualTag(body: unknown): string { if (!isObject(body) || typeof body.tag !== "string" || !["needs_review", "pinned_for_review"].includes(body.tag)) throw new HttpError(400, "Tag manual invalida."); return body.tag; }
 function comparisonCsv(item: Awaited<ReturnType<typeof readSavedComparison>>): string { const safe = (value: unknown) => { const text = value === null || value === undefined ? "" : String(value); const neutralized = /^[=+\-@]/.test(text) ? `'${text}` : text; return `"${neutralized.replace(/"/g, '""')}"`; }; const rows = [["comparacao_id", "campo", "esquerda", "direita", "diferenca"], ...item.comparison.fields.map((field) => [item.id, field.label, field.left?.value, field.right?.value, field.difference])]; return rows.map((row) => row.map(safe).join(",")).join("\r\n"); }
 function technicalSheetCsv(item: any): string { const safe = (value: unknown) => { const text = value == null ? "" : String(value); const neutralized = /^[=+\-@]/.test(text) ? `'${text}` : text; return `"${neutralized.replace(/"/g, '""')}"`; }; const rows: unknown[][] = [["version_id", "version_number", "marca", "modelo", "versao", "ano_modelo", "mercado", "path", "valor"]]; const visit = (value: any, path = "") => { if (value && typeof value === "object" && !Array.isArray(value) && !("valor" in value)) Object.entries(value).forEach(([key, nested]) => visit(nested, path ? `${path}.${key}` : key)); else rows.push([item.technical_sheet.version_id, item.technical_sheet.version_number, item.technical_sheet.vehicle.marca, item.technical_sheet.vehicle.modelo, item.technical_sheet.vehicle.versao, item.technical_sheet.vehicle.ano_modelo, item.technical_sheet.vehicle.mercado, path, JSON.stringify(value)]); }; visit(item.technical_sheet.data); return rows.map((row) => row.map(safe).join(",")).join("\r\n"); }
 function parseOrganizationRole(body: unknown): OrganizationRole { if (!isObject(body) || (body.role !== "viewer" && body.role !== "analyst" && body.role !== "admin")) throw new HttpError(400, "Papel indisponivel."); return body.role; }
@@ -614,13 +661,13 @@ function readCookie(req: Request, name: string): string | undefined { const raw 
 async function prepareImportInput(body: unknown): Promise<{ idempotencyKey: string; items: PreparedImportItem[]; outputSchema: Record<string, unknown> }> {
   if (!isObject(body) || typeof body.idempotency_key !== "string" || !/^[A-Za-z0-9._:-]{16,128}$/.test(body.idempotency_key)) throw new HttpError(400, "Chave de idempotencia invalida.");
   if (!Array.isArray(body.items) || body.items.length < 1 || body.items.length > 10) throw new HttpError(400, "Lote deve conter entre 1 e 10 itens.");
-  const [outputSchema, sourcePolicy, normalizationPolicy, fieldPolicy, qualityPolicy] = await Promise.all([readOutputSchema(), readSourcePolicy(), readNormalizationPolicy(), readFieldPolicy(), readQualityPolicy()]);
+  const [outputSchema, sourcePolicy, normalizationPolicy, fieldPolicy, qualityPolicy, fieldStatePolicy] = await Promise.all([readOutputSchema(), readSourcePolicy(), readNormalizationPolicy(), readFieldPolicy(), readQualityPolicy(), readFieldStatePolicy()]);
   const items = body.items.map((item, index) => {
     if (!isObject(item)) throw new HttpError(422, "Item de importacao invalido.", { index, code: "item_not_object" });
     const vehicle = parseVehicleInput(item.vehicle);
     const provider: PreparedImportItem["provider"] | null = item.provider === "openrouter" || item.provider === "claude" ? item.provider : item.provider === undefined || item.provider === "simulated" ? "simulated" : null;
     if (!provider) throw new HttpError(422, "Provider de importacao invalido.", { index, code: "provider_invalid" });
-    const response = validateResponse(item.response, outputSchema, { vehicle, provider, sourcePolicy, normalizationPolicy, fieldPolicy, qualityPolicy });
+    const response = validateResponse(item.response, outputSchema, { vehicle, provider, sourcePolicy, normalizationPolicy, fieldPolicy, qualityPolicy, fieldStatePolicy });
     return { vehicle, provider, response, payloadSha256: hashImportPayload(response) };
   });
   return { idempotencyKey: body.idempotency_key, items, outputSchema };

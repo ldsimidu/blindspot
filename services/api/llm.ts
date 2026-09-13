@@ -205,7 +205,7 @@ export async function callLLM(
   try {
     if (provider === "claude") {
       if (!sourceEvidencePolicy) throw new HttpError(500, "Politica de evidencia de fontes nao carregada.");
-      return { response: await callClaudeLLM(finalPrompt, vehicle, sourceEvidencePolicy, researchCapabilityPolicy), runtimeFirstPartyDomains: [] };
+      return { response: await callClaudeLLM(finalPrompt, vehicle, sourceEvidencePolicy, researchCapabilityPolicy, sourcePolicy), runtimeFirstPartyDomains: [] };
     }
 
     if (provider === "openrouter") {
@@ -953,6 +953,8 @@ async function callOpenRouterLLM(
           candidateDocumentEligible: eligibleCandidateDocumentInventory.length,
           candidateDocumentRejectionCounts: summarizeAdherenceRejections(candidateDocumentEvidence, vehicle, sourceEvidencePolicy.version),
         },
+        sourcePolicyOfficialTypes: sourcePolicy.officialSourceTypes,
+        sourcePolicyPartnerTypes: sourcePolicy.partnerSourceTypes,
         acquisitionEnabled,
         acquisitionBudget,
         eligibleInventory: { total: eligibleInventory.length, exact: eligibleInventory.filter((item) => item.adherence === "exata").length, compatible: eligibleInventory.filter((item) => item.adherence === "compativel").length },
@@ -2289,6 +2291,7 @@ async function callClaudeLLM(
   vehicle: VehicleInput,
   sourceEvidencePolicy: SourceEvidencePolicy,
   researchCapabilityPolicy?: ResearchCapabilityPolicy,
+  sourcePolicy?: SourcePolicy,
 ): Promise<unknown> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -2592,6 +2595,8 @@ async function callClaudeLLM(
         qualityRouterEnabled: routerConfig.qualityEnabled,
         quickBudget,
         refineBudget,
+        sourcePolicyOfficialTypes: sourcePolicy?.officialSourceTypes ?? [],
+        sourcePolicyPartnerTypes: sourcePolicy?.partnerSourceTypes ?? [],
       },
       turns,
       result,

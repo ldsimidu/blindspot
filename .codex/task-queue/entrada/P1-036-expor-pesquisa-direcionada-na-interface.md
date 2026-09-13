@@ -1,4 +1,4 @@
-# ❌ Pendente — Expor pesquisa direcionada, progresso e histórico na interface
+# 🚧 Em execução — Expor pesquisa direcionada, progresso e histórico na interface
 
 > Prioridade: P1
 >
@@ -6,7 +6,7 @@
 >
 > Origem ou referência: P1-031/P1-032 e proposta, seções 14 a 17 e 65 a 66
 >
-> Arquitetura: `A avaliar`
+> Arquitetura: `APPROVED — Lucas autorizou a task inteira em 2026-09-11.`
 >
 > Triagem automática: `Material — nova jornada com operações assíncronas.`
 >
@@ -29,10 +29,14 @@ Na página de ficha, substituir “pesquisar novamente” genérico por uma jorn
 - Depende de P1-032 e P1-034; não criar polling, websocket ou analytics sem decisão própria no Gate.
 - PEK não é solicitado nesta task; aplicar somente padrões de acessibilidade e UI existentes.
 
+## Architecture Gate — jornada de Research Focus (2026-09-11)
+
+UI usa somente presets allowlisted já validados pelo servidor, sem texto livre, polling, websocket ou analytics. Progresso é leitura sob demanda de estado e contadores sanitizados; não exibe prompt, conteúdo, URL ou segredo. Criar/continuar seguem ações distintas e rotuladas. Cancelamento só é oferecido a sessão queued. Conclusão: `APPROVED`.
+
 ## Resultado do agente
 
-- Estado: `❌ Pendente`
-- Arquitetura: `A avaliar`
+- Estado: `🚧 Em execução`
+- Arquitetura: `APPROVED — task inteira autorizada em 2026-09-11.`
 - Triagem automática: `Material — UI conectada a operação e dados.`
 - Segurança: `Aplicável — autorização e informação exibida.`
 - Implementação: ainda não iniciada.
