@@ -1,0 +1,66 @@
+import { randomUUID } from "node:crypto";
+import { Pool } from "@neondatabase/serverless";
+import "../services/api/env";
+import { createResearchSession, executeResearchSession } from "../services/api/research-sessions";
+import { readRuntimeMockResponse } from "../services/api/runtime-assets";
+import { readFieldExplanation } from "../services/api/field-explanation";
+
+const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const db = await pool.connect();
+const token = randomUUID().replaceAll("-", "");
+const fixtureModel = `Fixture-${token.slice(0, 12)}`;
+const org = randomUUID(), account = randomUUID(), member = randomUUID(), vehicle = randomUUID(), contract = randomUUID(), sheet = randomUUID(), run = randomUUID(), version = randomUUID();
+try {
+  await db.query("insert into organizations (id, display_name, cnpj_hash, status) values ($1,$2,$3,'active')", [org, `research-${token}`, `hash-${token}`]);
+  await db.query("insert into accounts (id, email, status) values ($1,$2,'active')", [account, `${token}@example.test`]);
+  await db.query("insert into organization_members (id, organization_id, account_id, email, email_hash, display_name, role, status) values ($1,$2,$3,$4,$5,'fixture','analyst','active')", [member, org, account, `${token}@example.test`, `email-${token}`]);
+  await db.query("insert into vehicle_configurations (id, brand, model, trim, model_year, market, catalog_slug) values ($1,'Ford',$2,'Test',2099,'Brasil',$3)", [vehicle, fixtureModel, `fixture-${token}`]);
+  await db.query("insert into schema_contracts (id, sha256, runtime_asset_path) values ($1,$2,'fixture')", [contract, `contract-${token}`]);
+  await db.query("insert into technical_sheets (id, vehicle_configuration_id, organization_id, created_by_member_id, state, is_default) values ($1,$2,$3,$4,'active',false)", [sheet, vehicle, org, member]);
+  await db.query("insert into collection_runs (id,request_id,vehicle_configuration_id,technical_sheet_id,organization_id,account_id,member_id,provider,model_name,status,schema_contract_id,prompt_sha256,started_at,finished_at) values ($1,$2,$3,$4,$5,$6,$7,'simulated','fixture','succeeded',$8,'fixture',now(),now())", [run, `fixture-${token}`, vehicle, sheet, org, account, member, contract]);
+  await db.query("insert into technical_sheet_versions (id,collection_run_id,technical_sheet_id,vehicle_configuration_id,schema_contract_id,version_number,payload,completeness_summary,payload_sha256) values ($1,$2,$3,$4,$5,999,$6,'{}','fixture')", [version, run, sheet, vehicle, contract, JSON.stringify(await readRuntimeMockResponse())]);
+  const actor = { organizationId: org, accountId: account, memberId: member, email: `${token}@example.test`, displayName: "fixture", role: "analyst" as const };
+  const first = await createResearchSession({ sheetId: sheet, idempotencyKey: `idempotency-${token}`, focus: "GENERAL", actor, requestId: `created-${token}` });
+  const second = await createResearchSession({ sheetId: sheet, idempotencyKey: `idempotency-concurrent-${token}`, focus: "GENERAL", actor, requestId: `created-concurrent-${token}` });
+  const results = await Promise.allSettled([executeResearchSession(first.id, actor, `request-${token}`), executeResearchSession(second.id, actor, `request-concurrent-${token}`)]);
+  const states = await db.query("select id,state,stop_reason,research_plan_version from research_sessions where technical_sheet_id=$1 order by id", [sheet]);
+  const tasks = await db.query("select state,source_strategy,provider_calls_used from research_session_tasks where research_session_id in (select id from research_sessions where technical_sheet_id=$1)", [sheet]);
+  const impacts = await db.query("select outcome_kind, result_revision_id, delta, recommendation from research_session_quality_impacts where research_session_id in (select id from research_sessions where technical_sheet_id=$1)", [sheet]);
+  const fieldStates = await db.query("select state, state_version from field_research_states where technical_sheet_id=$1", [sheet]);
+  const versions = await db.query("select count(1)::int as count, array_agg(version_number order by version_number) as numbers from technical_sheet_versions where technical_sheet_id=$1", [sheet]);
+  const latestVersion = await db.query("select id from technical_sheet_versions where technical_sheet_id=$1 order by version_number desc limit 1", [sheet]);
+  const partial = results.filter((result) => result.status === "fulfilled" && result.value.state === "partial").length;
+  const needsRebase = states.rows.filter((row) => row.state === "needs_rebase" && row.stop_reason === "base_revision_stale").length;
+  const planned = states.rows.length === 2 && states.rows.every((row) => row.research_plan_version === "2026-09-12.1") && tasks.rows.length === 2 && tasks.rows.every((row) => row.source_strategy === "evidence_aware" && row.provider_calls_used === 1);
+  const impactRecorded = impacts.rows.length === 2 && impacts.rows.some((row) => row.outcome_kind === "partial_published" && row.result_revision_id) && impacts.rows.some((row) => row.outcome_kind === "needs_rebase" && row.delta?.state === "not_applicable") && impacts.rows.every((row) => !JSON.stringify(row).includes("http"));
+  const projectedStates = fieldStates.rows.length > 0 && fieldStates.rows.some((row) => row.state === "research_exhausted") && fieldStates.rows.some((row) => row.state === "blocked") && fieldStates.rows.every((row) => row.state_version === "field-state-v1");
+  const explanation = await readFieldExplanation(latestVersion.rows[0].id, "motorizacao.potencia_cv", actor);
+  const safeExplanation = JSON.stringify(explanation);
+  let idorBlocked = false;
+  try { await readFieldExplanation(latestVersion.rows[0].id, "motorizacao.potencia_cv", { ...actor, organizationId: randomUUID() }); } catch (error) { idorBlocked = (error as { statusCode?: number }).statusCode === 404; }
+  if (partial !== 1 || needsRebase !== 1 || !planned || !impactRecorded || !projectedStates || !idorBlocked || /https?:|prompt|raw_content/i.test(safeExplanation) || versions.rows[0]?.count !== 2 || JSON.stringify(versions.rows[0]?.numbers) !== JSON.stringify([999, 1000])) throw new Error("RESEARCH_EXECUTION=FAIL");
+  console.log("RESEARCH_EXECUTION=PASS");
+} finally {
+  await db.query("delete from research_session_events where research_session_id in (select id from research_sessions where technical_sheet_id=$1)", [sheet]).catch(() => undefined);
+  await db.query("delete from research_session_quality_impacts where research_session_id in (select id from research_sessions where technical_sheet_id=$1)", [sheet]).catch(() => undefined);
+  await db.query("delete from field_research_states where technical_sheet_id=$1", [sheet]).catch(() => undefined);
+  await db.query("delete from research_session_tasks where research_session_id in (select id from research_sessions where technical_sheet_id=$1)", [sheet]).catch(() => undefined);
+  await db.query("delete from research_sessions where technical_sheet_id=$1", [sheet]).catch(() => undefined);
+  await db.query("delete from audit_events where organization_id=$1", [org]).catch(() => undefined);
+  await db.query("delete from usage_events where organization_id=$1", [org]).catch(() => undefined);
+  await db.query("delete from field_evidence where technical_sheet_version_id in (select id from technical_sheet_versions where technical_sheet_id=$1)", [sheet]).catch(() => undefined);
+  await db.query("delete from field_resolution_alternatives where field_resolution_id in (select id from field_resolutions where technical_sheet_version_id in (select id from technical_sheet_versions where technical_sheet_id=$1))", [sheet]).catch(() => undefined);
+  await db.query("delete from field_resolutions where technical_sheet_version_id in (select id from technical_sheet_versions where technical_sheet_id=$1)", [sheet]).catch(() => undefined);
+  await db.query("delete from technical_sheet_sources where technical_sheet_version_id in (select id from technical_sheet_versions where technical_sheet_id=$1)", [sheet]).catch(() => undefined);
+  await db.query("delete from technical_sheet_search_facets where technical_sheet_version_id in (select id from technical_sheet_versions where technical_sheet_id=$1)", [sheet]).catch(() => undefined);
+  await db.query("delete from technical_sheet_versions where technical_sheet_id=$1", [sheet]).catch(() => undefined);
+  await db.query("delete from collection_runs where technical_sheet_id=$1", [sheet]).catch(() => undefined);
+  await db.query("delete from technical_sheets where id=$1", [sheet]).catch(() => undefined);
+  await db.query("delete from vehicle_configurations where id=$1", [vehicle]).catch(() => undefined);
+  await db.query("delete from schema_contracts where id=$1", [contract]).catch(() => undefined);
+  await db.query("delete from organization_members where id=$1", [member]).catch(() => undefined);
+  await db.query("delete from accounts where id=$1", [account]).catch(() => undefined);
+  await db.query("delete from organizations where id=$1", [org]).catch(() => undefined);
+  db.release();
+  await pool.end();
+}

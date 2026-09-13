@@ -115,6 +115,7 @@ const resultSummary = sanitizeLLMResultSummary({
     motorizacao: {
       potencia_cv: { valor: 250, status: "confirmado", fonte_ref: ["F1"] },
       torque_nm: { valor: 500, status: "confirmado", fonte_ref: ["F1", "F2"] },
+      autonomia_km: { valor: 400, status: "parcial", fonte_ref: ["F3"] },
       torque: { valor: "must-not-be-logged", status: "nao_encontrado", observacoes: "must-not-be-logged" },
       consumo: { valor: "must-not-be-logged", status: "confirmado", fonte_ref: ["F9"] },
     },
@@ -130,17 +131,21 @@ const resultSummary = sanitizeLLMResultSummary({
     conflitantes: 0,
   },
   fontes_utilizadas: [
-    { id: "F1", url: "https://must-not-be-logged.example", titulo: "must-not-be-logged", avaliacao_aderencia: { status: "exata" } },
-    { id: "F2", url: "https://must-not-be-logged.example/second", titulo: "must-not-be-logged", avaliacao_aderencia: { status: "ambigua" } },
+    { id: "F1", tipo: "site_oficial_montadora", url: "https://must-not-be-logged.example", titulo: "must-not-be-logged", avaliacao_politica: { status: "na_lista_aprovada" }, avaliacao_aderencia: { status: "exata" } },
+    { id: "F2", tipo: "imprensa_automotiva_reconhecida", url: "https://must-not-be-logged.example/second", titulo: "must-not-be-logged", avaliacao_politica: { status: "na_lista_aprovada" }, avaliacao_aderencia: { status: "ambigua" } },
+    { id: "F3", tipo: "must-not-be-logged", url: "https://must-not-be-logged.example/third", titulo: "must-not-be-logged", avaliacao_politica: { status: "na_lista_aprovada" }, avaliacao_aderencia: { status: "exata" } },
   ],
-});
-if (!resultSummary || resultSummary.completeness?.preenchidas !== 1 || resultSummary.field_statuses.confirmado !== 3 || resultSummary.field_statuses.nao_encontrado !== 1 || resultSummary.fields_with_source_ref !== 2 || resultSummary.groups.motorizacao?.confirmado !== 3 || resultSummary.sources.by_adherence.exata !== 1 || resultSummary.sources.by_adherence.ambigua !== 1) {
+}, { sourcePolicyOfficialTypes: ["site_oficial_montadora"], sourcePolicyPartnerTypes: ["imprensa_automotiva_reconhecida", "https://must-not-be-logged.example"] });
+if (!resultSummary || resultSummary.completeness?.preenchidas !== 1 || resultSummary.field_statuses.confirmado !== 3 || resultSummary.field_statuses.parcial !== 1 || resultSummary.field_statuses.nao_encontrado !== 1 || resultSummary.fields_with_source_ref !== 3 || resultSummary.groups.motorizacao?.confirmado !== 3 || resultSummary.sources.by_adherence.exata !== 2 || resultSummary.sources.by_adherence.ambigua !== 1) {
   throw new Error("Result summary telemetry did not retain the expected aggregate counters.");
 }
-if (resultSummary.source_usage.referenced_source_count !== 2 || resultSummary.source_usage.invalid_field_reference_count !== 1 || resultSummary.source_usage.groups.motorizacao?.fields_with_source_ref !== 2 || resultSummary.source_usage.groups.motorizacao?.referenced_source_count !== 2 || resultSummary.source_usage.groups.motorizacao?.fields_with_single_source_ref !== 1 || resultSummary.source_usage.groups.motorizacao?.fields_with_multiple_source_refs !== 1) {
+if (resultSummary.source_usage.referenced_source_count !== 3 || resultSummary.source_usage.invalid_field_reference_count !== 1 || resultSummary.source_usage.groups.motorizacao?.fields_with_source_ref !== 3 || resultSummary.source_usage.groups.motorizacao?.referenced_source_count !== 3 || resultSummary.source_usage.groups.motorizacao?.fields_with_single_source_ref !== 2 || resultSummary.source_usage.groups.motorizacao?.fields_with_multiple_source_refs !== 1) {
   throw new Error("Result summary telemetry did not retain source-use cardinalities.");
 }
-if (JSON.stringify(resultSummary).includes("must-not-be-logged") || JSON.stringify(resultSummary).includes("F1") || JSON.stringify(resultSummary).includes("F2") || JSON.stringify(resultSummary).includes("F9") || "unsafe group" in resultSummary.groups) {
+if (resultSummary.source_usage.by_source_class.official.published_source_count !== 1 || resultSummary.source_usage.by_source_class.official.referenced_source_count !== 1 || resultSummary.source_usage.by_source_class.official.resolved_field_reference_count !== 2 || resultSummary.source_usage.by_source_class.partner.published_source_count !== 1 || resultSummary.source_usage.by_source_class.partner.referenced_source_count !== 1 || resultSummary.source_usage.by_source_class.partner.resolved_field_reference_count !== 1 || resultSummary.source_usage.by_source_class.other.published_source_count !== 1 || resultSummary.source_usage.by_source_class.other.resolved_field_reference_count !== 1 || resultSummary.source_usage.fields_with_multiple_source_classes !== 1) {
+  throw new Error("Result summary telemetry did not retain source-class aggregates.");
+}
+if (JSON.stringify(resultSummary).includes("must-not-be-logged") || JSON.stringify(resultSummary).includes("site_oficial_montadora") || JSON.stringify(resultSummary).includes("imprensa_automotiva_reconhecida") || JSON.stringify(resultSummary).includes("F1") || JSON.stringify(resultSummary).includes("F2") || JSON.stringify(resultSummary).includes("F9") || "unsafe group" in resultSummary.groups) {
   throw new Error("Result summary telemetry leaked provider-controlled content.");
 }
 

@@ -1,0 +1,15 @@
+{
+  "version": "2026-09-12.1",
+  "maxTasksPerSession": 1,
+  "maxProviderCallsPerTask": 1,
+  "focuses": {
+    "GENERAL": { "sourceStrategy": "evidence_aware" },
+    "MISSING_VARIABLES": { "sourceStrategy": "evidence_aware", "eligibleStatuses": ["ausente", "nao_encontrado"] },
+    "OFFICIAL_SOURCES": { "sourceStrategy": "official_only" },
+    "CONFLICT_RESOLUTION": { "sourceStrategy": "evidence_aware", "eligibleStatuses": ["conflitante"] },
+    "LOW_CONFIDENCE": { "sourceStrategy": "evidence_aware", "eligibleStatuses": ["baixa_confianca"] },
+    "VALIDATE_EXISTING": { "sourceStrategy": "evidence_aware", "eligibleStatuses": ["confirmado"] },
+    "CATEGORY": { "sourceStrategy": "evidence_aware" },
+    "VARIABLES": { "sourceStrategy": "evidence_aware" }
+  }
+}

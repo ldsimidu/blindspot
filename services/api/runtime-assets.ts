@@ -75,6 +75,38 @@ export interface ResearchCapabilityPolicy {
   }>;
 }
 
+export interface ResearchPlanPolicy {
+  version: string;
+  maxTasksPerSession: number;
+  maxProviderCallsPerTask: number;
+  focuses: Record<string, { sourceStrategy: "evidence_aware" | "official_only"; eligibleStatuses?: string[] }>;
+}
+
+export interface FieldStatePolicy {
+  version: string;
+  states: string[];
+  legacyStatusMap: Record<string, import("./field-state").FieldResolutionState>;
+  valueStates: string[];
+  researchStates: string[];
+  confirmedRequiresEvidence: boolean;
+  calculatedRequires: string[];
+  conflict: { requiresNullValue: boolean; minimumAlternatives: number; automaticWinner: "forbidden" };
+  explanation: { allowedFields: string[]; forbiddenFields: string[] };
+}
+
+export interface TechnicalSheetGovernancePolicy {
+  version: string;
+  manualTags: string[];
+  derivedTags: string[];
+  lifecycleStates: Array<"active" | "stale" | "archived">;
+  lifecycleReasons: string[];
+  primaryEligibleStates: Array<"active" | "stale">;
+  primaryReasons: string[];
+  staleAfterDays: number;
+  automaticPrimary: "forbidden";
+  automaticLifecycleTransition: "forbidden";
+}
+
 export interface ResearchDocumentPolicy {
   version: string;
   brand_presence_discovery: {
@@ -149,7 +181,7 @@ export interface TechnicalSearchFacetPolicy {
 }
 
 export async function readRuntimeAsset(
-  fileName: "base-agent-prompt.txt" | "schema.json" | "mock-response.json" | "source-policy.json" | "source-evidence-policy.json" | "research-capability-policy.json" | "research-document-policy.json" | "source-trust-bootstrap-policy.json" | "normalization-policy.json" | "field-policy.json" | "quality-policy.json" | "technical-search-facet-policy.json"
+  fileName: "base-agent-prompt.txt" | "schema.json" | "mock-response.json" | "source-policy.json" | "source-evidence-policy.json" | "research-capability-policy.json" | "research-plan-policy.json" | "field-state-policy.json" | "technical-sheet-governance-policy.json" | "research-document-policy.json" | "source-trust-bootstrap-policy.json" | "normalization-policy.json" | "field-policy.json" | "quality-policy.json" | "technical-search-facet-policy.json"
 ): Promise<string> {
   return readFile(path.join(RUNTIME_ASSETS_DIR, fileName), "utf-8");
 }
@@ -172,6 +204,18 @@ export async function readSourceEvidencePolicy(): Promise<SourceEvidencePolicy> 
 
 export async function readResearchCapabilityPolicy(): Promise<ResearchCapabilityPolicy> {
   return JSON.parse(await readRuntimeAsset("research-capability-policy.json")) as ResearchCapabilityPolicy;
+}
+
+export async function readResearchPlanPolicy(): Promise<ResearchPlanPolicy> {
+  return JSON.parse(await readRuntimeAsset("research-plan-policy.json")) as ResearchPlanPolicy;
+}
+
+export async function readFieldStatePolicy(): Promise<FieldStatePolicy> {
+  return JSON.parse(await readRuntimeAsset("field-state-policy.json")) as FieldStatePolicy;
+}
+
+export async function readTechnicalSheetGovernancePolicy(): Promise<TechnicalSheetGovernancePolicy> {
+  return JSON.parse(await readRuntimeAsset("technical-sheet-governance-policy.json")) as TechnicalSheetGovernancePolicy;
 }
 
 export async function readResearchDocumentPolicy(): Promise<ResearchDocumentPolicy> {

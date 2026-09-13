@@ -1412,6 +1412,19 @@
         "fonte_ref": {
           "$ref": "#/$defs/fonte_ref_conflito"
         },
+        "alternativas": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["valor", "fonte_ref"],
+            "properties": {
+              "valor": { "$ref": "#/$defs/valor_base" },
+              "fonte_ref": { "$ref": "#/$defs/fonte_ref" }
+            }
+          }
+        },
         "obs_ref": {
           "$ref": "#/$defs/obs_ref"
         },

@@ -120,6 +120,37 @@
       "when": 1789138800000,
       "tag": "0016_remove_curated_research_documents",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1789142400000,
+      "tag": "0017_technical_sheets_lineage",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1789146000000,
+      "tag": "0018_technical_sheets_active_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1789149600000,
+      "tag": "0019_technical_sheets_default_scope",
+      "breakpoints": true
     }
+    ,{"idx":20,"version":"7","when":1789164000000,"tag":"0020_research_sessions","breakpoints":true}
+    ,{"idx":21,"version":"7","when":1789167600000,"tag":"0021_field_evidence_and_resolutions","breakpoints":true}
+    ,{"idx":22,"version":"7","when":1789171200000,"tag":"0022_quality_reports","breakpoints":true}
+    ,{"idx":23,"version":"7","when":1789196400000,"tag":"0023_sheet_revision_sequence_and_session_trace","breakpoints":true}
+    ,{"idx":24,"version":"7","when":1789200000000,"tag":"0024_research_session_plans","breakpoints":true}
+    ,{"idx":25,"version":"7","when":1789203600000,"tag":"0025_research_session_quality_impacts","breakpoints":true}
+    ,{"idx":26,"version":"7","when":1789207200000,"tag":"0026_field_states_and_explanations","breakpoints":true}
+    ,{"idx":27,"version":"7","when":1789210800000,"tag":"0027_technical_sheet_governance","breakpoints":true}
+    ,{"idx":28,"version":"7","when":1789214400000,"tag":"0028_research_session_events","breakpoints":true}
+    ,{"idx":29,"version":"7","when":1789218000000,"tag":"0029_recover_inactive_default_technical_sheets","breakpoints":true}
   ]
 }

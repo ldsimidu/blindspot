@@ -1,0 +1,12 @@
+{
+  "version": "technical-sheet-governance-v1",
+  "manualTags": ["needs_review", "pinned_for_review"],
+  "derivedTags": ["latest", "has_conflicts", "incomplete", "outdated", "archived"],
+  "lifecycleStates": ["active", "stale", "archived"],
+  "lifecycleReasons": ["manual_review", "freshness_policy", "superseded_by_review", "reactivated_after_review"],
+  "primaryEligibleStates": ["active", "stale"],
+  "primaryReasons": ["organization_reference", "reviewed_selection", "restore_previous_reference"],
+  "staleAfterDays": 365,
+  "automaticPrimary": "forbidden",
+  "automaticLifecycleTransition": "forbidden"
+}
