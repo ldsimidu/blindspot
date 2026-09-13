@@ -4,13 +4,16 @@ import type { CatalogCandidate, CatalogEntryResult, CatalogSearchResult, FichaTe
 import logoBlindspot from "./assets/blindspot-mark.png";
 import { formatCnpj, isValidCnpj } from "../../../packages/contracts/cnpj";
 import { ComparisonPanel } from "./ComparisonPanel";
-import { FichaDiscovery } from "./FichaDiscovery";
-import { TechnicalFichaDiscovery } from "./TechnicalFichaDiscovery";
+import { CatalogWorkspace } from "./CatalogWorkspace";
+import { TechnicalFichaWorkspace } from "./TechnicalFichaWorkspace";
+import { VehicleWorkspace } from "./VehicleWorkspace";
+import { TeamWorkspace, UsageWorkspace } from "./AdminWorkspaces";
 import { UiButton, UiCard, UiField, UiStatus, UiToast } from "./ui/primitives";
 
-type AppView = "request" | "catalog" | "comparison" | "history" | "team" | "usage";
+type AppView = "request" | "catalog" | "workspace" | "comparison" | "history" | "team" | "usage";
 type ThemeMode = "dark" | "light";
 type AccessView = "login" | "registration" | "received" | "pending_review" | "rejected";
+type AccessVisualStage = "login" | "company" | "owner" | "access" | "review" | "pending";
 
 const registrationFlow = [
   { phase: "Empresa", label: "Dados da empresa" },
@@ -68,8 +71,9 @@ function App() {
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [loginNotice, setLoginNotice] = useState<string | null>(null);
-  const [toast, setToast] = useState<{ tone: "success" | "error"; title: string; message: string } | null>(null);
+  const [toast, setToast] = useState<{ tone: "success" | "error"; title: string; message: string; isClosing: boolean } | null>(null);
   const [accessView, setAccessView] = useState<AccessView>("login");
+  const [accessMotionDirection, setAccessMotionDirection] = useState<"forward" | "backward">("forward");
   const [registration, setRegistration] = useState({ company_name: "", cnpj: "", contact_name: "", contact_email: "", password: "", password_confirmation: "", privacy_notice_version: "" });
   const [registrationStep, setRegistrationStep] = useState(1);
   const [registrationLoading, setRegistrationLoading] = useState(false);
@@ -86,7 +90,8 @@ function App() {
     return saved === "light" ? "light" : "dark";
   });
   const [activeView, setActiveView] = useState<AppView>("request");
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isNavigationMenuOpen, setIsNavigationMenuOpen] = useState(false);
+  const [isSessionMenuOpen, setIsSessionMenuOpen] = useState(false);
   const [form, setForm] = useState<FormState>(initialFormState);
   const [loading, setLoading] = useState(false);
   const [loadingLatest, setLoadingLatest] = useState(true);
@@ -103,9 +108,11 @@ function App() {
   const [comparisonSeed, setComparisonSeed] = useState<CatalogCandidate | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState<string | null>(null);
-  const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => window.localStorage.getItem("blindspot_onboarding_completed") !== "true");
-  const onboardingPrimaryActionRef = useRef<HTMLButtonElement>(null);
   const viewTitleRef = useRef<HTMLHeadingElement>(null);
+  const navigationToggleRef = useRef<HTMLButtonElement>(null);
+  const sessionToggleRef = useRef<HTMLButtonElement>(null);
+  const navigationMenuRef = useRef<HTMLElement>(null);
+  const sessionMenuRef = useRef<HTMLElement>(null);
 
   const isFormValid = useMemo(() => {
     const hasRequiredText =
@@ -145,16 +152,42 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (isOnboardingOpen) onboardingPrimaryActionRef.current?.focus();
-  }, [isOnboardingOpen]);
-
-  useEffect(() => {
-    if (!isOnboardingOpen) viewTitleRef.current?.focus();
-  }, [activeView, isOnboardingOpen]);
+    viewTitleRef.current?.focus();
+  }, [activeView]);
 
   useEffect(() => {
     if (authState !== "signed_in") accessHeadingRef.current?.focus();
   }, [authState, accessView, registrationStep]);
+
+  useEffect(() => {
+    if (!isNavigationMenuOpen && !isSessionMenuOpen) return;
+
+    function closeMenusFromKeyboard(event: KeyboardEvent): void {
+      if (event.key !== "Escape") return;
+      if (isNavigationMenuOpen) {
+        setIsNavigationMenuOpen(false);
+        navigationToggleRef.current?.focus();
+      }
+      if (isSessionMenuOpen) {
+        setIsSessionMenuOpen(false);
+        sessionToggleRef.current?.focus();
+      }
+    }
+
+    function closeMenusFromPointer(event: PointerEvent): void {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (isNavigationMenuOpen && !navigationMenuRef.current?.contains(target) && !navigationToggleRef.current?.contains(target)) setIsNavigationMenuOpen(false);
+      if (isSessionMenuOpen && !sessionMenuRef.current?.contains(target) && !sessionToggleRef.current?.contains(target)) setIsSessionMenuOpen(false);
+    }
+
+    document.addEventListener("keydown", closeMenusFromKeyboard);
+    document.addEventListener("pointerdown", closeMenusFromPointer);
+    return () => {
+      document.removeEventListener("keydown", closeMenusFromKeyboard);
+      document.removeEventListener("pointerdown", closeMenusFromPointer);
+    };
+  }, [isNavigationMenuOpen, isSessionMenuOpen]);
 
   useEffect(() => () => {
     if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
@@ -274,26 +307,24 @@ function App() {
     setActiveView("comparison");
   }
 
-  function finishOnboarding(): void {
-    window.localStorage.setItem("blindspot_onboarding_completed", "true");
-    setIsOnboardingOpen(false);
-  }
-
   function publishToast(tone: "success" | "error", title: string, message: string): void {
     if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
-    setToast({ tone, title, message });
-    toastTimerRef.current = window.setTimeout(() => setToast(null), 6000);
+    setToast({ tone, title, message, isClosing: false });
+    toastTimerRef.current = window.setTimeout(dismissToast, 6000);
   }
 
   function dismissToast(): void {
     if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
-    toastTimerRef.current = null;
-    setToast(null);
+    setToast((current) => current ? { ...current, isClosing: true } : null);
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast(null);
+      toastTimerRef.current = null;
+    }, 180);
   }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault(); setLoginLoading(true); setLoginError(null); setLoginNotice(null);
-    try { const outcome = await entrar(loginEmail, loginPassword); if (outcome.state !== "authenticated") { setAccessView(outcome.state); return; } setSignedInName(outcome.displayName); setSignedInRole(outcome.role); setLoginPassword(""); setAuthState("signed_in"); publishToast("success", "Sessão iniciada", "Seu acesso foi confirmado."); } catch { const message = "Não foi possível entrar com essas credenciais."; setLoginError(message); publishToast("error", "Não foi possível entrar", "Revise suas credenciais e tente novamente."); } finally { setLoginLoading(false); }
+    try { const outcome = await entrar(loginEmail, loginPassword); if (outcome.state !== "authenticated") { setAccessMotionDirection("forward"); setAccessView(outcome.state); return; } setSignedInName(outcome.displayName); setSignedInRole(outcome.role); setLoginPassword(""); setAuthState("signed_in"); publishToast("success", "Sessão iniciada", "Seu acesso foi confirmado."); } catch { const message = "Não foi possível entrar com essas credenciais."; setLoginError(message); publishToast("error", "Não foi possível entrar", "Revise suas credenciais e tente novamente."); } finally { setLoginLoading(false); }
   }
 
   async function handleRegistration(event: FormEvent<HTMLFormElement>): Promise<void> {
@@ -307,6 +338,7 @@ function App() {
       setRegistration({ company_name: "", cnpj: "", contact_name: "", contact_email: "", password: "", password_confirmation: "", privacy_notice_version: "" });
       setRegistrationFieldErrors({});
       setRegistrationStep(1);
+      setAccessMotionDirection("forward");
       setAccessView("received");
       publishToast("success", "Solicitação enviada", "Recebemos seu cadastro para análise.");
     }
@@ -324,6 +356,7 @@ function App() {
     };
     const error = stepErrors[registrationStep];
     if (error) { setRegistrationError(error); return; }
+    setAccessMotionDirection("forward");
     setRegistrationStep((current) => Math.min(current + 1, registrationFlow.length));
   }
 
@@ -338,9 +371,11 @@ function App() {
     if (registrationStep === 1) {
       setRegistration((current) => ({ ...current, password: "", password_confirmation: "", privacy_notice_version: "" }));
       setLoginPassword("");
+      setAccessMotionDirection("backward");
       setAccessView("login");
       return;
     }
+    setAccessMotionDirection("backward");
     setRegistrationStep((current) => current - 1);
   }
 
@@ -348,6 +383,7 @@ function App() {
     setLoginPassword("");
     setLoginError(null);
     setLoginNotice("Para verificar o status, entre novamente com seu e-mail e senha.");
+    setAccessMotionDirection("backward");
     setAccessView("login");
   }
 
@@ -383,6 +419,10 @@ function App() {
   if (authState !== "signed_in") {
     const currentRegistrationStep = registrationFlow[registrationStep - 1];
     const registrationPhaseIndex = registrationStep - 1;
+    const accessVisualStage: AccessVisualStage = accessView === "registration"
+      ? registrationStep === 1 ? "company" : registrationStep === 2 ? "owner" : registrationStep === 3 ? "access" : "review"
+      : accessView === "received" || accessView === "pending_review" ? "pending"
+        : "login";
     const accessTitle = accessView === "registration"
       ? currentRegistrationStep.label
       : accessView === "rejected"
@@ -403,8 +443,13 @@ function App() {
       <main className="access-experience">
         <div className="access-shell">
           <div className="access-layout">
-            <aside className="access-editorial access-media" aria-label="Contexto visual do BlindSpot">
+            <aside className={`access-editorial access-media access-visual access-visual--${accessVisualStage}`} aria-label="Contexto visual do BlindSpot">
               <div className="access-media-glow" aria-hidden="true" />
+              <div className="access-visual__contour" aria-hidden="true" />
+              <div className="access-visual__node access-visual__node--one" aria-hidden="true" />
+              <div className="access-visual__node access-visual__node--two" aria-hidden="true" />
+              <div className="access-visual__connection" aria-hidden="true" />
+              <div className="access-visual__ring" aria-hidden="true" />
               <div className="access-media-content">
                 <div className="access-orb-brand">
                   <img className="access-media-logo" src={logoBlindspot} alt="BlindSpot" />
@@ -413,10 +458,10 @@ function App() {
                 </div>
               </div>
             </aside>
-            <UiCard as="section" className="access-task" raised aria-busy={authState === "checking" || registrationLoading}>
+            <UiCard key={`${accessView}-${registrationStep}`} as="section" className={`access-task access-task--${accessMotionDirection}`} raised aria-busy={authState === "checking" || registrationLoading}>
               <p className="access-task-eyebrow">{accessView === "registration" ? `${currentRegistrationStep.phase} · etapa ${registrationStep} de ${registrationFlow.length}` : "Área segura"}</p>
               {accessView === "registration" && <ol className="access-phase-list access-task-steps" aria-label="Fases do cadastro">
-                {registrationPhases.map((phase, index) => <li key={phase} className={index === registrationPhaseIndex ? "is-current" : index < registrationPhaseIndex ? "is-complete" : ""} aria-current={index === registrationPhaseIndex ? "step" : undefined}><span>{index + 1}</span>{phase}</li>)}
+                {registrationPhases.map((phase, index) => <li key={phase} className={index === registrationPhaseIndex ? "is-current" : index < registrationPhaseIndex ? "is-complete" : ""} aria-current={index === registrationPhaseIndex ? "step" : undefined}><span aria-hidden="true">{index < registrationPhaseIndex ? "✓" : index + 1}</span><span className="access-task-step-label">{phase}</span></li>)}
               </ol>}
               <h1 ref={accessHeadingRef} tabIndex={-1}>{accessTitle}</h1>
               <p className="access-task-description">{accessDescription}</p>
@@ -427,124 +472,76 @@ function App() {
                 {loginNotice && <p className="access-notice" role="status">{loginNotice}</p>}
                 {loginError && <p className="access-error" role="alert">{loginError}</p>}
                 <UiButton className="access-primary" type="submit" isLoading={loginLoading} loadingLabel="Entrando…">Entrar</UiButton>
-                <button type="button" className="access-text-action" onClick={() => { setLoginError(null); setRegistrationStep(1); setAccessView("registration"); }}>Cadastrar minha empresa</button>
+                <button type="button" className="access-text-action" onClick={() => { setLoginError(null); setRegistrationStep(1); setAccessMotionDirection("forward"); setAccessView("registration"); }}>Cadastrar minha empresa</button>
               </form>}
               {accessView === "registration" && <form onSubmit={handleRegistration} className="access-form registration-flow" aria-busy={registrationLoading}>
-                <div className="access-progress" role="progressbar" aria-label="Progresso do cadastro" aria-valuemin={1} aria-valuemax={registrationFlow.length} aria-valuenow={registrationStep}><span style={{ width: `${(registrationStep / registrationFlow.length) * 100}%` }} /></div>
                 {registrationStep === 1 && <div className="access-field-pair"><UiField label="Nome da empresa"><input value={registration.company_name} onChange={(event) => setRegistration((current) => ({ ...current, company_name: event.target.value }))} minLength={2} maxLength={160} autoComplete="organization" required /></UiField><UiField label="CNPJ" hint="Usado para identificar a organização." error={registrationFieldErrors.cnpj}><input value={registration.cnpj} onChange={(event) => { setRegistration((current) => ({ ...current, cnpj: formatCnpj(event.target.value) })); setRegistrationFieldErrors((current) => ({ ...current, cnpj: undefined })); }} onBlur={() => { if (registration.cnpj.trim()) validateRegistrationCnpj(); }} inputMode="numeric" maxLength={18} autoComplete="off" required /></UiField></div>}
                 {registrationStep === 2 && <div className="access-field-pair"><UiField label="Nome do responsável"><input value={registration.contact_name} onChange={(event) => setRegistration((current) => ({ ...current, contact_name: event.target.value }))} minLength={2} maxLength={120} autoComplete="name" required /></UiField><UiField label="E-mail corporativo"><input type="email" autoComplete="email" value={registration.contact_email} onChange={(event) => setRegistration((current) => ({ ...current, contact_email: event.target.value }))} required /></UiField></div>}
                 {registrationStep === 3 && <><div className="access-field-pair"><UiField label="Crie uma senha" hint="Mínimo de 12 caracteres."><input type="password" autoComplete="new-password" value={registration.password} onChange={(event) => setRegistration((current) => ({ ...current, password: event.target.value }))} minLength={12} maxLength={128} required /></UiField><UiField label="Confirme sua senha"><input type="password" autoComplete="new-password" value={registration.password_confirmation} onChange={(event) => setRegistration((current) => ({ ...current, password_confirmation: event.target.value }))} minLength={12} maxLength={128} required /></UiField></div><label className="access-checkbox"><input type="checkbox" checked={Boolean(registration.privacy_notice_version)} onChange={(event) => setRegistration((current) => ({ ...current, privacy_notice_version: event.target.checked ? "2026-09" : "" }))} /> Li o aviso de privacidade aplicável ao cadastro.</label></>}
                 {registrationStep === 4 && <section className="registration-review" aria-label="Revisão do cadastro">
                   <header><div><UiStatus tone="entry" label="Pronto para enviar" /><h2>Confirme sua solicitação</h2></div><p>Confira os dados antes de encaminhar o cadastro para análise.</p></header>
                   <div className="registration-review__groups">
-                    <section><div className="registration-review__group-heading"><h3>Empresa</h3><button type="button" onClick={() => setRegistrationStep(1)}>Editar</button></div><dl><div><dt>Nome</dt><dd>{registration.company_name}</dd></div><div><dt>CNPJ</dt><dd>{registration.cnpj}</dd></div></dl></section>
-                    <section><div className="registration-review__group-heading"><h3>Responsável</h3><button type="button" onClick={() => setRegistrationStep(2)}>Editar</button></div><dl><div><dt>Nome</dt><dd>{registration.contact_name}</dd></div><div><dt>E-mail</dt><dd>{registration.contact_email}</dd></div></dl></section>
+                    <section><div className="registration-review__group-heading"><h3>Empresa</h3><button type="button" onClick={() => { setAccessMotionDirection("backward"); setRegistrationStep(1); }}>Editar</button></div><dl><div><dt>Nome</dt><dd>{registration.company_name}</dd></div><div><dt>CNPJ</dt><dd>{registration.cnpj}</dd></div></dl></section>
+                    <section><div className="registration-review__group-heading"><h3>Responsável</h3><button type="button" onClick={() => { setAccessMotionDirection("backward"); setRegistrationStep(2); }}>Editar</button></div><dl><div><dt>Nome</dt><dd>{registration.contact_name}</dd></div><div><dt>E-mail</dt><dd>{registration.contact_email}</dd></div></dl></section>
                   </div>
                 </section>}
                 {registrationError && <p className="access-error" role="alert">{registrationError}</p>}
-                <div className={`access-actions ${registrationStep === registrationFlow.length ? "access-actions--final" : ""}`}><UiButton tone="secondary" type="button" onClick={returnToPreviousRegistrationStep}>Voltar</UiButton><UiButton type="submit" isLoading={registrationLoading} loadingLabel="Enviando cadastro…">{registrationStep === registrationFlow.length ? "Enviar solicitação para análise" : "Continuar"}</UiButton></div>
                 {registrationStep === registrationFlow.length && <div className="access-operation-feedback" aria-live="polite">{registrationOperationError && <p className="access-error" role="status">{registrationOperationError}</p>}</div>}
+                <div className={`access-actions ${registrationStep === registrationFlow.length ? "access-actions--final" : ""}`}><UiButton tone="secondary" type="button" onClick={returnToPreviousRegistrationStep}>Voltar</UiButton><UiButton type="submit" isLoading={registrationLoading} loadingLabel="Enviando cadastro…">{registrationStep === registrationFlow.length ? "Enviar solicitação para análise" : "Continuar"}</UiButton></div>
               </form>}
-              {(accessView === "received" || accessView === "pending_review") && <section className="approval-wait" aria-label="Status do cadastro"><ol className="approval-timeline"><li className="is-complete"><strong>Cadastro enviado</strong><span>Recebemos sua solicitação.</span></li><li className="is-current"><strong>Em análise</strong><span>O acesso ainda não está liberado.</span></li><li><strong>Próximo passo</strong><span>Entre novamente para verificar o status quando necessário.</span></li></ol><div className="access-actions"><UiButton type="button" onClick={returnToLoginForStatus}>Voltar ao login</UiButton><a href="mailto:suporte@blindspot.local">Falar com o suporte</a></div></section>}
+              {(accessView === "received" || accessView === "pending_review") && <section className="approval-wait" aria-label="Status do cadastro"><ol className="approval-timeline"><li className="is-complete"><strong><span className="sr-only">Concluído: </span>Cadastro enviado</strong><span>Recebemos sua solicitação.</span></li><li className="is-current"><strong>Em análise</strong><span>O acesso ainda não está liberado.</span></li></ol><section className="approval-next-action" aria-label="Próxima ação"><h2>Próxima ação</h2><p>Entre novamente para verificar o status quando necessário.</p></section><div className="access-actions"><UiButton type="button" onClick={returnToLoginForStatus}>Voltar ao login</UiButton><a href="mailto:suporte@blindspot.local">Falar com o suporte</a></div></section>}
               {accessView === "rejected" && <div className="access-actions"><UiButton tone="secondary" type="button" onClick={() => setAccessView("login")}>Voltar ao login</UiButton><a href="mailto:suporte@blindspot.local">Falar com o suporte</a></div>}
             </UiCard>
           </div>
-          {toast && <UiToast tone={toast.tone} title={toast.title} message={toast.message} onDismiss={dismissToast} />}
+          {toast && <UiToast tone={toast.tone} title={toast.title} message={toast.message} isClosing={toast.isClosing} onDismiss={dismissToast} />}
         </div>
       </main>
     );
   }
 
+  function selectDashboardView(view: AppView): void {
+    setActiveView(view);
+    setIsNavigationMenuOpen(false);
+    setIsSessionMenuOpen(false);
+    if (view === "catalog" && !catalogResult && !catalogLoading) void runCatalogSearch(1);
+  }
+
+  const roleLabel = signedInRole === "admin" ? "Administrador" : signedInRole === "analyst" ? "Analista" : "Visualizador";
+
   return (
-    <div className={`dashboard-page ${isSidebarCollapsed ? "sidebar-collapsed" : ""}`}>
-      {toast && <UiToast tone={toast.tone} title={toast.title} message={toast.message} onDismiss={dismissToast} />}
+    <div className="dashboard-page">
+      {toast && <UiToast tone={toast.tone} title={toast.title} message={toast.message} isClosing={toast.isClosing} onDismiss={dismissToast} />}
       <a className="skip-link" href="#main-content">Pular para o conteúdo principal</a>
-      <aside className="sidebar" aria-label="Navegação do BlindSpot">
-        <div className="brand-header">
-          <img className="brand-logo" src={logoBlindspot} alt="BlindSpot" />
-          <span className="brand-wordmark">BLINDSPOT</span>
-          <div className="brand-controls">
-            <button
-              type="button"
-              className="theme-toggle"
-              onClick={() => setThemeMode((prev) => (prev === "dark" ? "light" : "dark"))}
-              title={themeMode === "dark" ? "Ativar modo claro" : "Ativar modo escuro"}
-              aria-label={themeMode === "dark" ? "Ativar modo claro" : "Ativar modo escuro"}
-            >
-              <ThemeIcon mode={themeMode} />
-            </button>
-            <button
-              type="button"
-              className="sidebar-toggle"
-              onClick={() => setIsSidebarCollapsed((prev) => !prev)}
-              title={isSidebarCollapsed ? "Expandir menu" : "Retrair menu"}
-              aria-label={isSidebarCollapsed ? "Expandir menu" : "Retrair menu"}
-            >
-              <ChevronIcon direction={isSidebarCollapsed ? "right" : "left"} />
-            </button>
+      <header className="top-navigation">
+        <div className="top-navigation__inner">
+          <button type="button" className="top-navigation__brand" onClick={() => selectDashboardView("request")} aria-label="BlindSpot, ir para nova requisição">
+            <img className="top-navigation__mark" src={logoBlindspot} alt="" />
+            <span>BLINDSPOT</span>
+          </button>
+          <nav className="top-navigation__links" aria-label="Seções do produto">
+            <button type="button" className={activeView === "request" ? "is-active" : ""} onClick={() => selectDashboardView("request")} aria-current={activeView === "request" ? "page" : undefined}>Nova ficha</button>
+            <button type="button" className={activeView === "workspace" ? "is-active" : ""} onClick={() => selectDashboardView("workspace")} aria-current={activeView === "workspace" ? "page" : undefined}>Workspace</button>
+            <button type="button" className={activeView === "catalog" ? "is-active" : ""} onClick={() => selectDashboardView("catalog")} aria-current={activeView === "catalog" ? "page" : undefined}>Catálogo</button>
+            <button type="button" className={activeView === "history" ? "is-active" : ""} onClick={() => selectDashboardView("history")} aria-current={activeView === "history" ? "page" : undefined}>Histórico</button>
+            {(signedInRole === "analyst" || signedInRole === "admin") ? <button type="button" className={activeView === "comparison" ? "is-active" : ""} onClick={() => selectDashboardView("comparison")} aria-current={activeView === "comparison" ? "page" : undefined}>Comparar</button> : null}
+            {signedInRole === "admin" ? <button type="button" className={activeView === "team" ? "is-active" : ""} onClick={() => selectDashboardView("team")} aria-current={activeView === "team" ? "page" : undefined}>Equipe</button> : null}
+            {signedInRole === "admin" ? <button type="button" className={activeView === "usage" ? "is-active" : ""} onClick={() => selectDashboardView("usage")} aria-current={activeView === "usage" ? "page" : undefined}>Consumo</button> : null}
+          </nav>
+          <div className="top-navigation__utilities">
+            <button type="button" className="theme-toggle" onClick={() => setThemeMode((prev) => (prev === "dark" ? "light" : "dark"))} title={themeMode === "dark" ? "Ativar modo claro" : "Ativar modo escuro"} aria-label={themeMode === "dark" ? "Ativar modo claro" : "Ativar modo escuro"}><ThemeIcon mode={themeMode} /></button>
+            <button ref={navigationToggleRef} type="button" className="top-navigation__menu-toggle" onClick={() => { setIsNavigationMenuOpen((current) => !current); setIsSessionMenuOpen(false); }} aria-expanded={isNavigationMenuOpen} aria-controls="primary-navigation-menu">Menu</button>
+            <button ref={sessionToggleRef} type="button" className="top-navigation__session-toggle" onClick={() => { setIsSessionMenuOpen((current) => !current); setIsNavigationMenuOpen(false); }} aria-expanded={isSessionMenuOpen} aria-controls="session-menu">Conta</button>
           </div>
         </div>
-
-        <nav className="sidebar-nav" aria-label="Seções do produto">
-          <button
-            type="button"
-            className={`sidebar-link ${activeView === "request" ? "active" : ""}`}
-            onClick={() => setActiveView("request")}
-            aria-pressed={activeView === "request"}
-            title="Requisitar ficha"
-          >
-            <span className="sidebar-link-icon">
-              <RequestIcon />
-            </span>
-            <span className="sidebar-link-label">Requisitar ficha</span>
-          </button>
-          {(signedInRole === "analyst" || signedInRole === "admin") ? <button type="button" className={`sidebar-link ${activeView === "comparison" ? "active" : ""}`} onClick={() => setActiveView("comparison")} aria-pressed={activeView === "comparison"} title="Comparar fichas"><span className="sidebar-link-icon">⇄</span><span className="sidebar-link-label">Comparar</span></button> : null}
-          <button
-            type="button"
-            className={`sidebar-link ${activeView === "catalog" ? "active" : ""}`}
-            onClick={() => { setActiveView("catalog"); if (!catalogResult && !catalogLoading) void runCatalogSearch(1); }}
-            aria-pressed={activeView === "catalog"}
-            title="Catalogo"
-          >
-            <span className="sidebar-link-icon">⌕</span>
-            <span className="sidebar-link-label">Catalogo</span>
-          </button>
-          <button
-            type="button"
-            className={`sidebar-link ${activeView === "history" ? "active" : ""}`}
-            onClick={() => setActiveView("history")}
-            aria-pressed={activeView === "history"}
-            title="Historico"
-          >
-            <span className="sidebar-link-icon">
-              <HistoryIcon />
-            </span>
-            <span className="sidebar-link-label">Historico</span>
-          </button>
-          {signedInRole === "admin" ? <button type="button" className={`sidebar-link ${activeView === "team" ? "active" : ""}`} onClick={() => setActiveView("team")} aria-pressed={activeView === "team"} title="Equipe"><span className="sidebar-link-icon">♙</span><span className="sidebar-link-label">Equipe</span></button> : null}
-          {signedInRole === "admin" ? <button type="button" className={`sidebar-link ${activeView === "usage" ? "active" : ""}`} onClick={() => setActiveView("usage")} aria-pressed={activeView === "usage"} title="Consumo"><span className="sidebar-link-icon">◴</span><span className="sidebar-link-label">Consumo</span></button> : null}
-          <button type="button" className="sidebar-link" onClick={() => setIsOnboardingOpen(true)} title="Ver orientação inicial">
-            <span className="sidebar-link-icon">i</span>
-            <span className="sidebar-link-label">Orientação</span>
-          </button>
-        </nav>
-        <section className="sidebar-session" aria-label="Sessão atual">
-          <p className="sidebar-session-label">Conectado como <strong>{signedInName || "usuário"}</strong></p>
-          <button
-            type="button"
-            className="logout-button"
-            onClick={() => void handleLogout()}
-            disabled={logoutState === "loading"}
-            aria-busy={logoutState === "loading"}
-            aria-label={logoutState === "loading" ? "Encerrando sessão" : `Encerrar sessão de ${signedInName || "usuário"}`}
-            title="Encerrar sessão"
-          >
-            <span aria-hidden="true">↪</span>
-            <span className="logout-button-label">{logoutState === "loading" ? "Encerrando sessão…" : "Sair"}</span>
-          </button>
-          {logoutState === "error" ? <p className="logout-status" role="alert">Não foi possível encerrar a sessão. Tente novamente.</p> : null}
-        </section>
-      </aside>
+        {isNavigationMenuOpen ? <nav ref={navigationMenuRef} id="primary-navigation-menu" className="top-navigation__mobile-menu" aria-label="Seções do produto">
+          <button type="button" className={activeView === "request" ? "is-active" : ""} onClick={() => selectDashboardView("request")}>Nova ficha</button><button type="button" className={activeView === "workspace" ? "is-active" : ""} onClick={() => selectDashboardView("workspace")}>Workspace</button><button type="button" className={activeView === "catalog" ? "is-active" : ""} onClick={() => selectDashboardView("catalog")}>Catálogo</button><button type="button" className={activeView === "history" ? "is-active" : ""} onClick={() => selectDashboardView("history")}>Histórico</button>{(signedInRole === "analyst" || signedInRole === "admin") ? <button type="button" className={activeView === "comparison" ? "is-active" : ""} onClick={() => selectDashboardView("comparison")}>Comparar</button> : null}{signedInRole === "admin" ? <button type="button" className={activeView === "team" ? "is-active" : ""} onClick={() => selectDashboardView("team")}>Equipe</button> : null}{signedInRole === "admin" ? <button type="button" className={activeView === "usage" ? "is-active" : ""} onClick={() => selectDashboardView("usage")}>Consumo</button> : null}
+        </nav> : null}
+        {isSessionMenuOpen ? <section ref={sessionMenuRef} id="session-menu" className="session-menu" aria-label="Sessão atual">
+          <p className="session-menu__identity"><strong>{signedInName || "Usuário"}</strong><span>{roleLabel}</span></p>
+          <button type="button" className="session-menu__logout" onClick={() => void handleLogout()} disabled={logoutState === "loading"} aria-busy={logoutState === "loading"}>{logoutState === "loading" ? "Encerrando sessão…" : "Sair"}</button>
+          {logoutState === "error" ? <p className="session-menu__error" role="alert">Não foi possível encerrar a sessão. Tente novamente.</p> : null}
+        </section> : null}
+      </header>
 
       <main id="main-content" className="dashboard-content" tabIndex={-1}>
         <p className="sr-only" role="status" aria-live="polite">{statusAnnouncement}</p>
@@ -614,26 +611,7 @@ function App() {
 
             {result ? <FichaDashboard title="Ultima ficha validada" ficha={result} showTraceability={false} /> : null}
           </>
-        ) : activeView === "catalog" ? (
-          <section className="history-layout">
-            <section>
-              <h1 ref={viewTitleRef} tabIndex={-1}>Catalogo de fichas</h1>
-              <p>Comece pelas fichas recentes ou combine filtros. A seleção sempre confirma a configuração exata; não abrimos um veículo aproximado.</p>
-              <TechnicalFichaDiscovery onSelect={(entry) => void openCatalogEntry(entry.id, entry.vehicle)} />
-              <FichaDiscovery onSelect={(entry) => void openCatalogEntry(entry.id, entry.vehicle)} selectionLabel="Abrir ficha exata" />
-            </section>
-            <section className="panel history-detail">
-              {!catalogEntry ? <p className="status-text">Selecione uma configuracao para confirmar a identidade e abrir a ficha.</p> : null}
-              {catalogEntry?.state === "incompatible" ? <div className="error-box">Configuracao incompativel. Nenhuma ficha foi aberta.</div> : null}
-              {catalogEntry?.state === "not_registered" ? <p className="status-text">A configuracao nao possui ficha catalogada.</p> : null}
-              {catalogEntry?.state === "found" ? <>
-                <FichaDashboard title={`Ficha catalogada · versao ${catalogEntry.entry.latestVersion ?? "-"}`} ficha={catalogEntry.entry.response} showTraceability />
-                {(signedInRole === "analyst" || signedInRole === "admin") && catalogEntry.entry.latestTechnicalSheetVersionId ? <><button type="button" className="primary-button" onClick={() => addCatalogCandidateToComparison(catalogEntry.entry)}>Adicionar ficha aberta à comparação</button><button type="button" className="collapse-all-button" onClick={() => void exportarFicha(catalogEntry.entry.latestTechnicalSheetVersionId!, "csv")}>Exportar CSV</button><button type="button" className="collapse-all-button" onClick={() => void exportarFicha(catalogEntry.entry.latestTechnicalSheetVersionId!, "json")}>Exportar JSON</button></> : null}
-                <section className="source-section"><h3>Fichas relacionadas</h3><p className="source-review-notice">Mesma marca, modelo, ano-modelo e mercado. Esta relação não avalia motorização nem garante compatibilidade para comparar.</p>{catalogRelated.length ? <div className="history-list">{catalogRelated.map((entry) => <article key={entry.id} className="history-item"><button type="button" className="history-item" onClick={() => void openCatalogEntry(entry.id, entry.vehicle)}><strong>{entry.vehicle.marca} {entry.vehicle.modelo} {entry.vehicle.versao}</strong><span>{entry.vehicle.ano_modelo} · {entry.vehicle.mercado} · versão {entry.latestVersion ?? "-"}</span></button>{(signedInRole === "analyst" || signedInRole === "admin") && entry.latestTechnicalSheetVersionId ? <button type="button" className="collapse-all-button" onClick={() => addCatalogCandidateToComparison(entry)}>Adicionar à comparação</button> : null}</article>)}</div> : <p className="status-text">Não há outras fichas relacionadas para esta identidade.</p>}</section>
-              </> : null}
-            </section>
-          </section>
-        ) : activeView === "comparison" && (signedInRole === "analyst" || signedInRole === "admin") ? (
+        ) : activeView === "catalog" ? <CatalogWorkspace entry={catalogEntry} entryError={catalogError} isOpening={catalogLoading} related={catalogRelated} canCompare={signedInRole === "analyst" || signedInRole === "admin"} onOpen={(entry) => void openCatalogEntry(entry.id, entry.vehicle)} onBack={() => { setCatalogEntry(null); setCatalogRelated([]); setCatalogError(null); }} onCompare={addCatalogCandidateToComparison} onExport={(versionId, format) => void exportarFicha(versionId, format)} /> : activeView === "workspace" ? <VehicleWorkspace /> : activeView === "comparison" && (signedInRole === "analyst" || signedInRole === "admin") ? (
           <ComparisonPanel initialCandidate={comparisonSeed} onInitialCandidateConsumed={() => setComparisonSeed(null)} />
         ) : activeView === "team" && signedInRole === "admin" ? (
           <TeamPanel />
@@ -697,20 +675,6 @@ function App() {
           </section>
         )}
       </main>
-      {isOnboardingOpen ? (
-        <div className="onboarding-backdrop" role="presentation">
-          <section className="onboarding-dialog" role="dialog" aria-modal="true" aria-labelledby="onboarding-title" aria-describedby="onboarding-description">
-            <p className="eyebrow">Primeiro acesso</p>
-            <h2 id="onboarding-title">Conheça o ambiente de consulta</h2>
-            <p id="onboarding-description">Use Requisição para gerar uma ficha, Histórico para reler respostas salvas e Catálogo para procurar fichas persistidas quando o PostgreSQL estiver disponível.</p>
-            <p className="status-text">Este protótipo ainda não possui login, organização ou permissões. Controles visuais não substituem autorização no servidor.</p>
-            <div className="onboarding-actions">
-              <button ref={onboardingPrimaryActionRef} type="button" className="primary-button" onClick={finishOnboarding}>Começar consulta</button>
-              <button type="button" className="collapse-all-button" onClick={finishOnboarding}>Pular orientação</button>
-            </div>
-          </section>
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -731,20 +695,22 @@ function formatTechnicalSheetGenerationError(error: unknown): string {
     : error.message;
 }
 
-function TeamPanel() {
+function TeamPanel() { return <TeamWorkspace />;
   const [people, setPeople] = useState<{ members: OrganizationMember[]; invitations: OrganizationMemberInvitation[] } | null>(null);
   const [email, setEmail] = useState(""); const [role, setRole] = useState<OrganizationRole>("viewer"); const [error, setError] = useState<string | null>(null); const [link, setLink] = useState<string | null>(null);
   async function refresh() { try { setPeople(await obterEquipe()); } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível carregar a equipe."); } }
   useEffect(() => { void refresh(); }, []);
   async function invite(event: FormEvent<HTMLFormElement>) { event.preventDefault(); setError(null); setLink(null); try { const result = await convidarMembro(email, role); setLink(`${window.location.origin}${result.activation_path}`); setEmail(""); await refresh(); } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível criar o convite."); } }
+  // @ts-ignore legacy panel retained temporarily while its extracted replacement is active.
   return <section className="panel"><h1>Equipe</h1><p>Convide pessoas, ajuste papéis e encerre acessos da sua organização.</p><form className="form-grid" onSubmit={invite}><label>E-mail corporativo<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label><label>Papel inicial<select value={role} onChange={(event) => setRole(event.target.value as OrganizationRole)}><option value="viewer">Visualizador</option><option value="analyst">Analista</option><option value="admin">Administrador</option></select></label><button className="primary-button" type="submit">Gerar convite</button></form>{link ? <div className="status-text" role="status"><strong>Copie agora o link de ativação:</strong><input readOnly value={link} aria-label="Link único de ativação" onFocus={(event) => event.currentTarget.select()} /></div> : null}{error ? <div className="error-box" role="alert">{error}</div> : null}<h2>Membros</h2>{people?.members.map((member) => <article key={member.id} className="history-item"><strong>{member.display_name}</strong><span>{member.email} · {member.state}</span><label>Papel<select value={member.role} disabled={member.state !== "active"} onChange={(event) => void alterarPapelMembro(member.id, event.target.value as OrganizationRole).then(refresh).catch((err: unknown) => setError(err instanceof Error ? err.message : "Não foi possível alterar o papel."))}><option value="viewer">Visualizador</option><option value="analyst">Analista</option><option value="admin">Administrador</option></select></label><button type="button" disabled={member.state !== "active"} onClick={() => void desativarMembro(member.id).then(refresh).catch((err: unknown) => setError(err instanceof Error ? err.message : "Não foi possível desativar o membro."))}>Desativar</button></article>) ?? <p className="status-text">Carregando equipe…</p>}<h2>Convites</h2>{people?.invitations.length ? people.invitations.map((invitation) => <article key={invitation.id} className="history-item"><strong>{invitation.email}</strong><span>{invitation.role} · {invitation.state}</span>{invitation.state === "issued" ? <button type="button" onClick={() => void revogarConviteMembro(invitation.id).then(refresh).catch((err: unknown) => setError(err instanceof Error ? err.message : "Não foi possível revogar o convite."))}>Revogar convite</button> : null}</article>) : <p className="status-text">Nenhum convite pendente.</p>}</section>;
 }
 
-function UsagePanel() {
+function UsagePanel() { return <UsageWorkspace />;
   const currentPeriod = new Date().toISOString().slice(0, 7); const [period, setPeriod] = useState(currentPeriod); const [summary, setSummary] = useState<UsageSummary | null>(null); const [settings, setSettings] = useState<UsageAlertSettings | null>(null); const [threshold, setThreshold] = useState("1"); const [isActive, setIsActive] = useState(false); const [error, setError] = useState<string | null>(null);
   async function load() { try { setError(null); const [nextSummary, nextSettings] = await Promise.all([obterConsumo(period), obterAlertasConsumo()]); setSummary(nextSummary); setSettings(nextSettings); if (nextSettings.policy) { setThreshold(String(nextSettings.policy.threshold_units)); setIsActive(nextSettings.policy.is_active); } } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível consultar o consumo."); } }
   async function savePolicy(event: FormEvent<HTMLFormElement>) { event.preventDefault(); try { await salvarPoliticaConsumo(Number(threshold), isActive); await load(); } catch (err) { setError(err instanceof Error ? err.message : "Não foi possível salvar a política."); } }
   useEffect(() => { void load(); }, []);
+  // @ts-ignore legacy panel retained temporarily while its extracted replacement is active.
   return <section className="panel"><h1>Consumo</h1><p>Visão técnica mensal da sua organização. Não representa preço, cobrança ou limite.</p><form className="form-grid" onSubmit={(event) => { event.preventDefault(); void load(); }}><label>Período<input type="month" value={period} onChange={(event) => setPeriod(event.target.value)} required /></label><button className="primary-button" type="submit">Consultar</button></form>{error ? <div className="error-box" role="alert">{error}</div> : null}{summary ? <><p className="status-text">{summary.definition}</p><div className="history-list"><article className="history-item"><strong>{summary.successful_units} unidade(s)</strong><span>Fichas técnicas persistidas com sucesso</span></article><article className="history-item"><strong>{summary.failed_attempts} falha(s)</strong><span>Tentativas que não geraram unidades</span></article></div><h2>Alertas internos</h2><form className="form-grid" onSubmit={savePolicy}><label>Limiar mensal<input type="number" min={1} value={threshold} onChange={(event) => setThreshold(event.target.value)} required /></label><label className="checkbox-label"><input type="checkbox" checked={isActive} onChange={(event) => setIsActive(event.target.checked)} /> Ativar alerta interno</label><button className="primary-button" type="submit">Salvar política</button></form><p className="status-text">Sem e-mail ou cobrança. A política atual {settings?.policy?.is_active ? `está ativa no limiar de ${settings.policy.threshold_units} unidade(s).` : "está desativada."}</p>{settings?.alerts.length ? settings.alerts.map((alert) => <article key={alert.id} className="history-item"><strong>Limiar atingido em {alert.period}</strong><span>{alert.total_units} unidade(s) quando o limiar era {alert.threshold_units}</span>{alert.acknowledged_at ? <span>Reconhecido</span> : <button type="button" onClick={() => void reconhecerAlertaConsumo(alert.id).then(load).catch((err: unknown) => setError(err instanceof Error ? err.message : "Não foi possível reconhecer o alerta."))}>Reconhecer alerta</button>}</article>) : <p className="status-text">Nenhum alerta interno no momento.</p>}<h2>Detalhamento do período {summary.period}</h2>{summary.breakdown.length ? summary.breakdown.map((item) => <article key={`${item.action}-${item.outcome}`} className="history-item"><strong>{item.action === "technical_sheet_persisted" ? "Ficha persistida" : "Persistência não concluída"}</strong><span>{item.events} evento(s) · {item.units} unidade(s) · {item.outcome === "succeeded" ? "sucesso" : "falha"}</span></article>) : <p className="status-text">Não há eventos de consumo neste período.</p>}</> : <p className="status-text">Carregando consumo…</p>}</section>;
 }
 
@@ -755,6 +721,18 @@ function MemberInvitationActivation({ token }: { token: string }) {
 }
 
 function FichaDashboard({
+  title,
+  ficha,
+  showTraceability
+}: {
+  title: string;
+  ficha: FichaTecnicaResponse;
+  showTraceability: boolean;
+}) {
+  return <TechnicalFichaWorkspace ficha={ficha} title={title} contextLabel={showTraceability ? "Ficha aberta pelo catálogo com rastreabilidade disponível." : "Leitura técnica da configuração selecionada."} />;
+}
+
+function LegacyFichaDashboard({
   title,
   ficha,
   showTraceability

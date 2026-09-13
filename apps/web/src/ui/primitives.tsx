@@ -84,13 +84,14 @@ export interface UiToastProps {
   tone: ToastTone;
   title: string;
   message?: string;
+  isClosing?: boolean;
   onDismiss: () => void;
 }
 
-export function UiToast({ message, onDismiss, title, tone }: UiToastProps) {
+export function UiToast({ isClosing = false, message, onDismiss, title, tone }: UiToastProps) {
   const toast = (
     <aside className="ui-toast-region" aria-label="Notificações">
-      <div className={classNames("ui-toast", `ui-toast--${tone}`)} role={tone === "error" ? "alert" : "status"} aria-live={tone === "error" ? "assertive" : "polite"}>
+      <div className={classNames("ui-toast", `ui-toast--${tone}`, isClosing && "ui-toast--closing")} role={tone === "error" ? "alert" : "status"} aria-live={tone === "error" ? "assertive" : "polite"}>
         <div>
           <strong>{title}</strong>
           {message ? <p>{message}</p> : null}

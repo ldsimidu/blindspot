@@ -64,9 +64,20 @@
   --z-base: 0;
   --z-sticky: 10;
   --z-overlay: 20;
-  --motion-fast: 120ms;
-  --motion-standard: 180ms;
-  --motion-easing: ease;
+  --motion-duration-instant: 80ms;
+  --motion-duration-fast: 140ms;
+  --motion-duration-normal: 220ms;
+  --motion-duration-slow: 360ms;
+  --motion-duration-ambient: 16s;
+  --motion-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --motion-ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --motion-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --motion-ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
+  --motion-ease-ambient: ease-in-out;
+  /* Compatibility aliases for primitives not yet migrated. */
+  --motion-fast: var(--motion-duration-fast);
+  --motion-standard: var(--motion-duration-normal);
+  --motion-easing: var(--motion-ease-standard);
   /* Documentation tokens: media queries use their literal equivalents. */
   --breakpoint-compact: 680px;
   --breakpoint-medium: 1080px;
@@ -119,7 +130,7 @@ body.theme-light {
   justify-content: center;
   min-height: 42px;
   padding: var(--space-2) var(--space-4);
-  transition: background-color var(--motion-fast) var(--motion-easing), border-color var(--motion-fast) var(--motion-easing), color var(--motion-fast) var(--motion-easing);
+  transition: transform var(--motion-duration-instant) var(--motion-ease-standard), background-color var(--motion-duration-fast) var(--motion-ease-standard), border-color var(--motion-duration-fast) var(--motion-ease-standard), color var(--motion-duration-fast) var(--motion-ease-standard), box-shadow var(--motion-duration-fast) var(--motion-ease-standard);
 }
 
 .ui-button--primary {
@@ -143,6 +154,14 @@ body.theme-light {
 .ui-button[aria-busy="true"] {
   cursor: wait;
   opacity: 0.7;
+}
+
+.ui-button:not(:disabled):hover {
+  transform: translateY(-1px);
+}
+
+.ui-button:not(:disabled):active {
+  transform: translateY(0) scale(0.98);
 }
 
 .ui-field {
@@ -236,6 +255,18 @@ body.theme-light {
 .ui-toast--success { background: var(--color-status-confirmed-bg); border-color: var(--color-feedback-success); color: var(--color-status-confirmed-text); }
 .ui-toast--error { background: var(--color-status-conflict-bg); border-color: var(--color-feedback-danger); color: var(--color-status-conflict-text); }
 .ui-toast__dismiss { flex: 0 0 auto; padding: 0; border: 0; background: transparent; color: currentColor; font-size: 1.4rem; line-height: 1; cursor: pointer; }
+.ui-toast { animation: ui-toast-enter var(--motion-duration-normal) var(--motion-ease-enter) both; }
+.ui-toast--closing { animation: ui-toast-exit var(--motion-duration-fast) var(--motion-ease-exit) both; }
+
+@keyframes ui-toast-enter {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ui-toast-exit {
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-4px); }
+}
 
 :where(button, input, select, textarea, a):focus-visible {
   outline: 3px solid var(--color-focus-ring);
