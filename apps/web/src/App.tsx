@@ -119,6 +119,7 @@ function App() {
   const navigationMenuRef = useRef<HTMLElement>(null);
   const sessionMenuRef = useRef<HTMLElement>(null);
   const requestDialogRef = useRef<HTMLDialogElement>(null);
+  const generationDialogRef = useRef<HTMLDialogElement>(null);
   const requestTriggerRef = useRef<HTMLButtonElement>(null);
   const requestFirstFieldRef = useRef<HTMLInputElement>(null);
   const technicalDetailRef = useRef<HTMLElement>(null);
@@ -239,6 +240,14 @@ function App() {
   }, [isRequestDialogOpen]);
 
   useEffect(() => {
+    const dialog = generationDialogRef.current;
+    if (!dialog) return;
+
+    if (loading && !dialog.open) dialog.showModal();
+    if (!loading && dialog.open) dialog.close();
+  }, [loading]);
+
+  useEffect(() => {
     if (activeView !== "technical") return;
     window.requestAnimationFrame(() => technicalDetailRef.current?.focus());
   }, [activeView]);
@@ -288,6 +297,7 @@ function App() {
       return;
     }
 
+    setIsRequestDialogOpen(false);
     setLoading(true);
 
     const payload: VehicleInput = {
@@ -307,6 +317,7 @@ function App() {
     } catch (err) {
       const message = formatTechnicalSheetGenerationError(err);
       setError(message);
+      window.setTimeout(() => setIsRequestDialogOpen(true), 0);
     } finally {
       setLoading(false);
     }
@@ -682,6 +693,13 @@ function App() {
                 {error ? <div className="error-box" role="alert">{error}</div> : null}
                 <footer><UiButton type="button" variant="outline" onClick={closeRequestDialog} disabled={loading}>Cancelar</UiButton><UiButton disabled={!isFormValid} isLoading={loading} loadingLabel="Gerando ficha técnica…" type="submit">Gerar ficha técnica</UiButton></footer>
               </form>
+            </dialog>
+            <dialog ref={generationDialogRef} className="request-generation-dialog" aria-labelledby="request-generation-title" aria-describedby="request-generation-message" onCancel={(event) => event.preventDefault()}>
+              <section className="request-generation-dialog__content" role="status" aria-live="polite">
+                <span className="request-generation-dialog__spinner" aria-hidden="true" />
+                <p id="request-generation-title" className="sr-only">Gerando ficha técnica</p>
+                <p id="request-generation-message">Estamos pesquisando pelos itens da ficha técnica, aguarde um instante!</p>
+              </section>
             </dialog>
           </>
         ) : activeView === "technical" ? <section ref={technicalDetailRef} className="request-detail-page" aria-label="Ficha técnica completa" tabIndex={-1}><UiButton type="button" variant="outline" onClick={() => { setViewMotionDirection("backward"); setActiveView("request"); window.requestAnimationFrame(() => technicalDetailTriggerRef.current?.focus()); }}>Voltar à última ficha</UiButton>{result ? <FichaDashboard title="Ficha técnica" ficha={result} showTraceability={false} /> : <p className="request-detail-page__empty" role="status">Nenhuma ficha está disponível para abertura.</p>}</section> : activeView === "catalog" ? <CatalogWorkspace entry={catalogEntry} entryError={catalogError} isOpening={catalogLoading} related={catalogRelated} canCompare={signedInRole === "analyst" || signedInRole === "admin"} comparisonSelection={comparisonSelection} onOpen={(entry) => void openCatalogEntry(entry.id, entry.vehicle)} onBack={() => { setCatalogEntry(null); setCatalogRelated([]); setCatalogError(null); }} onAddToComparison={addCatalogCandidateToComparison} onRemoveFromComparison={(candidate) => { const side = comparisonSelection.findIndex((item) => item?.latestTechnicalSheetVersionId === candidate.latestTechnicalSheetVersionId); if (side >= 0) removeComparisonCandidate(side as 0 | 1); }} onGoToComparison={() => { setViewMotionDirection("forward"); setActiveView("comparison"); }} onExport={(versionId, format) => void exportarFicha(versionId, format)} /> : activeView === "workspace" ? <VehicleWorkspace /> : activeView === "comparison" && (signedInRole === "analyst" || signedInRole === "admin") ? (
