@@ -11,6 +11,22 @@
 
 - Implementada a seleção compartilhada e transitória de duas fichas, com slots X/Y, descoberta em galeria e CTA só habilitado quando a dupla está completa.
 - A próxima fase permanece limitada ao redesenho da análise salva em camadas; contratos da API, histórico, exportações e critérios do servidor não foram alterados nesta fase.
+
+## Execução da Fase B — 13/09/2026
+
+- A leitura salva foi reestruturada para iniciar pelos dois veículos reais; `Ficha X` e `Ficha Y` agora são apenas âncoras discretas de leitura.
+- O topo reúne retorno e exportações, identidade simétrica, aviso factual do servidor e um panorama de contagens filtráveis, sem score, vencedor ou porcentagem inventada.
+- O antigo destaque de primeiras diferenças foi substituído por mapa factual de áreas técnicas; a leitura detalhada continua progressiva por grupos, com busca, filtros e evidências sob demanda.
+- A interface reutiliza tokens e primitives do sistema nos controles novos. API, persistência, RBAC, histórico e payload de exportação permanecem inalterados.
+- Verificações: `npm run typecheck`, `npm run build` e `git diff --check`.
+- Pendente: checkpoint de primeira renderização com evidência humana em desktop e mobile antes de encerrar a task visualmente.
+
+## Refinamento após evidência — 13/09/2026
+
+- Corrigidos accordions e ações de legado que escapavam para superfícies claras no tema dark; exportações, evidências e grupos agora usam a linguagem de controles do sistema.
+- A navegação por área passa a abrir um único grupo e rolar até ele, respeitando `prefers-reduced-motion`; filtros exibem suas contagens factuais.
+- Valores numéricos confirmados e comparáveis recebem delta. O tom verde marca somente o maior valor em atributos cujo aumento é semanticamente interpretável (como potência, torque e capacidade); não significa vencedor, recomendação ou maior qualidade.
+- Verificações repetidas: `npm run typecheck`, `npm run build` e `git diff --check`.
 > Arquitetura: `APPROVED — Lucas autorizou a composição revisada em 2026-09-12`
 >
 > Triagem automática: `Material — elegibilidade e leitura comparativa`

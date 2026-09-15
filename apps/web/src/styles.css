@@ -2760,6 +2760,24 @@ pre {
 .request-dialog__fields input { min-width: 0; min-height: 48px; border: 1px solid var(--app-border); border-radius: var(--app-control-radius); background: var(--app-canvas); color: var(--app-ink); padding: 0 13px; font: inherit; }
 .request-dialog__form footer { display: flex; justify-content: flex-end; gap: 10px; }
 
+.request-generation-dialog {
+  width: min(420px, calc(100vw - 32px));
+  margin: auto;
+  padding: 0;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-module-radius);
+  background: var(--app-surface);
+  color: var(--app-ink);
+  box-shadow: 0 24px 72px rgb(0 0 0 / 32%);
+}
+
+.request-generation-dialog::backdrop { background: rgb(0 0 0 / 58%); }
+.request-generation-dialog[open] { animation: request-dialog-enter var(--motion-duration-fast) var(--motion-ease-enter) both; }
+.request-generation-dialog__content { display: grid; justify-items: center; gap: 22px; padding: clamp(32px, 6vw, 52px); text-align: center; }
+.request-generation-dialog__content p { max-width: 28ch; margin: 0; color: var(--app-ink-muted); line-height: 1.5; }
+.request-generation-dialog__spinner { width: 48px; aspect-ratio: 1; border: 4px solid var(--app-border); border-top-color: var(--app-accent); border-radius: 50%; animation: request-generation-spin 800ms linear infinite; }
+@keyframes request-generation-spin { to { transform: rotate(1turn); } }
+
 @media (max-width: 960px) {
   .request-overview__vehicle { grid-column: span 12; min-height: 210px; }
   .request-overview__completeness { grid-column: span 4; }
@@ -2797,7 +2815,9 @@ pre {
   .app-view-transition,
   .request-overview > *,
   .request-dialog[open],
-  .request-dialog[open]::backdrop {
+  .request-dialog[open]::backdrop,
+  .request-generation-dialog[open],
+  .request-generation-dialog__spinner {
     animation: none;
   }
 }
